@@ -1,6 +1,7 @@
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use clap::Args;
 use console::style;
+use reqwest::Client;
 
 use crate::config::CadiConfig;
 
@@ -41,14 +42,16 @@ pub async fn execute(args: PublishArgs, config: &CadiConfig) -> Result<()> {
         if chunks_dir.exists() {
             for entry in std::fs::read_dir(&chunks_dir)? {
                 let entry = entry?;
-                if entry.path().extension().map(|e| e == "json").unwrap_or(false) {
-                    let chunk_id = entry.path()
+                let path = entry.path();
+                // Check for .chunk (data) files
+                if path.extension().map(|e| e == "chunk").unwrap_or(false) {
+                    let chunk_id = path
                         .file_stem()
                         .and_then(|s| s.to_str())
                         .map(|s| format!("chunk:sha256:{}", s));
                     
                     if let Some(id) = chunk_id {
-                        chunks_to_publish.push((id, entry.path()));
+                        chunks_to_publish.push((id, path));
                     }
                 }
             }
@@ -56,9 +59,14 @@ pub async fn execute(args: PublishArgs, config: &CadiConfig) -> Result<()> {
     } else {
         for chunk_id in &args.chunks {
             let hash = chunk_id.strip_prefix("chunk:sha256:").unwrap_or(chunk_id);
-            let path = chunks_dir.join(format!("{}.json", hash));
-            if path.exists() {
-                chunks_to_publish.push((chunk_id.clone(), path));
+            // Try .chunk file first (binary), then .json (metadata)
+            let chunk_path = chunks_dir.join(format!("{}.chunk", hash));
+            let json_path = chunks_dir.join(format!("{}.json", hash));
+            
+            if chunk_path.exists() {
+                chunks_to_publish.push((chunk_id.clone(), chunk_path));
+            } else if json_path.exists() {
+                chunks_to_publish.push((chunk_id.clone(), json_path));
             } else {
                 println!("  {} Chunk not found locally: {}", style("⚠").yellow(), chunk_id);
             }
@@ -81,12 +89,16 @@ pub async fn execute(args: PublishArgs, config: &CadiConfig) -> Result<()> {
         return Ok(());
     }
 
+    // Create HTTP client
+    let client = Client::new();
+
     // Publish chunks
     for (id, path) in &chunks_to_publish {
-        println!("  {} Publishing {}...", style("→").cyan(), &id[..40]);
+        let display_id = if id.len() > 40 { &id[..40] } else { id };
+        println!("  {} Publishing {}...", style("→").cyan(), display_id);
         
-        // Read chunk
-        let _content = std::fs::read_to_string(path)?;
+        // Read chunk data
+        let content = std::fs::read(path)?;
         
         // Sign if required
         if !args.no_sign {
@@ -95,11 +107,25 @@ pub async fn execute(args: PublishArgs, config: &CadiConfig) -> Result<()> {
             }
         }
         
-        // Upload to registry (simulated)
-        // Real implementation would use reqwest to POST to registry
-        std::thread::sleep(std::time::Duration::from_millis(200));
+        // Upload to registry
+        let url = format!("{}/v1/chunks/{}", registry.trim_end_matches('/'), id);
         
-        println!("  {} Published {}", style("✓").green(), &id[..40]);
+        let response = client
+            .put(&url)
+            .body(content)
+            .header("Content-Type", "application/octet-stream")
+            .send()
+            .await
+            .map_err(|e| anyhow!("Failed to connect to registry: {}", e))?;
+        
+        if response.status().is_success() {
+            println!("  {} Published {}", style("✓").green(), display_id);
+        } else {
+            let status = response.status();
+            let body = response.text().await.unwrap_or_default();
+            println!("  {} Failed to publish {}: {} {}", 
+                     style("✗").red(), display_id, status, body);
+        }
     }
 
     println!();

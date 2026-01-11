@@ -1,0 +1,25 @@
+application:
+  description: todo-core application
+  name: todo-core
+  version: 0.1.0
+build_graph:
+  edges: []
+  nodes:
+  - blob_cadi: null
+    container_cadi: null
+    id: main
+    ir_cadi: null
+    representations:
+    - chunk: chunk:sha256:ff735870447ea42904de7d82394bbfddbd25bc898c771390a65d3ccc131d4a21
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:ff735870447ea42904de7d82394bbfddbd25bc898c771390a65d3ccc131d4a21
+build_targets:
+- name: dev
+  nodes:
+  - id: main
+    prefer:
+    - source
+  platform: any
+manifest_id: app:uuid:0dc1ae02-390b-4a8e-82e7-d785bd5913f6
+manifest_version: '1.0'

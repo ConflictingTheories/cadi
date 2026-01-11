@@ -1,0 +1,59 @@
+# =============================================================================
+# CADI Docker Ignore
+# =============================================================================
+
+# Build artifacts
+target/
+dist/
+*.egg-info/
+__pycache__/
+*.pyc
+node_modules/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Docker
+docker/
+!docker/configs/
+.dockerignore
+
+# Documentation
+docs/
+*.md
+!README.md
+LICENSE
+
+# Test files
+test-env/
+tests/
+*_test.go
+*_test.rs
+
+# Local configuration
+.env
+.env.local
+*.local
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Coverage
+coverage/
+*.coverage
+htmlcov/

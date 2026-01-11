@@ -231,18 +231,78 @@ pub fn config_file_path() -> PathBuf {
     config_dir().join("config.yaml")
 }
 
-/// Load configuration from file or use defaults
-pub fn load_config(path: Option<&str>) -> Result<CadiConfig> {
-    let config_path = path
-        .map(PathBuf::from)
-        .unwrap_or_else(config_file_path);
+/// Find project-local config (looks for .cadi/repos.cfg or cadi.yaml in current/parent dirs)
+pub fn find_project_config() -> Option<PathBuf> {
+    let mut current = std::env::current_dir().ok()?;
+    loop {
+        // Check for .cadi/repos.cfg
+        let repos_cfg = current.join(".cadi").join("repos.cfg");
+        if repos_cfg.exists() {
+            return Some(repos_cfg);
+        }
+        // Check for cadi.yaml manifest
+        let manifest = current.join("cadi.yaml");
+        if manifest.exists() {
+            return Some(current.join(".cadi").join("repos.cfg"));
+        }
+        // Go up to parent
+        if !current.pop() {
+            break;
+        }
+    }
+    None
+}
 
+/// Load configuration from file or use defaults
+/// Priority: explicit path > project-local .cadi/repos.cfg > user config > defaults
+pub fn load_config(path: Option<&str>) -> Result<CadiConfig> {
+    // If explicit path provided, use it
+    if let Some(p) = path {
+        let config_path = PathBuf::from(p);
+        if config_path.exists() {
+            let contents = std::fs::read_to_string(&config_path)?;
+            let config: CadiConfig = serde_yaml::from_str(&contents)?;
+            return Ok(config);
+        }
+    }
+
+    // Try project-local config
+    if let Some(project_config) = find_project_config() {
+        if project_config.exists() {
+            // For now, just check if it exists; could parse TOML repos.cfg later
+            tracing::debug!("Found project config: {:?}", project_config);
+        }
+    }
+
+    // Try user-level config
+    let config_path = config_file_path();
     if config_path.exists() {
         let contents = std::fs::read_to_string(&config_path)?;
         let config: CadiConfig = serde_yaml::from_str(&contents)?;
-        Ok(config)
-    } else {
-        Ok(CadiConfig::default())
+        return Ok(config);
+    }
+
+    // Return defaults
+    Ok(CadiConfig::default())
+}
+
+/// Load configuration with local development settings
+pub fn load_local_config() -> CadiConfig {
+    CadiConfig {
+        registry: RegistryConfig {
+            url: "http://localhost:8080".to_string(),
+            namespace: None,
+        },
+        auth: AuthConfig::default(),
+        cache: CacheConfig::default(),
+        build: BuildConfig::default(),
+        security: SecurityConfig {
+            signing_key: None,
+            trust_policy: "permissive".to_string(),
+            verify_on_fetch: false,
+            sandbox_untrusted: false,
+        },
+        llm: LlmConfig::default(),
     }
 }
 

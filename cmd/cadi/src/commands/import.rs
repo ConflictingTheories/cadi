@@ -133,8 +133,15 @@ pub async fn execute(args: ImportArgs, config: &CadiConfig) -> Result<()> {
     let chunks_dir = config.cache.dir.join("chunks");
     std::fs::create_dir_all(&chunks_dir)?;
     
-    let chunk_file = chunks_dir.join(format!("{}.json", chunk_hash));
-    std::fs::write(&chunk_file, serde_json::to_string_pretty(&source_cadi)?)?;
+    // Save metadata as JSON
+    let chunk_meta_file = chunks_dir.join(format!("{}.json", chunk_hash));
+    std::fs::write(&chunk_meta_file, serde_json::to_string_pretty(&source_cadi)?)?;
+    
+    // Save chunk data as binary (serialized for registry upload)
+    let chunk_data = serde_json::to_vec(&source_cadi)?;
+    let chunk_data_file = chunks_dir.join(format!("{}.chunk", chunk_hash));
+    std::fs::write(&chunk_data_file, &chunk_data)?;
+    
     println!("  {} Saved chunk to local store", style("✓").green());
 
     // Create manifest

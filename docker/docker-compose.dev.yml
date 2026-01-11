@@ -1,0 +1,135 @@
+# =============================================================================
+# CADI Development Environment
+# =============================================================================
+# Docker Compose for development workstations using CADI
+# This provides a complete build environment with CADI tools
+
+services:
+  # =============================================================================
+  # CADI Dev Workstation
+  # =============================================================================
+  cadi-dev:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    image: cadi/dev:${CADI_VERSION:-latest}
+    container_name: cadi-dev
+    hostname: cadi-dev
+    stdin_open: true
+    tty: true
+    privileged: true  # For Docker-in-Docker
+    environment:
+      - CADI_REGISTRY_URL=http://cadi-registry:8080
+      - CADI_CACHE_DIR=/home/developer/.cadi/cache
+      - RUST_LOG=${RUST_LOG:-info}
+      - DOCKER_HOST=unix:///var/run/docker.sock
+    volumes:
+      # Mount project source
+      - ${PROJECT_PATH:-../examples}:/workspace:cached
+      # Persist CADI cache
+      - cadi-dev-cache:/home/developer/.cadi/cache
+      # Docker socket for DinD
+      - /var/run/docker.sock:/var/run/docker.sock
+      # SSH keys (optional)
+      - ${SSH_AUTH_SOCK:-/dev/null}:/ssh-agent
+      - ${HOME}/.ssh:/home/developer/.ssh:ro
+      # Git config (optional)
+      - ${HOME}/.gitconfig:/home/developer/.gitconfig:ro
+    networks:
+      - cadi-network
+    depends_on:
+      cadi-registry:
+        condition: service_healthy
+    working_dir: /workspace
+
+  # =============================================================================
+  # CADI Build Runner
+  # =============================================================================
+  # Ephemeral container for running CADI builds
+  cadi-builder:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    image: cadi/dev:${CADI_VERSION:-latest}
+    profiles:
+      - build
+    environment:
+      - CADI_REGISTRY_URL=http://cadi-registry:8080
+      - CADI_BUILD_TARGET=${CADI_BUILD_TARGET:-default}
+    volumes:
+      - ${PROJECT_PATH:-.}:/workspace:cached
+      - cadi-build-cache:/home/developer/.cadi/cache
+    networks:
+      - cadi-network
+    depends_on:
+      - cadi-registry
+    working_dir: /workspace
+    command: ["cadi", "build", "--target", "${CADI_BUILD_TARGET:-default}"]
+
+  # =============================================================================
+  # CADI Local Registry (for dev)
+  # =============================================================================
+  cadi-registry:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.server
+    image: cadi/registry:${CADI_VERSION:-latest}
+    container_name: cadi-registry-dev
+    ports:
+      - "${CADI_PORT:-8080}:8080"
+    environment:
+      - RUST_LOG=cadi_server=debug,tower_http=debug
+      - CADI_STORAGE_PATH=/data
+    volumes:
+      - cadi-registry-data:/data
+    networks:
+      - cadi-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # =============================================================================
+  # CADI Watch Mode (for development)
+  # =============================================================================
+  cadi-watch:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.dev
+    image: cadi/dev:${CADI_VERSION:-latest}
+    profiles:
+      - watch
+    environment:
+      - CADI_REGISTRY_URL=http://cadi-registry:8080
+    volumes:
+      - ${PROJECT_PATH:-.}:/workspace:cached
+      - cadi-build-cache:/home/developer/.cadi/cache
+    networks:
+      - cadi-network
+    depends_on:
+      - cadi-registry
+    working_dir: /workspace
+    command: >
+      bash -c "
+        echo 'Watching for changes...';
+        while true; do
+          inotifywait -r -e modify,create,delete /workspace/src 2>/dev/null || sleep 2;
+          echo 'Change detected, rebuilding...';
+          cadi build --target dev;
+        done
+      "
+
+networks:
+  cadi-network:
+    name: cadi-network
+    external: true
+
+volumes:
+  cadi-dev-cache:
+    name: cadi-dev-cache
+  cadi-build-cache:
+    name: cadi-build-cache
+  cadi-registry-data:
+    name: cadi-registry-data-dev

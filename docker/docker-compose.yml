@@ -1,0 +1,161 @@
+# CADI Server Infrastructure
+# Docker Compose configuration for running CADI registry and related services
+
+services:
+  # =============================================================================
+  # CADI Registry Server
+  # =============================================================================
+  cadi-registry:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.server
+    image: cadi/registry:${CADI_VERSION:-latest}
+    container_name: cadi-registry
+    restart: unless-stopped
+    ports:
+      - "${CADI_PORT:-8080}:8080"
+    environment:
+      - RUST_LOG=${RUST_LOG:-cadi_server=info,tower_http=debug}
+      - CADI_STORAGE_PATH=/data
+      - CADI_BIND_ADDRESS=0.0.0.0:8080
+      - CADI_MAX_CHUNK_SIZE=${CADI_MAX_CHUNK_SIZE:-104857600}
+    volumes:
+      - cadi-data:/data
+      - cadi-cache:/cache
+    networks:
+      - cadi-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # =============================================================================
+  # CADI MCP Server (Model Context Protocol)
+  # =============================================================================
+  cadi-mcp:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile.mcp
+    image: cadi/mcp-server:${CADI_VERSION:-latest}
+    container_name: cadi-mcp
+    restart: unless-stopped
+    ports:
+      - "${CADI_MCP_PORT:-9090}:9090"
+    environment:
+      - RUST_LOG=${RUST_LOG:-cadi_mcp_server=info}
+      - CADI_REGISTRY_URL=http://cadi-registry:8080
+    depends_on:
+      cadi-registry:
+        condition: service_healthy
+    networks:
+      - cadi-network
+
+  # =============================================================================
+  # PostgreSQL (Optional - for persistent metadata)
+  # =============================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: cadi-postgres
+    restart: unless-stopped
+    profiles:
+      - full
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-cadi}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-cadi_secret}
+      - POSTGRES_DB=${POSTGRES_DB:-cadi}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./init-db:/docker-entrypoint-initdb.d:ro
+    networks:
+      - cadi-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cadi}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =============================================================================
+  # Redis (Optional - for caching and pub/sub)
+  # =============================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: cadi-redis
+    restart: unless-stopped
+    profiles:
+      - full
+    command: redis-server --appendonly yes
+    volumes:
+      - redis-data:/data
+    networks:
+      - cadi-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # =============================================================================
+  # MinIO (Optional - S3-compatible object storage for large chunks)
+  # =============================================================================
+  minio:
+    image: minio/minio:latest
+    container_name: cadi-minio
+    restart: unless-stopped
+    profiles:
+      - full
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=${MINIO_USER:-cadi}
+      - MINIO_ROOT_PASSWORD=${MINIO_PASSWORD:-cadi_secret}
+    ports:
+      - "${MINIO_PORT:-9000}:9000"
+      - "${MINIO_CONSOLE_PORT:-9001}:9001"
+    volumes:
+      - minio-data:/data
+    networks:
+      - cadi-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # =============================================================================
+  # Nginx (Optional - reverse proxy with TLS)
+  # =============================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: cadi-nginx
+    restart: unless-stopped
+    profiles:
+      - production
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    depends_on:
+      - cadi-registry
+    networks:
+      - cadi-network
+
+networks:
+  cadi-network:
+    driver: bridge
+    name: cadi-network
+    external: false
+
+volumes:
+  cadi-data:
+    name: cadi-data
+  cadi-cache:
+    name: cadi-cache
+  postgres-data:
+    name: cadi-postgres-data
+  redis-data:
+    name: cadi-redis-data
+  minio-data:
+    name: cadi-minio-data

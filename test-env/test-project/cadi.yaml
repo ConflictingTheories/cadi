@@ -1,0 +1,29 @@
+# CADI Manifest
+manifest_id: "my-test-project-manifest"
+manifest_version: "1.0"
+
+application:
+  name: "my-test-project"
+  description: "A CADI project"
+  version: "0.1.0"
+  license: "MIT"
+
+build_graph:
+  nodes:
+    - id: "my-test-project-core"
+      source_cadi: null  # Will be set after import
+      representations: []
+      
+  edges: []
+
+build_targets:
+  - name: "default"
+    platform: "native"
+    nodes:
+      - id: "my-test-project-core"
+    bundle:
+      format: "executable"
+      output: "dist/my-test-project"
+
+dependencies:
+  resolution_strategy: "newest"

@@ -1,0 +1,167 @@
+# =============================================================================
+# CADI Development Workstation
+# =============================================================================
+# Full development environment for building projects with CADI
+# Includes multiple language toolchains for cross-compilation
+
+FROM ubuntu:24.04 AS base
+
+# Avoid interactive prompts
+ENV DEBIAN_FRONTEND=noninteractive
+ENV TZ=UTC
+
+# -----------------------------------------------------------------------------
+# System Dependencies
+# -----------------------------------------------------------------------------
+RUN apt-get update && apt-get install -y \
+    # Build essentials
+    build-essential \
+    pkg-config \
+    cmake \
+    ninja-build \
+    # SSL and crypto
+    libssl-dev \
+    ca-certificates \
+    # Git and version control
+    git \
+    git-lfs \
+    # Networking
+    curl \
+    wget \
+    # Compression
+    zip \
+    unzip \
+    xz-utils \
+    # Development tools
+    jq \
+    ripgrep \
+    fd-find \
+    # Editors
+    vim \
+    nano \
+    # Process management
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
+# -----------------------------------------------------------------------------
+# Rust Toolchain
+# -----------------------------------------------------------------------------
+ENV RUSTUP_HOME=/opt/rust/rustup
+ENV CARGO_HOME=/opt/rust/cargo
+ENV PATH="/opt/rust/cargo/bin:${PATH}"
+
+RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y \
+    --default-toolchain stable \
+    --profile default \
+    && rustup target add \
+        wasm32-unknown-unknown \
+        wasm32-wasip1 \
+        x86_64-unknown-linux-gnu \
+        aarch64-unknown-linux-gnu \
+    && cargo install \
+        wasm-pack \
+        cargo-watch \
+        cargo-edit
+
+# -----------------------------------------------------------------------------
+# Node.js / TypeScript
+# -----------------------------------------------------------------------------
+ENV NVM_DIR=/opt/nvm
+ENV NODE_VERSION=20
+
+RUN mkdir -p $NVM_DIR \
+    && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash \
+    && . "$NVM_DIR/nvm.sh" \
+    && nvm install $NODE_VERSION \
+    && nvm use $NODE_VERSION \
+    && nvm alias default $NODE_VERSION \
+    && npm install -g \
+        typescript \
+        ts-node \
+        pnpm \
+        yarn \
+        esbuild \
+        @anthropic-ai/sdk
+
+ENV PATH="/opt/nvm/versions/node/v${NODE_VERSION}.*/bin:${PATH}"
+
+# -----------------------------------------------------------------------------
+# Python
+# -----------------------------------------------------------------------------
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    python3-venv \
+    && rm -rf /var/lib/apt/lists/* \
+    && python3 -m pip install --break-system-packages \
+        poetry \
+        black \
+        ruff \
+        mypy
+
+# -----------------------------------------------------------------------------
+# Go
+# -----------------------------------------------------------------------------
+ENV GOROOT=/opt/go
+ENV GOPATH=/opt/gopath
+ENV PATH="${GOROOT}/bin:${GOPATH}/bin:${PATH}"
+
+RUN curl -L https://go.dev/dl/go1.22.0.linux-amd64.tar.gz | tar -C /opt -xzf -
+
+# -----------------------------------------------------------------------------
+# WASM Tools
+# -----------------------------------------------------------------------------
+RUN curl -L https://github.com/aspect-build/aspect-cli/releases/download/5.8.18/aspect-linux_amd64 -o /usr/local/bin/aspect \
+    && chmod +x /usr/local/bin/aspect
+
+# Install wasmtime
+RUN curl https://wasmtime.dev/install.sh -sSf | bash -s -- --version v17.0.0
+ENV PATH="/root/.wasmtime/bin:${PATH}"
+
+# -----------------------------------------------------------------------------
+# Docker-in-Docker (for container builds)
+# -----------------------------------------------------------------------------
+RUN apt-get update && apt-get install -y \
+    docker.io \
+    docker-compose-v2 \
+    && rm -rf /var/lib/apt/lists/*
+
+# -----------------------------------------------------------------------------
+# CADI CLI (copy from builder or install)
+# -----------------------------------------------------------------------------
+COPY --from=cadi/cli:latest /usr/local/bin/cadi /usr/local/bin/cadi
+
+# Alternative: Build from source
+# COPY . /opt/cadi-src
+# RUN cd /opt/cadi-src && cargo build --release --package cadi \
+#     && cp target/release/cadi /usr/local/bin/
+
+# -----------------------------------------------------------------------------
+# User Setup
+# -----------------------------------------------------------------------------
+RUN useradd -m -s /bin/bash -G docker developer \
+    && mkdir -p /home/developer/.cadi /workspace \
+    && chown -R developer:developer /home/developer /workspace
+
+# -----------------------------------------------------------------------------
+# CADI Configuration
+# -----------------------------------------------------------------------------
+COPY docker/configs/repos.cfg /home/developer/.cadi/repos.cfg
+RUN chown developer:developer /home/developer/.cadi/repos.cfg
+
+# -----------------------------------------------------------------------------
+# Entrypoint
+# -----------------------------------------------------------------------------
+COPY docker/scripts/dev-entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+USER developer
+WORKDIR /workspace
+
+# Environment
+ENV CADI_CACHE_DIR=/home/developer/.cadi/cache
+ENV CADI_CONFIG_DIR=/home/developer/.cadi
+ENV CADI_REGISTRY_URL=http://cadi-registry:8080
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["/bin/bash"]

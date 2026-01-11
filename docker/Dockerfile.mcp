@@ -1,0 +1,54 @@
+# =============================================================================
+# CADI MCP Server - Production Dockerfile
+# =============================================================================
+# Model Context Protocol server for AI/LLM integration
+
+# -----------------------------------------------------------------------------
+# Stage 1: Builder
+# -----------------------------------------------------------------------------
+FROM rust:1.83-bookworm AS builder
+
+WORKDIR /build
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y \
+    pkg-config \
+    libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy workspace files
+COPY Cargo.toml Cargo.lock ./
+COPY cadi-spec/ ./cadi-spec/
+COPY internal/ ./internal/
+COPY cmd/ ./cmd/
+
+# Build release binary
+RUN cargo build --release --package cadi-mcp-server
+
+# -----------------------------------------------------------------------------
+# Stage 2: Runtime
+# -----------------------------------------------------------------------------
+FROM debian:bookworm-slim AS runtime
+
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y \
+    ca-certificates \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd -r -s /bin/false cadi
+
+# Copy binary from builder
+COPY --from=builder /build/target/release/cadi-mcp-server /usr/local/bin/
+
+# Set user
+USER cadi
+
+# Environment
+ENV RUST_LOG=cadi_mcp_server=info
+ENV CADI_MCP_BIND_ADDRESS=0.0.0.0:9090
+
+# Expose port
+EXPOSE 9090
+
+# Run server
+ENTRYPOINT ["cadi-mcp-server"]
