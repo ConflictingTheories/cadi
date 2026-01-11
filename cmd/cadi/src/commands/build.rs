@@ -57,7 +57,7 @@ pub async fn execute(args: BuildArgs, config: &CadiConfig) -> Result<()> {
     println!("{}", style("Build Plan:").bold());
 
     // Show nodes to be built
-    for (idx, node) in manifest.build_graph.nodes.iter().enumerate().take(10) {
+    for (_idx, node) in manifest.build_graph.nodes.iter().enumerate().take(10) {
         println!("  {} Build node: {} ({})", style("→").cyan(), node.id, 
             if node.source_cadi.is_some() { "source" } else { "derived" });
     }

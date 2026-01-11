@@ -8,6 +8,7 @@ use tokio::sync::RwLock;
 
 /// Server configuration
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct ServerConfig {
     /// Address to bind to
     pub bind_address: String,

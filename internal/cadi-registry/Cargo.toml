@@ -3,10 +3,17 @@ name = "cadi-registry"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "CADI registry client for chunk storage and retrieval"
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/cadi-registry"
+keywords = ["cadi", "registry", "client", "storage", "distribution"]
+categories = ["development-tools", "api-bindings"]
+description = "CADI registry client for chunk storage, retrieval and distribution"
+readme = "README.md"
 
 [dependencies]
-cadi-core = { path = "../cadi-core" }
+cadi-core = { version = "1.0.0", path = "../cadi-core" }
 serde.workspace = true
 serde_json.workspace = true
 reqwest.workspace = true

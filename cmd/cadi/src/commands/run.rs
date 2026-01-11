@@ -67,7 +67,7 @@ pub async fn execute(args: RunArgs, config: &CadiConfig) -> Result<()> {
     Ok(())
 }
 
-async fn run_from_manifest(args: &RunArgs, config: &CadiConfig) -> Result<()> {
+async fn run_from_manifest(args: &RunArgs, _config: &CadiConfig) -> Result<()> {
     let manifest_content = std::fs::read_to_string(&args.target)?;
     let manifest: serde_json::Value = serde_yaml::from_str(&manifest_content)?;
 

@@ -1,0 +1,47 @@
+[package]
+name = "cadi-scraper"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/cadi-scraper"
+keywords = ["cadi", "scraper", "chunking", "code-analysis", "semantic"]
+categories = ["development-tools", "text-processing"]
+description = "CADI Scraper/Chunker utility for converting source code repos and file data into reusable CADI chunks"
+license.workspace = true
+readme = "README.md"
+
+[dependencies]
+cadi-core = { version = "1.0.0", path = "../cadi-core" }
+cadi-registry = { version = "1.0.0", path = "../cadi-registry" }
+
+tokio = { version = "1.35", features = ["full"] }
+reqwest = { version = "0.11", features = ["json", "gzip"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+async-trait = "0.1"
+sha2 = "0.10"
+hex = "0.4"
+regex = "1.10"
+walkdir = "2.4"
+tempfile = "3.8"
+anyhow = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+futures = "0.3"
+chrono = { version = "0.4", features = ["serde"] }
+tree-sitter = "0.20"
+tree-sitter-rust = "0.20"
+tree-sitter-typescript = "0.20"
+tree-sitter-python = "0.20"
+tree-sitter-javascript = "0.20"
+pulldown-cmark = "0.8"
+toml = "0.8"
+glob = "0.3"
+indicatif = "0.17"
+console = "0.15"
+
+[dev-dependencies]

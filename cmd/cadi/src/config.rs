@@ -287,6 +287,7 @@ pub fn load_config(path: Option<&str>) -> Result<CadiConfig> {
 }
 
 /// Load configuration with local development settings
+#[allow(dead_code)]
 pub fn load_local_config() -> CadiConfig {
     CadiConfig {
         registry: RegistryConfig {

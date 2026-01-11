@@ -176,6 +176,7 @@ impl Default for McpServer {
 
 /// JSON-RPC 2.0 Request
 #[derive(Debug, Deserialize)]
+#[allow(dead_code)]
 pub struct JsonRpcRequest {
     pub jsonrpc: String,
     pub id: Option<serde_json::Value>,

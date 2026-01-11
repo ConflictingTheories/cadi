@@ -161,6 +161,15 @@ impl BuildEngine {
         Ok(step.chunk_id.clone().unwrap_or_else(|| step.name.clone()))
     }
 
+    /// Get the path to a cached chunk
+    pub fn get_chunk_path(&self, chunk_id: &str) -> Option<PathBuf> {
+        if self.cache.has(chunk_id).unwrap_or(false) {
+            Some(self.cache.get_path(chunk_id))
+        } else {
+            None
+        }
+    }
+
     /// Get cache statistics
     pub fn cache_stats(&self) -> CadiResult<CacheStats> {
         self.cache.stats()

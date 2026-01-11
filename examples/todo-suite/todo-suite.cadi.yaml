@@ -1,25 +1,39 @@
+manifest_id: "todo-suite-manifest"
+manifest_version: "1.0"
+
 application:
-  description: todo-suite application
-  name: todo-suite
-  version: 0.1.0
+  name: "todo-suite"
+  description: "A complete todo application"
+  version: "0.1.0"
+
 build_graph:
-  edges: []
   nodes:
-  - blob_cadi: null
-    container_cadi: null
-    id: main
-    ir_cadi: null
-    representations:
-    - chunk: chunk:sha256:2fab1892a5c70423309d7da6a295b32bb260901a7c60b7d1819a45af362bcdb7
-      form: source
-    selection_strategy: prefer_source
-    source_cadi: chunk:sha256:2fab1892a5c70423309d7da6a295b32bb260901a7c60b7d1819a45af362bcdb7
+    - id: "todo-core"
+      source_cadi: "file://examples/todo-suite/todo-core/Cargo.toml"
+      representations:
+        - form: "source"
+          language: "rust"
+          chunk: "chunk:sha256:10e6da3adaecd8205a98cf8ef09efe9ad2c6af27403f4e0e9f7879ff1413c2dg"
+          
+    - id: "todo-server"
+      source_cadi: "file://examples/todo-suite/todo-server/Cargo.toml"
+      representations:
+        - form: "source"
+          language: "rust"
+          chunk: "chunk:sha256:0638c9e40b0e1b838accac3da0d611448054eb4c8ef5b2f0dc594e55e7a5444f"
+      
+    - id: "todo-web"
+      source_cadi: "file://examples/todo-suite/todo-web/index.html"
+      representations:
+        - form: "source"
+          language: "html"
+          chunk: "chunk:sha256:eead40ffaa2b75fdd2746a50a99b71bb47331bde1c40037414fea6e2cf2f2adf"
+
 build_targets:
-- name: dev
-  nodes:
-  - id: main
-    prefer:
-    - source
-  platform: any
-manifest_id: app:uuid:24694d43-428e-4d9b-a9f3-9f980b3299ab
-manifest_version: '1.0'
+  - name: "dev"
+    platform: "any"
+    nodes:
+      - id: "todo-server"
+        prefer: ["blob"]
+      - id: "todo-web"
+        prefer: ["bundle"]

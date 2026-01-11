@@ -67,6 +67,9 @@ enum Commands {
 
     /// Run demo projects
     Demo(commands::demo::DemoArgs),
+
+    /// Scrape and chunk repositories or files
+    Scrape(commands::scrape::ScrapeArgs),
 }
 
 #[tokio::main]
@@ -98,5 +101,6 @@ async fn main() -> Result<()> {
         Commands::Gc(args) => commands::gc::execute(args, &config).await,
         Commands::Stats(args) => commands::stats::execute(args, &config).await,
         Commands::Demo(args) => commands::demo::execute(args, &config).await,
+        Commands::Scrape(args) => commands::scrape::execute(args, &config).await,
     }
 }

@@ -96,8 +96,13 @@ impl Transformer {
         let input = inputs.first()
             .ok_or_else(|| CadiError::TransformFailed("No input provided".to_string()))?;
 
-        if let Some(path) = &input.path {
-            if target.contains("linux") || target.contains("darwin") {
+        if let Some(mut path) = input.path.clone() {
+            if path.starts_with("file://") {
+                path = path.replace("file://", "");
+            }
+            println!("DEBUG: execute_compile path='{}' target='{}'", path, target);
+            
+            if target.contains("linux") || target.contains("darwin") || target == "any" {
                 // Real C compilation if it's a C file
                 if path.ends_with(".c") {
                     let output_path = format!("{}.out", path);
@@ -105,6 +110,8 @@ impl Transformer {
                         .arg("-o")
                         .arg(&output_path)
                         .arg(path)
+                        .stdout(Stdio::inherit())
+                        .stderr(Stdio::inherit())
                         .status()
                         .await?;
 
@@ -113,6 +120,31 @@ impl Transformer {
                     }
 
                     return Ok(std::fs::read(&output_path)?);
+                }
+
+                // Real Rust compilation if it's a Cargo.toml
+                if path.ends_with("Cargo.toml") {
+                    let dir = Path::new(&path).parent().unwrap_or(Path::new("."));
+                    let status = Command::new("cargo")
+                        .arg("build")
+                        .current_dir(dir)
+                        .stdout(Stdio::inherit())
+                        .stderr(Stdio::inherit())
+                        .status()
+                        .await?;
+
+                    if !status.success() {
+                        return Err(CadiError::TransformFailed(format!("cargo build failed in {}", dir.display())));
+                    }
+
+                    // Find the binary. Usually in target/debug/name
+                    // For demo, we just return a success message or the binary if we can find it
+                    // Let's look for the binary in target/debug/
+                    let bin_name = path.split('/').rev().nth(1).unwrap_or("app");
+                    let bin_path = dir.join("target").join("debug").join(bin_name);
+                    if bin_path.exists() {
+                        return Ok(std::fs::read(bin_path)?);
+                    }
                 }
             }
         }
@@ -154,9 +186,12 @@ impl Transformer {
         // Real implementation would call webpack/esbuild
         // Check for package.json in inputs
         for input in inputs {
-            if let Some(path) = &input.path {
+            if let Some(mut path) = input.path.clone() {
+                if path.starts_with("file://") {
+                    path = path.replace("file://", "");
+                }
                 if path.ends_with("package.json") {
-                    let dir = Path::new(path).parent().unwrap_or(Path::new("."));
+                    let dir = Path::new(&path).parent().unwrap_or(Path::new("."));
                     let status = Command::new("npm")
                         .arg("run")
                         .arg("build")
@@ -171,6 +206,11 @@ impl Transformer {
                             return Ok(std::fs::read(dist)?);
                         }
                     }
+                }
+                
+                // If it's just an index.html, "bundling" is just keeping it as is
+                if path.ends_with("index.html") {
+                    return Ok(std::fs::read(path)?);
                 }
             }
         }

@@ -3,7 +3,7 @@ use clap::Args;
 use console::style;
 use indicatif::{ProgressBar, ProgressStyle};
 use sha2::{Sha256, Digest};
-use std::collections::HashMap;
+
 use std::path::{Path, PathBuf};
 
 use crate::config::CadiConfig;

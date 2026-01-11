@@ -5,16 +5,22 @@ edition.workspace = true
 license.workspace = true
 authors.workspace = true
 repository.workspace = true
+homepage.workspace = true
+documentation = "https://docs.rs/cadi"
+keywords.workspace = true
+categories.workspace = true
 description = "CADI CLI - Content-Addressed Development Interface"
+readme = "README.md"
 
 [[bin]]
 name = "cadi"
 path = "src/main.rs"
 
 [dependencies]
-cadi-core = { path = "../../internal/cadi-core" }
-cadi-builder = { path = "../../internal/cadi-builder" }
-cadi-registry = { path = "../../internal/cadi-registry" }
+cadi-core = { version = "1.0.0", path = "../../internal/cadi-core" }
+cadi-builder = { version = "1.0.0", path = "../../internal/cadi-builder" }
+cadi-registry = { version = "1.0.0", path = "../../internal/cadi-registry" }
+cadi-scraper = { version = "1.0.0", path = "../../internal/cadi-scraper" }
 
 tokio.workspace = true
 clap.workspace = true
