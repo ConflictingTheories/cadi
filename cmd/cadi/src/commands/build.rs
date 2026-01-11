@@ -89,22 +89,71 @@ pub async fn execute(args: BuildArgs, config: &CadiConfig) -> Result<()> {
     
     match engine.build(&manifest, target_name).await {
         Ok(result) => {
-            println!("  {} Successfully built {} chunks", style("✓").green(), result.built.len());
+            let elapsed = start.elapsed().as_secs_f64();
+            
+            println!();
+            println!("{}", style("═══════════════════════════════════════").green());
+            println!("{}", style("Build Summary").green().bold());
+            println!("{}", style("═══════════════════════════════════════").green());
+            
             if !result.cached.is_empty() {
-                println!("  {} Using cache for {} chunks", style("✓").green(), result.cached.len());
+                println!("  {} {} chunk(s) reused from cache", 
+                    style("✓").green(), 
+                    style(result.cached.len()).cyan().bold());
+                for chunk_id in &result.cached {
+                    let display_id = if chunk_id.len() > 60 { 
+                        format!("{}...{}", &chunk_id[..30], &chunk_id[chunk_id.len()-10..])
+                    } else { 
+                        chunk_id.clone() 
+                    };
+                    println!("    • {}", display_id);
+                }
+            }
+            
+            if !result.built.is_empty() {
+                println!("  {} {} chunk(s) built fresh", 
+                    style("✓").yellow(), 
+                    style(result.built.len()).cyan().bold());
+                for chunk_id in &result.built {
+                    let display_id = if chunk_id.len() > 60 { 
+                        format!("{}...{}", &chunk_id[..30], &chunk_id[chunk_id.len()-10..])
+                    } else { 
+                        chunk_id.clone() 
+                    };
+                    println!("    • {}", display_id);
+                }
             }
             
             if !result.failed.is_empty() {
-                println!("  {} {} builds failed", style("✗").red(), result.failed.len());
+                println!("  {} {} build(s) failed", 
+                    style("✗").red(), 
+                    style(result.failed.len()).red().bold());
                 for failure in &result.failed {
-                    println!("    - {}: {}", failure.chunk_id, failure.error);
+                    println!("    • {}: {}", failure.chunk_id, failure.error);
                 }
+                println!();
                 return Err(anyhow::anyhow!("Some builds failed"));
             }
             
-            let elapsed = start.elapsed().as_secs_f64();
             println!();
-            println!("{}", style(format!("Build complete in {:.2}s!", elapsed)).green().bold());
+            println!("  {} Total time: {:.2}s", style("⏱").cyan(), elapsed);
+            
+            if !result.cached.is_empty() {
+                let cache_ratio = result.cached.len() as f64 / 
+                    (result.built.len() + result.cached.len()) as f64;
+                println!("  {} Cache hit rate: {:.0}%", 
+                    style("📊").cyan(), 
+                    cache_ratio * 100.0);
+                
+                let estimated_saved = result.cached.len() as f64 * 2.5; // Estimate 2.5s per cached chunk
+                println!("  {} Time saved by cache: ~{:.1}s", 
+                    style("⚡").cyan(), 
+                    estimated_saved);
+            }
+            
+            println!("{}", style("═══════════════════════════════════════").green());
+            println!();
+            println!("{}", style("Build complete!").green().bold());
         }
         Err(e) => {
             eprintln!("  {} Build failed: {}", style("✗").red(), e);

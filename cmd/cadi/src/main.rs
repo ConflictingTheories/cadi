@@ -44,6 +44,9 @@ enum Commands {
     /// Fetch chunks from registry
     Fetch(commands::fetch::FetchArgs),
 
+    /// Query registry for chunks
+    Query(commands::query::QueryArgs),
+
     /// Run built artifacts
     Run(commands::run::RunArgs),
 
@@ -87,6 +90,7 @@ async fn main() -> Result<()> {
         Commands::Build(args) => commands::build::execute(args, &config).await,
         Commands::Publish(args) => commands::publish::execute(args, &config).await,
         Commands::Fetch(args) => commands::fetch::execute(args, &config).await,
+        Commands::Query(args) => commands::query::execute(args, &config).await,
         Commands::Run(args) => commands::run::execute(args, &config).await,
         Commands::Plan(args) => commands::plan::execute(args, &config).await,
         Commands::Verify(args) => commands::verify::execute(args, &config).await,

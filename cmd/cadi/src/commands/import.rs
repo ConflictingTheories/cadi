@@ -159,6 +159,9 @@ pub async fn execute(args: ImportArgs, config: &CadiConfig) -> Result<()> {
     println!();
     println!("Chunk ID: {}", chunk_id);
     println!("Manifest: {}", output_path.display());
+    
+    // Output chunk ID alone on last line for script parsing
+    eprintln!("CHUNK_ID={}", chunk_id);
     println!();
     println!("Next steps:");
     println!("  {} Build the project:", style("1.").cyan());

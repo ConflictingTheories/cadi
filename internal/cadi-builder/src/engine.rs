@@ -90,13 +90,22 @@ impl BuildEngine {
             // Check cache first
             if let Some(chunk_id) = &step.chunk_id {
                 if self.cache.has(chunk_id)? {
-                    tracing::debug!("Cache hit for {}", chunk_id);
+                    if self.config.verbose {
+                        tracing::info!("Cache hit for {}", chunk_id);
+                    }
+                    println!("  {} Fetched {} from cache", 
+                        console::style("✓").green(),
+                        console::style(&step.name).cyan());
                     cached.push(chunk_id.clone());
                     continue;
                 }
             }
             
             // Execute transformation
+            println!("  {} Building {}...", 
+                console::style("→").cyan(),
+                console::style(&step.name).yellow());
+            
             match self.execute_step(step).await {
                 Ok(chunk_id) => {
                     tracing::debug!("Built {}", chunk_id);

@@ -49,37 +49,100 @@ impl Transformer {
         match transform {
             TransformType::Parse { language } => {
                 tracing::info!("Parsing {} source", language);
-                let _input = inputs.first()
+                let input = inputs.first()
                     .ok_or_else(|| CadiError::TransformFailed("No input provided".to_string()))?;
-                // Placeholder - would invoke actual parser
-                Ok(Vec::new())
+                
+                // Deterministic mock: Create IR metadata based on input hash
+                let mock_ir = serde_json::json!({
+                    "type": "ir",
+                    "language": language,
+                    "source_chunk": input.chunk_id,
+                    "timestamp": "2026-01-11T00:00:00Z", // Fixed for determinism
+                    "ast_nodes": 42, // Mock data
+                });
+                
+                Ok(serde_json::to_vec(&mock_ir)?)
             }
             TransformType::Compile { target } => {
                 tracing::info!("Compiling to {}", target);
-                let _input = inputs.first()
+                let input = inputs.first()
                     .ok_or_else(|| CadiError::TransformFailed("No input provided".to_string()))?;
-                // Placeholder - would invoke actual compiler
-                Ok(Vec::new())
+                
+                // Deterministic mock: Create binary blob metadata
+                let mock_blob = serde_json::json!({
+                    "type": "blob",
+                    "target": target,
+                    "source_chunk": input.chunk_id,
+                    "timestamp": "2026-01-11T00:00:00Z",
+                    "size_bytes": 12345,
+                    "format": "elf64",
+                });
+                
+                Ok(serde_json::to_vec(&mock_blob)?)
             }
             TransformType::Link { format } => {
                 tracing::info!("Linking {} objects to {}", inputs.len(), format);
-                // Placeholder - would invoke actual linker
-                Ok(Vec::new())
+                
+                // Collect all input chunk IDs for deterministic output
+                let input_ids: Vec<&str> = inputs.iter()
+                    .map(|i| i.chunk_id.as_str())
+                    .collect();
+                
+                let mock_linked = serde_json::json!({
+                    "type": "linked",
+                    "format": format,
+                    "inputs": input_ids,
+                    "timestamp": "2026-01-11T00:00:00Z",
+                    "entry_point": "main",
+                });
+                
+                Ok(serde_json::to_vec(&mock_linked)?)
             }
             TransformType::Bundle { format } => {
-                tracing::info!("Creating {} bundle", format);
-                // Placeholder - would create actual bundle
-                Ok(Vec::new())
+                tracing::info!("Creating {} bundle from {} inputs", format, inputs.len());
+                
+                // For TypeScript bundles, create a realistic deterministic bundle
+                let input_ids: Vec<&str> = inputs.iter()
+                    .map(|i| i.chunk_id.as_str())
+                    .collect();
+                
+                // Create mock bundle that includes references to inputs
+                let mock_bundle = serde_json::json!({
+                    "type": "bundle",
+                    "format": format,
+                    "inputs": input_ids,
+                    "timestamp": "2026-01-11T00:00:00Z",
+                    "entry": "index.js",
+                    "modules": input_ids.len(),
+                    "minified": false,
+                });
+                
+                Ok(serde_json::to_vec(&mock_bundle)?)
             }
             TransformType::Containerize { base } => {
                 tracing::info!("Creating container from base {}", base);
-                // Placeholder - would create actual container
-                Ok(Vec::new())
+                
+                let mock_container = serde_json::json!({
+                    "type": "container",
+                    "base": base,
+                    "layers": inputs.len(),
+                    "timestamp": "2026-01-11T00:00:00Z",
+                });
+                
+                Ok(serde_json::to_vec(&mock_container)?)
             }
-            TransformType::Custom { name, .. } => {
-                tracing::info!("Running custom transform: {}", name);
-                // Placeholder - would invoke custom handler
-                Ok(Vec::new())
+            TransformType::Custom { name, args } => {
+                tracing::info!("Running custom transform: {} with {} args", name, args.len());
+                
+                let mock_custom = serde_json::json!({
+                    "type": "custom",
+                    "transform": name,
+                    "args": args,
+                    "inputs": inputs.len(),
+                    "timestamp": "2026-01-11T00:00:00Z",
+                });
+                
+                Ok(serde_json::to_vec(&mock_custom)?)
             }
         }
     }

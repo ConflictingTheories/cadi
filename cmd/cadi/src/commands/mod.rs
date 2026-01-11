@@ -3,6 +3,7 @@ pub mod import;
 pub mod build;
 pub mod publish;
 pub mod fetch;
+pub mod query;
 pub mod run;
 pub mod plan;
 pub mod verify;

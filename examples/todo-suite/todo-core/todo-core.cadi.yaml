@@ -21,5 +21,5 @@ build_targets:
     prefer:
     - source
   platform: any
-manifest_id: app:uuid:0dc1ae02-390b-4a8e-82e7-d785bd5913f6
+manifest_id: app:uuid:02537c19-175a-4733-b8cb-7e619bb163a1
 manifest_version: '1.0'
