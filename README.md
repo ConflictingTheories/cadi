@@ -15,39 +15,65 @@ CADI is a universal build and distribution system for software artifacts, treati
 - **MCP Integration**: Model Context Protocol server for LLM tool access
 - **Cross-Platform**: Support for Linux (x86_64, ARM64), macOS (Intel, Apple Silicon), and WASM
 
-## Quick Start
+## MCP Integration
 
-### Installation
+CADI includes a Model Context Protocol (MCP) server that enables AI assistants and coding agents to interact with CADI's build system and chunk registry.
+
+### Setup
+
+1. **Install the Copilot MCP extension** in VS Code:
+   ```
+   ext install automatalabs.copilot-mcp
+   ```
+
+2. **Configure the MCP server** in `.vscode/settings.json`:
+   ```json
+   {
+     "mcp": {
+       "servers": {
+         "cadi": {
+           "command": "target/release/cadi-mcp-server",
+           "args": [],
+           "env": {
+             "CADI_REGISTRY": "http://localhost:8080",
+             "CADI_STORAGE": ".cadi-repo",
+             "RUST_LOG": "cadi_mcp_server=info"
+           }
+         }
+       }
+     },
+     "github.copilot.chat.mcp.enabled": true
+   }
+   ```
+
+### Available Tools
+
+The MCP server exposes these CADI tools to AI assistants:
+
+- **`cadi_search`**: Search for chunks by concept, language, or keyword
+- **`cadi_get_chunk`**: Retrieve chunk content and metadata
+- **`cadi_build`**: Build CADI manifests for specific targets
+- **`cadi_plan`**: Show build plans without execution
+- **`cadi_verify`**: Verify chunk integrity and provenance
+- **`cadi_explain`**: Explain chunk purpose and dependencies
+- **`cadi_suggest`**: Suggest relevant chunks for tasks
+
+### Available Resources
+
+- **`cadi://config`**: Current CADI configuration
+- **`cadi://cache/stats`**: Local cache usage statistics
+- **`cadi://registries`**: Configured registry endpoints
+- **`cadi://trust/policy`**: Trust policy configuration
+
+### Testing MCP Integration
+
+Run the MCP test script to verify everything works:
 
 ```bash
-# macOS (Homebrew)
-brew install cadi
-
-# Linux (from binary)
-curl -sSL https://get.cadi.dev | sh
-
-# From source
-cargo install cadi
+./test-mcp.sh
 ```
 
-### Basic Usage
-
-```bash
-# Initialize CADI configuration
-cadi init
-
-# Import a project
-cadi import ./my-project
-
-# Build all targets
-cadi build manifest.cadi.yaml
-
-# Run the built artifact
-cadi run manifest.cadi.yaml --target web-dev
-
-# Verify provenance
-cadi verify chunk:sha256:abc123...
-```
+This will test the MCP protocol communication and list all available tools and resources.
 
 ## Project Structure
 
