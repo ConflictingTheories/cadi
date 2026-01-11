@@ -13,6 +13,10 @@
 .DS_Store
 Thumbs.db
 
+
+# CADI Repository files
+.cadi-repo/
+
 # CADI local files
 .cadi-cache/
 *.cadi.local

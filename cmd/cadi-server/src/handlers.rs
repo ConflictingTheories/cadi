@@ -31,8 +31,7 @@ pub async fn get_chunk(
 ) -> Result<Vec<u8>, StatusCode> {
     let store = state.store.read().await;
     
-    store.get(&chunk_id)
-        .cloned()
+    store.get(&chunk_id).await
         .ok_or(StatusCode::NOT_FOUND)
 }
 
@@ -43,7 +42,7 @@ pub async fn head_chunk(
 ) -> StatusCode {
     let store = state.store.read().await;
     
-    if store.exists(&chunk_id) {
+    if store.exists(&chunk_id).await {
         StatusCode::OK
     } else {
         StatusCode::NOT_FOUND
@@ -70,13 +69,14 @@ pub async fn put_chunk(
     }
     
     let mut store = state.store.write().await;
-    store.store(chunk_id.clone(), body.to_vec());
-    
-    Ok(Json(PutResponse {
-        success: true,
-        chunk_id: Some(chunk_id),
-        message: None,
-    }))
+    match store.store(chunk_id.clone(), body.to_vec()).await {
+        Ok(_) => Ok(Json(PutResponse {
+            success: true,
+            chunk_id: Some(chunk_id),
+            message: None,
+        })),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
 }
 
 /// Put response
@@ -94,7 +94,7 @@ pub async fn delete_chunk(
 ) -> StatusCode {
     let mut store = state.store.write().await;
     
-    if store.delete(&chunk_id) {
+    if store.delete(&chunk_id).await {
         StatusCode::NO_CONTENT
     } else {
         StatusCode::NOT_FOUND
@@ -108,8 +108,7 @@ pub async fn get_chunk_meta(
 ) -> Result<Json<crate::state::ChunkMetadata>, StatusCode> {
     let store = state.store.read().await;
     
-    store.get_meta(&chunk_id)
-        .cloned()
+    store.get_meta(&chunk_id).await
         .map(Json)
         .ok_or(StatusCode::NOT_FOUND)
 }
@@ -119,7 +118,7 @@ pub async fn list_chunks(
     State(state): State<AppState>,
 ) -> Json<Vec<crate::state::ChunkMetadata>> {
     let store = state.store.read().await;
-    Json(store.list().into_iter().cloned().collect())
+    Json(store.list().await)
 }
 
 /// Stats handler
@@ -156,7 +155,7 @@ pub async fn search(
     Json(query): Json<SearchQuery>,
 ) -> Json<SearchResponse> {
     let store = state.store.read().await;
-    let all_chunks: Vec<_> = store.list().into_iter().cloned().collect();
+    let all_chunks = store.list().await;
     
     let limit = query.limit.unwrap_or(20);
     let offset = query.offset.unwrap_or(0);

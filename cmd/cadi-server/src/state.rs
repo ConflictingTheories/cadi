@@ -1,6 +1,8 @@
 //! Server state management
 
 use std::collections::HashMap;
+use std::fs;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
@@ -53,10 +55,10 @@ impl Default for ServerConfig {
     }
 }
 
-/// In-memory chunk storage (for demo purposes)
-#[derive(Default)]
+/// File-based chunk storage
+#[derive(Clone)]
 pub struct ChunkStore {
-    chunks: HashMap<String, Vec<u8>>,
+    storage_path: PathBuf,
     metadata: HashMap<String, ChunkMetadata>,
 }
 
@@ -70,23 +72,49 @@ pub struct ChunkMetadata {
 }
 
 impl ChunkStore {
-    pub fn new() -> Self {
-        Self::default()
+    pub fn new(storage_path: PathBuf) -> std::io::Result<Self> {
+        // Create storage directory if it doesn't exist
+        fs::create_dir_all(&storage_path)?;
+        
+        // Load existing metadata if available
+        let metadata_path = storage_path.join("metadata.json");
+        let metadata = if metadata_path.exists() {
+            let data = fs::read_to_string(&metadata_path)?;
+            serde_json::from_str(&data).unwrap_or_default()
+        } else {
+            HashMap::new()
+        };
+        
+        Ok(Self {
+            storage_path,
+            metadata,
+        })
     }
 
-    pub fn get(&self, chunk_id: &str) -> Option<&Vec<u8>> {
-        self.chunks.get(chunk_id)
+    pub async fn get(&self, chunk_id: &str) -> Option<Vec<u8>> {
+        let chunk_path = self.chunk_path(chunk_id);
+        match fs::read(&chunk_path) {
+            Ok(data) => Some(data),
+            Err(_) => None,
+        }
     }
 
-    pub fn get_meta(&self, chunk_id: &str) -> Option<&ChunkMetadata> {
-        self.metadata.get(chunk_id)
+    pub async fn get_meta(&self, chunk_id: &str) -> Option<ChunkMetadata> {
+        self.metadata.get(chunk_id).cloned()
     }
 
-    pub fn exists(&self, chunk_id: &str) -> bool {
-        self.chunks.contains_key(chunk_id)
+    pub async fn exists(&self, chunk_id: &str) -> bool {
+        let chunk_path = self.chunk_path(chunk_id);
+        chunk_path.exists()
     }
 
-    pub fn store(&mut self, chunk_id: String, data: Vec<u8>) {
+    pub async fn store(&mut self, chunk_id: String, data: Vec<u8>) -> std::io::Result<()> {
+        let chunk_path = self.chunk_path(&chunk_id);
+        
+        // Write chunk data
+        fs::write(&chunk_path, &data)?;
+        
+        // Update metadata
         let size = data.len();
         let meta = ChunkMetadata {
             chunk_id: chunk_id.clone(),
@@ -94,25 +122,66 @@ impl ChunkStore {
             created_at: chrono::Utc::now().to_rfc3339(),
             content_type: "application/octet-stream".to_string(),
         };
-        self.metadata.insert(chunk_id.clone(), meta);
-        self.chunks.insert(chunk_id, data);
+        
+        self.metadata.insert(chunk_id, meta);
+        
+        // Save metadata to disk
+        self.save_metadata().await?;
+        
+        Ok(())
     }
 
-    pub fn delete(&mut self, chunk_id: &str) -> bool {
-        let existed = self.chunks.remove(chunk_id).is_some();
-        self.metadata.remove(chunk_id);
+    pub async fn delete(&mut self, chunk_id: &str) -> bool {
+        let chunk_path = self.chunk_path(chunk_id);
+        let existed = chunk_path.exists();
+        
+        if existed {
+            let _ = fs::remove_file(&chunk_path);
+            self.metadata.remove(chunk_id);
+            let _ = self.save_metadata().await;
+        }
+        
         existed
     }
 
-    pub fn list(&self) -> Vec<&ChunkMetadata> {
-        self.metadata.values().collect()
+    pub async fn list(&self) -> Vec<ChunkMetadata> {
+        self.metadata.values().cloned().collect()
     }
 
     pub fn stats(&self) -> StoreStats {
-        StoreStats {
-            chunk_count: self.chunks.len(),
-            total_size: self.chunks.values().map(|v| v.len()).sum(),
+        // For simplicity, we'll calculate stats from filesystem
+        // In a real implementation, we'd cache this
+        let mut chunk_count = 0;
+        let mut total_size = 0;
+        
+        if let Ok(entries) = fs::read_dir(&self.storage_path) {
+            for entry in entries.flatten() {
+                if let Ok(metadata) = entry.metadata() {
+                    if metadata.is_file() && entry.file_name() != "metadata.json" {
+                        chunk_count += 1;
+                        total_size += metadata.len() as usize;
+                    }
+                }
+            }
         }
+        
+        StoreStats {
+            chunk_count,
+            total_size,
+        }
+    }
+
+    fn chunk_path(&self, chunk_id: &str) -> PathBuf {
+        // Use chunk ID as filename, but sanitize it
+        let safe_name = chunk_id.replace(":", "_").replace("/", "_");
+        self.storage_path.join(format!("{}.chunk", safe_name))
+    }
+
+    async fn save_metadata(&self) -> std::io::Result<()> {
+        let metadata_path = self.storage_path.join("metadata.json");
+        let data = serde_json::to_string_pretty(&self.metadata)?;
+        fs::write(metadata_path, data)?;
+        Ok(())
     }
 }
 
@@ -132,9 +201,11 @@ pub struct AppState {
 
 impl AppState {
     pub fn new(config: ServerConfig) -> Self {
+        let store = ChunkStore::new(config.storage_path.clone().into())
+            .expect("Failed to initialize chunk store");
         Self {
             config,
-            store: Arc::new(RwLock::new(ChunkStore::new())),
+            store: Arc::new(RwLock::new(store)),
         }
     }
 }
