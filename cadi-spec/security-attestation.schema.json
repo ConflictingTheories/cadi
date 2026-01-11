@@ -1,0 +1,294 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cadi.dev/schemas/security-attestation.schema.json",
+  "title": "Security Attestation Schema",
+  "description": "Comprehensive security model for chunk signing and attestation",
+  "type": "object",
+  "required": ["attestation_id", "subject", "signer", "signature", "attestation"],
+  "properties": {
+    "attestation_id": {
+      "type": "string",
+      "pattern": "^attestation:sha256:[a-f0-9]{64}$",
+      "description": "Content-addressed attestation identifier"
+    },
+    "subject": {
+      "type": "object",
+      "required": ["chunk_id", "digest"],
+      "properties": {
+        "chunk_id": {
+          "type": "string",
+          "description": "Chunk being attested"
+        },
+        "digest": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "Content hash being signed"
+        }
+      }
+    },
+    "signer": {
+      "type": "object",
+      "required": ["id", "type", "identity"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique signer identifier"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["individual", "organization", "service", "ci_system"],
+          "description": "Signer type"
+        },
+        "identity": {
+          "type": "object",
+          "required": ["method"],
+          "properties": {
+            "method": {
+              "type": "string",
+              "enum": ["keyless", "key_based", "oidc", "x509"],
+              "description": "Identity verification method"
+            },
+            "oidc": {
+              "type": "object",
+              "properties": {
+                "issuer": {
+                  "type": ["string", "null"],
+                  "format": "uri",
+                  "description": "OIDC issuer"
+                },
+                "subject": {
+                  "type": ["string", "null"],
+                  "description": "OIDC subject"
+                }
+              },
+              "description": "OIDC identity (Sigstore-style keyless)"
+            },
+            "key": {
+              "type": "object",
+              "properties": {
+                "algorithm": {
+                  "type": "string",
+                  "enum": ["ed25519", "ecdsa-p256", "rsa-4096"],
+                  "description": "Key algorithm"
+                },
+                "public_key": {
+                  "type": "string",
+                  "description": "Base64-encoded public key"
+                },
+                "key_id": {
+                  "type": "string",
+                  "pattern": "^sha256:[a-f0-9]{64}$",
+                  "description": "Key fingerprint"
+                }
+              },
+              "description": "Key-based identity"
+            },
+            "x509": {
+              "type": "object",
+              "properties": {
+                "certificate_chain": {
+                  "type": "array",
+                  "items": {"type": "string"},
+                  "description": "PEM-encoded certificate chain"
+                }
+              },
+              "description": "X.509 certificate identity"
+            }
+          }
+        },
+        "verification": {
+          "type": "object",
+          "properties": {
+            "transparency_log": {
+              "type": ["string", "null"],
+              "format": "uri",
+              "description": "Rekor-style transparency log URL"
+            },
+            "timestamp_authority": {
+              "type": ["string", "null"],
+              "format": "uri",
+              "description": "RFC 3161 TSA URL"
+            }
+          }
+        }
+      }
+    },
+    "signature": {
+      "type": "object",
+      "required": ["algorithm", "value", "timestamp"],
+      "properties": {
+        "algorithm": {
+          "type": "string",
+          "enum": ["ed25519", "ecdsa-p256-sha256", "rsa-pkcs1-sha256"],
+          "description": "Signature algorithm"
+        },
+        "value": {
+          "type": "string",
+          "description": "Base64-encoded signature"
+        },
+        "timestamp": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Signature timestamp"
+        },
+        "timestamp_signature": {
+          "type": "object",
+          "properties": {
+            "authority": {
+              "type": "string",
+              "description": "Timestamp authority"
+            },
+            "timestamp": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "signature": {
+              "type": "string",
+              "description": "Countersignature"
+            }
+          },
+          "description": "Optional countersignature from timestamp authority"
+        }
+      }
+    },
+    "attestation": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "description": "Attestation type URI"
+        },
+        "slsa_provenance": {
+          "type": "object",
+          "properties": {
+            "build_type": {
+              "type": "string",
+              "format": "uri"
+            },
+            "builder": {
+              "type": "object",
+              "properties": {
+                "id": {"type": "string"},
+                "version": {"type": "string"}
+              }
+            },
+            "invocation": {
+              "type": "object",
+              "properties": {
+                "config_source": {
+                  "type": "object",
+                  "properties": {
+                    "uri": {"type": "string"},
+                    "digest": {"type": "string"}
+                  }
+                },
+                "parameters": {"type": "object"},
+                "environment": {"type": "object"}
+              }
+            },
+            "materials": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "uri": {"type": "string"},
+                  "digest": {"type": "string"}
+                }
+              }
+            },
+            "metadata": {
+              "type": "object",
+              "properties": {
+                "build_started_on": {"type": "string", "format": "date-time"},
+                "build_finished_on": {"type": "string", "format": "date-time"},
+                "reproducible": {"type": "boolean"}
+              }
+            }
+          },
+          "description": "SLSA provenance (if type is slsa)"
+        },
+        "code_review": {
+          "type": "object",
+          "properties": {
+            "reviewers": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Reviewer identities"
+            },
+            "approval_timestamp": {
+              "type": "string",
+              "format": "date-time"
+            },
+            "review_type": {
+              "type": "string",
+              "enum": ["full", "partial", "automated"]
+            }
+          },
+          "description": "Code review attestation"
+        },
+        "security_scan": {
+          "type": "object",
+          "properties": {
+            "scanner": {"type": "string"},
+            "version": {"type": "string"},
+            "scan_timestamp": {"type": "string", "format": "date-time"},
+            "findings": {
+              "type": "object",
+              "properties": {
+                "critical": {"type": "integer"},
+                "high": {"type": "integer"},
+                "medium": {"type": "integer"},
+                "low": {"type": "integer"}
+              }
+            },
+            "policy_passed": {"type": "boolean"}
+          },
+          "description": "Security scan attestation"
+        }
+      }
+    },
+    "trust_requirements": {
+      "type": "object",
+      "properties": {
+        "minimum_signatures": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 1,
+          "description": "Minimum signatures to trust"
+        },
+        "required_attestation_types": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Required attestation types"
+        },
+        "required_signers": {
+          "type": ["array", "null"],
+          "items": {"type": "string"},
+          "description": "Specific required signers"
+        },
+        "max_age_days": {
+          "type": ["integer", "null"],
+          "minimum": 1,
+          "description": "Signature freshness requirement"
+        },
+        "transitive_policy": {
+          "type": "object",
+          "properties": {
+            "inherit": {
+              "type": "boolean",
+              "default": true,
+              "description": "Apply same policy to dependencies"
+            },
+            "allow_weaker": {
+              "type": "boolean",
+              "default": false,
+              "description": "Allow deps with weaker attestations"
+            }
+          }
+        }
+      },
+      "description": "Trust policy for consumers"
+    }
+  }
+}

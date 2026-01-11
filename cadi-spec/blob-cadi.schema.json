@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cadi.dev/schemas/blob-cadi.schema.json",
+  "title": "Blob CADI Schema",
+  "description": "Schema for binary blob chunks - architecture-specific optimized binaries",
+  "allOf": [
+    {"$ref": "chunk.schema.json"}
+  ],
+  "type": "object",
+  "required": ["blobs"],
+  "properties": {
+    "cadi_type": {
+      "const": "blob"
+    },
+    "blobs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["architecture", "format", "hash", "size"],
+        "properties": {
+          "architecture": {
+            "type": "string",
+            "enum": [
+              "x86_64-unknown-linux-gnu",
+              "x86_64-unknown-linux-musl",
+              "arm64-unknown-linux-gnu",
+              "x86_64-apple-darwin",
+              "arm64-apple-darwin",
+              "wasm32-unknown-unknown",
+              "wasm32-wasi"
+            ],
+            "description": "Target architecture triple"
+          },
+          "format": {
+            "type": "string",
+            "enum": ["ELF", "Mach-O", "PE", "WASM"],
+            "description": "Binary format"
+          },
+          "hash": {
+            "type": "string",
+            "pattern": "^sha256:[a-f0-9]{64}$",
+            "description": "Content hash of the binary"
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Binary size in bytes"
+          },
+          "linking": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": ["static", "dynamic"],
+                "description": "Linking type"
+              },
+              "dependencies": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Dynamic library dependencies (e.g., libc.so.6, libpq.so.5)"
+              }
+            }
+          },
+          "security": {
+            "type": "object",
+            "properties": {
+              "pie": {
+                "type": "boolean",
+                "description": "Position Independent Executable"
+              },
+              "nx": {
+                "type": "boolean",
+                "description": "No-execute stack protection"
+              },
+              "stack_canary": {
+                "type": "boolean",
+                "description": "Stack canary protection"
+              },
+              "relro": {
+                "type": "string",
+                "enum": ["none", "partial", "full"],
+                "description": "RELRO protection level"
+              }
+            }
+          },
+          "build_info": {
+            "type": "object",
+            "properties": {
+              "compiler": {
+                "type": "string",
+                "description": "Compiler used (e.g., clang-17, gcc-13)"
+              },
+              "flags": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Compilation flags used"
+              },
+              "source_hash": {
+                "type": ["string", "null"],
+                "pattern": "^sha256:[a-f0-9]{64}$",
+                "description": "Hash of source used to build"
+              },
+              "reproducible": {
+                "type": "boolean",
+                "description": "Whether build is reproducible"
+              }
+            }
+          }
+        }
+      },
+      "minItems": 1,
+      "description": "List of binary blobs for different architectures"
+    },
+    "lineage": {
+      "type": "object",
+      "properties": {
+        "source_cadi": {
+          "type": ["string", "null"],
+          "description": "Original source chunk ID"
+        },
+        "ir_cadi": {
+          "type": ["string", "null"],
+          "description": "IR chunk ID if compiled from IR"
+        },
+        "build_provenance": {
+          "type": "object",
+          "properties": {
+            "build_receipt": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$",
+              "description": "Build receipt digest"
+            }
+          }
+        }
+      }
+    }
+  }
+}

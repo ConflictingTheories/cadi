@@ -1,0 +1,105 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cadi.dev/schemas/chunk.schema.json",
+  "title": "CADI Chunk Schema",
+  "description": "Base schema for all CADI chunks - immutable content-addressed units",
+  "type": "object",
+  "required": ["chunk_id", "cadi_type", "meta", "provides", "licensing", "lineage"],
+  "properties": {
+    "chunk_id": {
+      "type": "string",
+      "pattern": "^chunk:sha256:[a-f0-9]{64}$",
+      "description": "Global identifier in format chunk:sha256:<digest>"
+    },
+    "cadi_type": {
+      "type": "string",
+      "enum": ["source", "intermediate", "blob", "container"],
+      "description": "The type of CADI chunk"
+    },
+    "meta": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "description": "Human-readable name of the chunk"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 4096,
+          "description": "Detailed description of the chunk's purpose"
+        },
+        "version": {
+          "type": ["string", "null"],
+          "description": "Semantic version if applicable"
+        },
+        "tags": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Tags for categorization and search"
+        },
+        "created_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO8601 timestamp of creation"
+        },
+        "updated_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO8601 timestamp of last update"
+        }
+      }
+    },
+    "provides": {
+      "type": "object",
+      "properties": {
+        "concepts": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Semantic concepts this chunk provides (e.g., todo_storage, http_api)"
+        },
+        "interfaces": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "API interfaces this chunk implements (e.g., TodoApi, TaskStorage)"
+        },
+        "abi": {
+          "type": ["string", "null"],
+          "description": "ABI identifier for blobs (e.g., system-v-x86-64)"
+        }
+      }
+    },
+    "licensing": {
+      "type": "object",
+      "required": ["license"],
+      "properties": {
+        "license": {
+          "type": "string",
+          "description": "SPDX license identifier (e.g., MIT, Apache-2.0, proprietary)"
+        },
+        "restrictions": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Additional usage restrictions"
+        }
+      }
+    },
+    "lineage": {
+      "type": "object",
+      "properties": {
+        "parents": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Parent chunk IDs this was derived from"
+        },
+        "build_receipt": {
+          "type": ["string", "null"],
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "SHA256 of the BuildReceipt that created this chunk"
+        }
+      }
+    }
+  }
+}

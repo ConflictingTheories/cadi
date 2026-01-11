@@ -1,0 +1,134 @@
+manifest_id: "todo-suite-manifest"
+manifest_version: "1.0"
+
+application:
+  name: "todo-suite"
+  description: "A complete todo application demonstrating CADI concepts"
+  version: "0.1.0"
+  authors:
+    - "CADI Team"
+  license: "MIT"
+
+build_graph:
+  nodes:
+    - id: "todo-core"
+      source_cadi: "chunk:sha256:todo-core-source"
+      representations:
+        - form: "source"
+          language: "rust"
+          chunk: "chunk:sha256:todo-core-rust-source"
+        - form: "source"
+          language: "typescript"
+          chunk: "chunk:sha256:todo-core-ts-source"
+        - form: "ir"
+          format: "wasm"
+          chunk: "chunk:sha256:todo-core-wasm"
+        - form: "blob"
+          architecture: "x86_64-linux"
+          chunk: "chunk:sha256:todo-core-x86_64-linux"
+      selection_strategy: "best_fit"
+      
+    - id: "todo-cli"
+      source_cadi: "chunk:sha256:todo-cli-source"
+      representations:
+        - form: "source"
+          language: "rust"
+          chunk: "chunk:sha256:todo-cli-rust-source"
+        - form: "blob"
+          architecture: "x86_64-linux"
+          chunk: "chunk:sha256:todo-cli-x86_64-linux"
+        - form: "blob"
+          architecture: "aarch64-darwin"
+          chunk: "chunk:sha256:todo-cli-aarch64-darwin"
+          
+    - id: "todo-web"
+      source_cadi: "chunk:sha256:todo-web-source"
+      representations:
+        - form: "source"
+          language: "typescript"
+          chunk: "chunk:sha256:todo-web-ts-source"
+        - form: "ir"
+          format: "wasm"
+          chunk: "chunk:sha256:todo-web-wasm"
+        - form: "bundle"
+          format: "esm"
+          chunk: "chunk:sha256:todo-web-bundle"
+          
+    - id: "todo-server"
+      source_cadi: "chunk:sha256:todo-server-source"
+      representations:
+        - form: "source"
+          language: "rust"
+          chunk: "chunk:sha256:todo-server-rust-source"
+        - form: "blob"
+          architecture: "x86_64-linux"
+          chunk: "chunk:sha256:todo-server-x86_64-linux"
+        - form: "container"
+          format: "oci"
+          chunk: "chunk:sha256:todo-server-container"
+          
+  edges:
+    - from: "todo-cli"
+      to: "todo-core"
+      interface: "TodoService"
+      relation: "depends_on"
+      
+    - from: "todo-web"
+      to: "todo-core"
+      interface: "TodoService"
+      relation: "depends_on"
+      
+    - from: "todo-server"
+      to: "todo-core"
+      interface: "TodoService"
+      relation: "depends_on"
+
+build_targets:
+  - name: "web"
+    platform: "wasm32-unknown-unknown"
+    nodes:
+      - id: "todo-core"
+        prefer: ["ir:wasm"]
+      - id: "todo-web"
+        prefer: ["bundle:esm"]
+    bundle:
+      format: "esm"
+      output: "dist/todo-web"
+      minify: true
+      
+  - name: "cli-linux"
+    platform: "x86_64-unknown-linux-gnu"
+    nodes:
+      - id: "todo-core"
+        prefer: ["blob"]
+      - id: "todo-cli"
+        prefer: ["blob"]
+    bundle:
+      format: "executable"
+      output: "dist/todo-cli"
+      
+  - name: "cli-macos"
+    platform: "aarch64-apple-darwin"
+    nodes:
+      - id: "todo-core"
+        prefer: ["blob"]
+      - id: "todo-cli"
+        prefer: ["blob"]
+    bundle:
+      format: "executable"
+      output: "dist/todo-cli"
+      
+  - name: "server-container"
+    platform: "x86_64-unknown-linux-gnu"
+    nodes:
+      - id: "todo-core"
+        prefer: ["blob"]
+      - id: "todo-server"
+        prefer: ["container"]
+    deploy:
+      target: "kubernetes"
+      replicas: 3
+
+dependencies:
+  lock_file: "cadi.lock"
+  resolution_strategy: "newest"

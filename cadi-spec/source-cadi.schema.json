@@ -1,0 +1,136 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cadi.dev/schemas/source-cadi.schema.json",
+  "title": "Source CADI Schema",
+  "description": "Schema for source code chunks - transparency and modifiability layer",
+  "allOf": [
+    {"$ref": "chunk.schema.json"}
+  ],
+  "type": "object",
+  "required": ["source"],
+  "properties": {
+    "cadi_type": {
+      "const": "source"
+    },
+    "source": {
+      "type": "object",
+      "required": ["language", "files"],
+      "properties": {
+        "language": {
+          "type": "string",
+          "enum": ["typescript", "javascript", "c", "sql", "rust", "python", "go", "openapi", "graphql"],
+          "description": "Primary programming language"
+        },
+        "version": {
+          "type": "string",
+          "description": "Toolchain/language version where relevant"
+        },
+        "dialect": {
+          "type": ["string", "null"],
+          "description": "Language dialect (e.g., standard, jsx, c11, es2022)"
+        },
+        "files": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["path", "hash"],
+            "properties": {
+              "path": {
+                "type": "string",
+                "description": "Relative file path"
+              },
+              "hash": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$",
+                "description": "Content hash of the file"
+              },
+              "size": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "File size in bytes"
+              }
+            }
+          },
+          "description": "List of source files with their hashes"
+        },
+        "entrypoints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["symbol", "path"],
+            "properties": {
+              "symbol": {
+                "type": "string",
+                "description": "Entry symbol name (e.g., main, index.tsx)"
+              },
+              "path": {
+                "type": "string",
+                "description": "Path to file containing the entrypoint"
+              }
+            }
+          },
+          "description": "Optional entry points for the source"
+        },
+        "runtime_dependencies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Dependency identifier (e.g., npm:express@^4, crates:serde@1.0)"
+              },
+              "optional": {
+                "type": "boolean",
+                "default": false,
+                "description": "Whether this dependency is optional"
+              },
+              "features": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Optional feature flags"
+              }
+            }
+          },
+          "description": "Language-specific runtime dependencies"
+        }
+      }
+    },
+    "compiled_forms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "ir_cadi": {
+            "type": "string",
+            "description": "Chunk ID of IR CADI derived from this source"
+          },
+          "blob_cadi": {
+            "type": "string",
+            "description": "Chunk ID of Blob CADI derived from this source"
+          },
+          "architectures": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Target architectures for blob"
+          },
+          "derived_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this form was derived"
+          },
+          "compiler": {
+            "type": "string",
+            "description": "Compiler used for transformation"
+          },
+          "deterministic": {
+            "type": "boolean",
+            "description": "Whether the compilation is deterministic"
+          }
+        }
+      },
+      "description": "Links to compiled forms derived from this source"
+    }
+  }
+}

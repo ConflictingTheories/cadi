@@ -1,0 +1,189 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cadi.dev/schemas/dependency-graph.schema.json",
+  "title": "Dependency Graph Schema",
+  "description": "Schema for dependency declaration and resolution (lock file equivalent)",
+  "type": "object",
+  "required": ["dependency_graph_id", "chunk_id", "dependencies"],
+  "properties": {
+    "dependency_graph_id": {
+      "type": "string",
+      "pattern": "^depgraph:sha256:[a-f0-9]{64}$",
+      "description": "Content-addressed dependency graph identifier"
+    },
+    "chunk_id": {
+      "type": "string",
+      "description": "The chunk this dependency graph belongs to"
+    },
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "source", "constraint"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Dependency identifier"
+          },
+          "source": {
+            "type": "string",
+            "enum": ["cadi", "npm", "crates", "pypi", "apt", "brew", "go"],
+            "description": "Dependency source registry"
+          },
+          "constraint": {
+            "type": "string",
+            "description": "Version constraint expression"
+          },
+          "constraint_type": {
+            "type": "string",
+            "enum": ["semver", "exact", "range", "latest", "pinned"],
+            "default": "semver",
+            "description": "Constraint type"
+          },
+          "optional": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether this dependency is optional"
+          },
+          "features": {
+            "type": ["array", "null"],
+            "items": {"type": "string"},
+            "description": "Optional feature flags"
+          },
+          "platform_filter": {
+            "type": ["string", "null"],
+            "description": "Platform filter (e.g., linux, darwin, wasm32)"
+          }
+        }
+      },
+      "description": "Declared dependencies with version constraints"
+    },
+    "resolution": {
+      "type": "object",
+      "properties": {
+        "resolved_at": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Resolution timestamp"
+        },
+        "resolver_version": {
+          "type": "string",
+          "description": "CADI resolver version used"
+        },
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id", "dependency_id", "resolved_version", "integrity"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Unique node ID in resolution"
+              },
+              "dependency_id": {
+                "type": "string",
+                "description": "Matches dependencies[].id"
+              },
+              "resolved_version": {
+                "type": "string",
+                "description": "Exact resolved version"
+              },
+              "resolved_chunk": {
+                "type": ["string", "null"],
+                "description": "Chunk ID if available in CADI"
+              },
+              "integrity": {
+                "type": "string",
+                "pattern": "^sha256:[a-f0-9]{64}$",
+                "description": "Hash of resolved artifact"
+              }
+            }
+          },
+          "description": "Resolved dependency nodes"
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from", "to", "relation"],
+            "properties": {
+              "from": {
+                "type": "string",
+                "description": "Source node ID"
+              },
+              "to": {
+                "type": "string",
+                "description": "Target node ID"
+              },
+              "relation": {
+                "type": "string",
+                "enum": ["runtime", "build", "dev", "peer", "optional"],
+                "description": "Dependency relation type"
+              }
+            }
+          },
+          "description": "Dependency edges"
+        }
+      },
+      "description": "Resolved dependency tree (lock file equivalent)"
+    },
+    "conflicts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["dependency_id", "requested_by", "versions_requested", "resolution_strategy", "resolved_to"],
+        "properties": {
+          "dependency_id": {
+            "type": "string",
+            "description": "Conflicting dependency"
+          },
+          "requested_by": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Chunk IDs that requested this dependency"
+          },
+          "versions_requested": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Different versions requested"
+          },
+          "resolution_strategy": {
+            "type": "string",
+            "enum": ["newest", "oldest", "manual", "error"],
+            "description": "Strategy used to resolve"
+          },
+          "resolved_to": {
+            "type": "string",
+            "description": "Final chosen version"
+          },
+          "rationale": {
+            "type": ["string", "null"],
+            "description": "Human/AI explanation for resolution"
+          }
+        }
+      },
+      "description": "Conflict resolution records"
+    },
+    "lock": {
+      "type": "object",
+      "properties": {
+        "format_version": {
+          "type": "string",
+          "const": "1.0",
+          "description": "Lock file format version"
+        },
+        "content_hash": {
+          "type": "string",
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "Hash of entire resolution"
+        },
+        "platforms_resolved": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Platforms this resolution covers"
+        }
+      },
+      "description": "Lock file metadata"
+    }
+  }
+}

@@ -1,0 +1,40 @@
+[package]
+name = "cadi"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "CADI CLI - Content-Addressed Development Interface"
+
+[[bin]]
+name = "cadi"
+path = "src/main.rs"
+
+[dependencies]
+cadi-core = { path = "../../internal/cadi-core" }
+cadi-builder = { path = "../../internal/cadi-builder" }
+cadi-registry = { path = "../../internal/cadi-registry" }
+
+tokio.workspace = true
+clap.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+anyhow.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+indicatif.workspace = true
+console.workspace = true
+dialoguer.workspace = true
+directories.workspace = true
+config.workspace = true
+uuid.workspace = true
+chrono.workspace = true
+sha2.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true
+assert_cmd.workspace = true
+predicates.workspace = true

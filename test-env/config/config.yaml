@@ -1,0 +1,44 @@
+# CADI Local Development Configuration
+# This config is used for testing CADI locally
+
+registry:
+  # Use local registry as primary
+  primary: "http://localhost:8080"
+  # Fallback registries (disabled for local testing)
+  fallback: []
+  # Default registry for operations
+  default: "local"
+
+# Registry definitions
+registries:
+  local:
+    url: "http://localhost:8080"
+    name: "Local Development Registry"
+    priority: 0
+    trust_level: "full"
+    enabled: true
+  official:
+    url: "https://registry.cadi.dev"
+    name: "CADI Official"
+    priority: 10
+    trust_level: "verified"
+    enabled: false
+
+auth:
+  # No authentication for local development
+  token: null
+
+cache:
+  directory: "../.cadi/cache"
+  max_size_gb: 1
+
+build:
+  parallel_jobs: 4
+  prefer_cached: true
+
+security:
+  # Relaxed security for local development
+  verify_signatures: false
+  require_attestations: false
+  allow_unsigned: true
+  trusted_publishers: []

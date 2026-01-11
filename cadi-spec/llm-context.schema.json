@@ -1,0 +1,267 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cadi.dev/schemas/llm-context.schema.json",
+  "title": "LLM Context Schema",
+  "description": "Optimized chunk representation for LLM consumption",
+  "type": "object",
+  "required": ["llm_context_id", "chunk_id", "generated_at", "summary"],
+  "properties": {
+    "llm_context_id": {
+      "type": "string",
+      "pattern": "^llm:sha256:[a-f0-9]{64}$",
+      "description": "Content-addressed LLM context identifier"
+    },
+    "chunk_id": {
+      "type": "string",
+      "description": "Source chunk this context describes"
+    },
+    "generated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When this context was generated"
+    },
+    "generator_version": {
+      "type": "string",
+      "description": "CADI version that generated this context"
+    },
+    "summary": {
+      "type": "object",
+      "required": ["one_liner", "brief", "standard", "token_counts"],
+      "properties": {
+        "one_liner": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Ultra-short description (< 50 tokens)"
+        },
+        "brief": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Short description (< 200 tokens)"
+        },
+        "standard": {
+          "type": "string",
+          "maxLength": 2500,
+          "description": "Medium description (< 500 tokens)"
+        },
+        "token_counts": {
+          "type": "object",
+          "required": ["one_liner", "brief", "standard"],
+          "properties": {
+            "one_liner": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 50
+            },
+            "brief": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 200
+            },
+            "standard": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 500
+            }
+          }
+        }
+      },
+      "description": "Token-efficient summaries at multiple detail levels"
+    },
+    "api_surface": {
+      "type": "object",
+      "properties": {
+        "exports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "kind"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Export name"
+              },
+              "kind": {
+                "type": "string",
+                "enum": ["function", "class", "type", "constant", "module", "interface", "enum"],
+                "description": "Export kind"
+              },
+              "signature": {
+                "type": ["string", "null"],
+                "description": "Language-appropriate signature"
+              },
+              "description": {
+                "type": ["string", "null"],
+                "description": "Extracted from docstring/comment"
+              }
+            }
+          },
+          "description": "Public exports"
+        },
+        "imports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "source"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Import name"
+              },
+              "source": {
+                "type": "string",
+                "description": "Where it comes from"
+              }
+            }
+          },
+          "description": "Required imports"
+        },
+        "implements_concepts": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Concepts this implements"
+        },
+        "requires_concepts": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Concepts this requires"
+        }
+      },
+      "description": "Extracted API surface for interface discovery"
+    },
+    "embedding": {
+      "type": "object",
+      "properties": {
+        "model": {
+          "type": "string",
+          "description": "Embedding model used"
+        },
+        "dimensions": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "Embedding dimensions"
+        },
+        "vector": {
+          "type": "array",
+          "items": {"type": "number"},
+          "description": "The embedding vector"
+        },
+        "embedded_content": {
+          "type": "string",
+          "enum": ["summary", "full_source", "api_surface"],
+          "description": "What was embedded"
+        }
+      },
+      "description": "Semantic embedding for vector search"
+    },
+    "examples": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["description", "code", "language"],
+        "properties": {
+          "description": {
+            "type": "string",
+            "description": "Example description"
+          },
+          "code": {
+            "type": "string",
+            "description": "Example code"
+          },
+          "language": {
+            "type": "string",
+            "description": "Code language"
+          },
+          "token_count": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Token count for this example"
+          }
+        }
+      },
+      "description": "Usage examples for few-shot prompting"
+    },
+    "related": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["chunk_id", "relation"],
+        "properties": {
+          "chunk_id": {
+            "type": "string",
+            "description": "Related chunk ID"
+          },
+          "relation": {
+            "type": "string",
+            "enum": ["implements", "extends", "uses", "similar", "alternative"],
+            "description": "Relationship type"
+          },
+          "relevance_score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1,
+            "description": "Relevance score"
+          }
+        }
+      },
+      "description": "Related chunks for context expansion"
+    },
+    "diff_context": {
+      "type": "object",
+      "properties": {
+        "modification_zones": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Zone name"
+              },
+              "start_marker": {
+                "type": "string",
+                "description": "Unique string to locate start"
+              },
+              "end_marker": {
+                "type": "string",
+                "description": "Unique string to locate end"
+              },
+              "context_before_lines": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "context_after_lines": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "description": "Minimal context needed for modifications"
+        },
+        "patterns": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "template", "insertion_point"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Pattern name"
+              },
+              "template": {
+                "type": "string",
+                "description": "Template with placeholders"
+              },
+              "insertion_point": {
+                "type": "string",
+                "description": "Where to insert"
+              }
+            }
+          },
+          "description": "Common modification patterns"
+        }
+      },
+      "description": "Diff-aware context for modifications"
+    }
+  }
+}

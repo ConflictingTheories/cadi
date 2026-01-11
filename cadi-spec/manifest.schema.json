@@ -1,0 +1,247 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cadi.dev/schemas/manifest.schema.json",
+  "title": "CADI Manifest Schema",
+  "description": "Schema for application manifests - build graphs describing multi-component applications",
+  "type": "object",
+  "required": ["manifest_id", "manifest_version", "application", "build_graph"],
+  "properties": {
+    "manifest_id": {
+      "type": "string",
+      "pattern": "^app:uuid:[a-f0-9-]{36}$",
+      "description": "Unique manifest identifier"
+    },
+    "manifest_version": {
+      "type": "string",
+      "description": "Manifest schema version"
+    },
+    "application": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256,
+          "description": "Application name"
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 4096,
+          "description": "Application description"
+        },
+        "version": {
+          "type": "string",
+          "description": "Application version"
+        },
+        "authors": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Application authors"
+        },
+        "license": {
+          "type": "string",
+          "description": "SPDX license identifier"
+        },
+        "repository": {
+          "type": "string",
+          "format": "uri",
+          "description": "Source repository URL"
+        }
+      }
+    },
+    "build_graph": {
+      "type": "object",
+      "required": ["nodes"],
+      "properties": {
+        "nodes": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["id"],
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Unique node identifier within the manifest"
+              },
+              "source_cadi": {
+                "type": ["string", "null"],
+                "description": "Source CADI chunk ID"
+              },
+              "ir_cadi": {
+                "type": ["string", "null"],
+                "description": "IR CADI chunk ID"
+              },
+              "blob_cadi": {
+                "type": ["string", "null"],
+                "description": "Blob CADI chunk ID"
+              },
+              "container_cadi": {
+                "type": ["string", "null"],
+                "description": "Container CADI chunk ID"
+              },
+              "representations": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["form", "chunk"],
+                  "properties": {
+                    "form": {
+                      "type": "string",
+                      "enum": ["source", "intermediate", "binary", "container"],
+                      "description": "Representation form"
+                    },
+                    "language": {
+                      "type": ["string", "null"],
+                      "description": "Language for source representations"
+                    },
+                    "format": {
+                      "type": ["string", "null"],
+                      "description": "Format specification"
+                    },
+                    "architecture": {
+                      "type": ["string", "null"],
+                      "description": "Target architecture for binary representations"
+                    },
+                    "chunk": {
+                      "type": "string",
+                      "description": "Chunk ID for this representation"
+                    }
+                  }
+                },
+                "description": "Available representations for this node"
+              },
+              "selection_strategy": {
+                "type": "string",
+                "description": "Strategy for selecting representations (e.g., prefer_blob_for_prod)"
+              }
+            }
+          },
+          "description": "Build graph nodes representing components"
+        },
+        "edges": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from", "to"],
+            "properties": {
+              "from": {
+                "type": "string",
+                "description": "Source node ID"
+              },
+              "to": {
+                "type": "string",
+                "description": "Target node ID"
+              },
+              "interface": {
+                "type": "string",
+                "description": "Interface connecting the nodes"
+              },
+              "relation": {
+                "type": "string",
+                "enum": ["depends_on", "implements", "provides", "extends"],
+                "default": "depends_on",
+                "description": "Type of relationship"
+              }
+            }
+          },
+          "description": "Edges representing relationships between nodes"
+        }
+      }
+    },
+    "build_targets": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "platform"],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Target name (e.g., web-dev, web-prod, c-server-prod)"
+          },
+          "platform": {
+            "type": "string",
+            "description": "Target platform (e.g., browser, x86_64-linux, linux-container)"
+          },
+          "nodes": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["id"],
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "Node ID to include"
+                },
+                "require": {
+                  "type": ["array", "null"],
+                  "items": {"type": "string"},
+                  "description": "Required representation forms"
+                },
+                "prefer": {
+                  "type": ["array", "null"],
+                  "items": {"type": "string"},
+                  "description": "Preferred representation forms (ordered)"
+                }
+              }
+            },
+            "description": "Nodes to include in this target"
+          },
+          "bundle": {
+            "type": "object",
+            "properties": {
+              "format": {
+                "type": ["string", "null"],
+                "description": "Bundle format"
+              },
+              "output": {
+                "type": ["string", "null"],
+                "description": "Output path"
+              },
+              "minify": {
+                "type": "boolean",
+                "default": false,
+                "description": "Whether to minify output"
+              }
+            }
+          },
+          "deploy": {
+            "type": "object",
+            "properties": {
+              "target": {
+                "type": ["string", "null"],
+                "description": "Deployment target"
+              },
+              "replicas": {
+                "type": ["integer", "null"],
+                "minimum": 1,
+                "description": "Number of replicas"
+              },
+              "environment": {
+                "type": "object",
+                "additionalProperties": {"type": "string"},
+                "description": "Environment variables for deployment"
+              }
+            }
+          }
+        }
+      },
+      "description": "Build targets defining platform-specific configurations"
+    },
+    "dependencies": {
+      "type": "object",
+      "properties": {
+        "lock_file": {
+          "type": "string",
+          "description": "Path to dependency lock file"
+        },
+        "resolution_strategy": {
+          "type": "string",
+          "enum": ["newest", "oldest", "pinned", "manual"],
+          "default": "newest",
+          "description": "Strategy for resolving version conflicts"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,33 @@
+# CADI build artifacts
+/target/
+*/target/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# CADI local files
+.cadi-cache/
+*.cadi.local
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+logs/
+
+# Coverage
+coverage/
+*.lcov
+
+# Distribution
+dist/

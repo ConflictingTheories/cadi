@@ -1,0 +1,238 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cadi.dev/schemas/abi-compatibility.schema.json",
+  "title": "ABI Compatibility Schema",
+  "description": "Schema for platform capabilities and ABI compatibility rules",
+  "type": "object",
+  "required": ["abi_compatibility_id", "platform", "abi"],
+  "properties": {
+    "abi_compatibility_id": {
+      "type": "string",
+      "pattern": "^abi:sha256:[a-f0-9]{64}$",
+      "description": "Content-addressed ABI compatibility identifier"
+    },
+    "platform": {
+      "type": "object",
+      "required": ["os", "arch", "triple"],
+      "properties": {
+        "os": {
+          "type": "string",
+          "enum": ["linux", "darwin", "windows", "wasi", "browser"],
+          "description": "Operating system"
+        },
+        "arch": {
+          "type": "string",
+          "enum": ["x86_64", "arm64", "wasm32", "wasm64"],
+          "description": "CPU architecture"
+        },
+        "variant": {
+          "type": ["string", "null"],
+          "enum": ["musl", "gnu", "android", null],
+          "description": "Platform variant"
+        },
+        "triple": {
+          "type": "string",
+          "description": "Canonical platform triple (e.g., x86_64-unknown-linux-gnu)"
+        }
+      }
+    },
+    "abi": {
+      "type": "object",
+      "required": ["name"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "ABI name (e.g., system-v-x86-64, arm64-apple)"
+        },
+        "version": {
+          "type": ["string", "null"],
+          "description": "ABI version"
+        },
+        "calling_convention": {
+          "type": "string",
+          "enum": ["cdecl", "stdcall", "fastcall", "aapcs", "aapcs64", "win64"],
+          "description": "Calling convention"
+        },
+        "data_model": {
+          "type": "string",
+          "enum": ["LP64", "LLP64", "ILP32"],
+          "description": "Data model"
+        },
+        "endianness": {
+          "type": "string",
+          "enum": ["little", "big"],
+          "default": "little",
+          "description": "Byte order"
+        },
+        "type_info": {
+          "type": "object",
+          "properties": {
+            "pointer_size": {
+              "type": "integer",
+              "description": "Pointer size in bytes"
+            },
+            "int_size": {
+              "type": "integer",
+              "description": "int size in bytes"
+            },
+            "long_size": {
+              "type": "integer",
+              "description": "long size in bytes"
+            },
+            "size_t_size": {
+              "type": "integer",
+              "description": "size_t size in bytes"
+            }
+          }
+        },
+        "system_libs": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Library name"
+              },
+              "version_min": {
+                "type": ["string", "null"],
+                "description": "Minimum version"
+              },
+              "version_max": {
+                "type": ["string", "null"],
+                "description": "Maximum version"
+              }
+            }
+          },
+          "description": "Required system libraries"
+        }
+      }
+    },
+    "compatibility": {
+      "type": "object",
+      "properties": {
+        "can_execute": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["platform_triple", "compatibility"],
+            "properties": {
+              "platform_triple": {
+                "type": "string",
+                "description": "Platform triple that can be executed"
+              },
+              "compatibility": {
+                "type": "string",
+                "enum": ["native", "emulated", "translated"],
+                "description": "Execution compatibility level"
+              },
+              "overhead_estimate": {
+                "type": "string",
+                "enum": ["none", "low", "medium", "high"],
+                "description": "Performance overhead estimate"
+              }
+            }
+          },
+          "description": "What platforms this platform can execute"
+        },
+        "fallback_chain": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["representation", "priority"],
+            "properties": {
+              "representation": {
+                "type": "string",
+                "description": "Representation type"
+              },
+              "priority": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Priority (lower = try first)"
+              },
+              "runtime_required": {
+                "type": "string",
+                "description": "Required runtime for this representation"
+              }
+            }
+          },
+          "description": "Fallback chain for representation selection"
+        },
+        "can_build": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["target_triple"],
+            "properties": {
+              "target_triple": {
+                "type": "string",
+                "description": "Target platform triple"
+              },
+              "cross_compile": {
+                "type": "boolean",
+                "description": "Whether this is cross-compilation"
+              },
+              "toolchain": {
+                "type": "string",
+                "description": "Required toolchain"
+              }
+            }
+          },
+          "description": "What representations this platform can produce"
+        }
+      }
+    },
+    "detection": {
+      "type": "object",
+      "properties": {
+        "os_detection": {
+          "type": "string",
+          "description": "Command to detect OS (e.g., uname -s)"
+        },
+        "arch_detection": {
+          "type": "string",
+          "description": "Command to detect arch (e.g., uname -m)"
+        },
+        "env_hints": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["name", "indicates"],
+            "properties": {
+              "name": {
+                "type": "string",
+                "description": "Environment variable name"
+              },
+              "indicates": {
+                "type": "string",
+                "description": "What it indicates"
+              }
+            }
+          },
+          "description": "Environment variables to check"
+        }
+      }
+    },
+    "checking": {
+      "type": "object",
+      "properties": {
+        "strict_mode": {
+          "type": "boolean",
+          "default": false,
+          "description": "Fail on any mismatch"
+        },
+        "warn_on": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Conditions to warn on"
+        },
+        "fail_on": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Conditions to fail on"
+        }
+      }
+    }
+  }
+}

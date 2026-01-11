@@ -1,0 +1,20 @@
+[package]
+name = "cadi-mcp-server"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "CADI MCP (Model Context Protocol) server for LLM integration"
+
+[[bin]]
+name = "cadi-mcp-server"
+path = "src/main.rs"
+
+[dependencies]
+cadi-core = { path = "../../internal/cadi-core" }
+cadi-registry = { path = "../../internal/cadi-registry" }
+cadi-builder = { path = "../../internal/cadi-builder" }
+tokio.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true

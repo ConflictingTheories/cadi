@@ -1,0 +1,151 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cadi.dev/schemas/ir-cadi.schema.json",
+  "title": "IR CADI Schema",
+  "description": "Schema for intermediate representation chunks - portable WASM modules",
+  "allOf": [
+    {"$ref": "chunk.schema.json"}
+  ],
+  "type": "object",
+  "required": ["intermediate"],
+  "properties": {
+    "cadi_type": {
+      "const": "intermediate"
+    },
+    "intermediate": {
+      "type": "object",
+      "required": ["format", "module"],
+      "properties": {
+        "format": {
+          "type": "string",
+          "enum": ["wasm", "llvm-ir", "bytecode"],
+          "description": "Intermediate format type"
+        },
+        "version": {
+          "type": "string",
+          "description": "Format version (e.g., mvp, simd for WASM)"
+        },
+        "module": {
+          "type": "object",
+          "required": ["hash"],
+          "properties": {
+            "hash": {
+              "type": "string",
+              "pattern": "^sha256:[a-f0-9]{64}$",
+              "description": "Content hash of the module"
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Module size in bytes"
+            },
+            "exports": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["name", "kind"],
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "description": "Export name"
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": ["function", "memory", "global", "table"],
+                    "description": "Export kind"
+                  },
+                  "signature": {
+                    "type": ["string", "null"],
+                    "description": "Type signature if applicable"
+                  }
+                }
+              },
+              "description": "Module exports"
+            }
+          }
+        },
+        "imports": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["module", "name", "kind"],
+            "properties": {
+              "module": {
+                "type": "string",
+                "description": "Import module name"
+              },
+              "name": {
+                "type": "string",
+                "description": "Import name"
+              },
+              "kind": {
+                "type": "string",
+                "enum": ["function", "memory", "global", "table"],
+                "description": "Import kind"
+              },
+              "signature": {
+                "type": ["string", "null"],
+                "description": "Type signature if applicable"
+              }
+            }
+          },
+          "description": "Module imports"
+        },
+        "execution": {
+          "type": "object",
+          "properties": {
+            "sandbox_runtime": {
+              "type": "string",
+              "enum": ["wasmtime", "wasmer", "wasm_edge", "v8", "node"],
+              "description": "Recommended runtime for execution"
+            },
+            "default_memory_limit_mb": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 256,
+              "description": "Default memory limit in megabytes"
+            },
+            "default_timeout_ms": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 30000,
+              "description": "Default execution timeout in milliseconds"
+            }
+          }
+        }
+      }
+    },
+    "source_link": {
+      "type": "object",
+      "properties": {
+        "source_cadi": {
+          "type": "string",
+          "description": "Upstream source chunk ID"
+        },
+        "verification": {
+          "type": ["string", "null"],
+          "pattern": "^sha256:[a-f0-9]{64}$",
+          "description": "Build receipt digest for verification"
+        }
+      }
+    },
+    "compiled_forms": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "blob_cadi": {
+            "type": "string",
+            "description": "Chunk ID of Blob CADI compiled from this IR"
+          },
+          "architectures": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Target architectures"
+          }
+        }
+      },
+      "description": "Links to native blobs compiled from this IR"
+    }
+  }
+}

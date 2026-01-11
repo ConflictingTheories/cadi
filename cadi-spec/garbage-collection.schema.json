@@ -1,0 +1,266 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cadi.dev/schemas/garbage-collection.schema.json",
+  "title": "Garbage Collection Schema",
+  "description": "Defines retention policies and garbage collection rules",
+  "type": "object",
+  "required": ["gc_policy_id", "scope"],
+  "properties": {
+    "gc_policy_id": {
+      "type": "string",
+      "pattern": "^gc:sha256:[a-f0-9]{64}$",
+      "description": "Content-addressed GC policy identifier"
+    },
+    "scope": {
+      "type": "object",
+      "required": ["type"],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": ["local_cache", "registry", "namespace"],
+          "description": "Policy scope type"
+        },
+        "path": {
+          "type": ["string", "null"],
+          "description": "Path for local cache scope"
+        },
+        "registry_id": {
+          "type": ["string", "null"],
+          "description": "Registry ID for registry scope"
+        },
+        "namespace": {
+          "type": ["string", "null"],
+          "description": "Namespace for namespace-specific scope"
+        }
+      }
+    },
+    "local_cache": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable local cache GC"
+        },
+        "size_limits": {
+          "type": "object",
+          "properties": {
+            "max_total_bytes": {
+              "type": ["integer", "null"],
+              "minimum": 0,
+              "description": "Maximum cache size in bytes"
+            },
+            "max_chunk_count": {
+              "type": ["integer", "null"],
+              "minimum": 0,
+              "description": "Maximum number of chunks"
+            }
+          }
+        },
+        "time_limits": {
+          "type": "object",
+          "properties": {
+            "max_age_days": {
+              "type": ["integer", "null"],
+              "minimum": 0,
+              "description": "Evict if not accessed for this many days"
+            },
+            "min_age_days": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 1,
+              "description": "Never evict if younger than this"
+            }
+          }
+        },
+        "eviction": {
+          "type": "object",
+          "properties": {
+            "strategy": {
+              "type": "string",
+              "enum": ["lru", "lfu", "fifo", "size_weighted_lru"],
+              "default": "lru",
+              "description": "Eviction strategy"
+            },
+            "keep_priorities": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["match", "priority_boost"],
+                "properties": {
+                  "match": {
+                    "type": "string",
+                    "description": "Match pattern"
+                  },
+                  "priority_boost": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Priority boost multiplier"
+                  }
+                }
+              },
+              "description": "Priority adjustments for eviction"
+            }
+          }
+        },
+        "preserve": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Conditions to preserve chunks"
+        }
+      },
+      "description": "Local cache policies"
+    },
+    "registry": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable registry GC"
+        },
+        "namespace_policies": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["namespace", "policy"],
+            "properties": {
+              "namespace": {
+                "type": "string",
+                "description": "Namespace pattern"
+              },
+              "policy": {
+                "type": "string",
+                "enum": ["preserve_all", "standard", "aggressive"],
+                "description": "Policy for this namespace"
+              }
+            }
+          },
+          "description": "Namespace-specific policies"
+        },
+        "retention": {
+          "type": "object",
+          "properties": {
+            "min_versions": {
+              "type": "integer",
+              "minimum": 1,
+              "default": 3,
+              "description": "Keep at least N versions"
+            },
+            "min_age_days": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 90,
+              "description": "Keep versions younger than this"
+            },
+            "max_namespace_bytes": {
+              "type": ["integer", "null"],
+              "minimum": 0,
+              "description": "Maximum storage per namespace"
+            }
+          }
+        },
+        "reference_counting": {
+          "type": "object",
+          "properties": {
+            "enabled": {
+              "type": "boolean",
+              "default": true,
+              "description": "Enable reference counting"
+            },
+            "orphan_grace_period_days": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 30,
+              "description": "Days before deleting unreferenced chunks"
+            }
+          }
+        }
+      },
+      "description": "Registry retention policies"
+    },
+    "orphan_detection": {
+      "type": "object",
+      "properties": {
+        "orphan_criteria": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "no_manifest_references": {
+                "type": "boolean"
+              },
+              "no_lineage_references": {
+                "type": "boolean"
+              },
+              "age_days_minimum": {
+                "type": "integer",
+                "minimum": 0
+              }
+            }
+          },
+          "description": "What counts as an orphan"
+        },
+        "actions": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["age_days", "action"],
+            "properties": {
+              "age_days": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Age threshold in days"
+              },
+              "action": {
+                "type": "string",
+                "enum": ["mark_for_review", "archive", "delete"],
+                "description": "Action to take"
+              }
+            }
+          },
+          "description": "Actions for orphaned chunks by age"
+        }
+      },
+      "description": "Orphan detection rules"
+    },
+    "commands": {
+      "type": "object",
+      "properties": {
+        "gc": {
+          "type": "object",
+          "properties": {
+            "dry_run_default": {
+              "type": "boolean",
+              "default": true,
+              "description": "Default to dry-run mode"
+            },
+            "require_confirmation": {
+              "type": "boolean",
+              "default": true,
+              "description": "Require confirmation for destructive actions"
+            }
+          }
+        },
+        "status": {
+          "type": "object",
+          "properties": {
+            "show_reclaimable_bytes": {
+              "type": "boolean",
+              "default": true
+            },
+            "show_orphan_count": {
+              "type": "boolean",
+              "default": true
+            },
+            "show_cache_stats": {
+              "type": "boolean",
+              "default": true
+            }
+          }
+        }
+      },
+      "description": "CLI command configuration"
+    }
+  }
+}

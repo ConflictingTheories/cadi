@@ -1,0 +1,227 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cadi.dev/schemas/versioning.schema.json",
+  "title": "Versioning Schema",
+  "description": "Defines immutability semantics and version evolution",
+  "type": "object",
+  "required": ["versioning_id", "version"],
+  "properties": {
+    "versioning_id": {
+      "type": "string",
+      "pattern": "^version:sha256:[a-f0-9]{64}$",
+      "description": "Content-addressed versioning identifier"
+    },
+    "version": {
+      "type": "object",
+      "required": ["chunk_id"],
+      "properties": {
+        "chunk_id": {
+          "type": "string",
+          "description": "Current chunk ID"
+        },
+        "semantic_version": {
+          "type": ["string", "null"],
+          "pattern": "^\\d+\\.\\d+\\.\\d+(-[a-zA-Z0-9.]+)?(\\+[a-zA-Z0-9.]+)?$",
+          "description": "Optional semantic version"
+        },
+        "lineage": {
+          "type": "object",
+          "properties": {
+            "supersedes": {
+              "type": ["string", "null"],
+              "description": "Chunk ID this replaces"
+            },
+            "superseded_by": {
+              "type": ["string", "null"],
+              "description": "Chunk ID that replaced this"
+            },
+            "history": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["chunk_id", "timestamp"],
+                "properties": {
+                  "chunk_id": {
+                    "type": "string"
+                  },
+                  "version": {
+                    "type": ["string", "null"]
+                  },
+                  "timestamp": {
+                    "type": "string",
+                    "format": "date-time"
+                  },
+                  "change_type": {
+                    "type": "string",
+                    "enum": ["major", "minor", "patch", "initial"]
+                  }
+                }
+              },
+              "description": "Full version history"
+            }
+          }
+        }
+      }
+    },
+    "changes": {
+      "type": "object",
+      "properties": {
+        "from_chunk": {
+          "type": ["string", "null"],
+          "description": "Previous version chunk ID"
+        },
+        "change_type": {
+          "type": "string",
+          "enum": ["breaking", "feature", "fix", "refactor", "docs"],
+          "description": "Type of change"
+        },
+        "description": {
+          "type": "string",
+          "description": "Change description"
+        },
+        "changelog": {
+          "type": "object",
+          "properties": {
+            "added": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Added features/items"
+            },
+            "changed": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Changed behaviors"
+            },
+            "deprecated": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Deprecated items"
+            },
+            "removed": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Removed items"
+            },
+            "fixed": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Bug fixes"
+            },
+            "security": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Security fixes"
+            }
+          },
+          "description": "Structured changelog"
+        }
+      },
+      "description": "Change description"
+    },
+    "compatibility": {
+      "type": "object",
+      "properties": {
+        "api": {
+          "type": "object",
+          "properties": {
+            "backward_compatible": {
+              "type": "boolean",
+              "description": "Can replace previous version"
+            },
+            "forward_compatible": {
+              "type": "boolean",
+              "description": "Previous can handle this format"
+            }
+          }
+        },
+        "abi": {
+          "type": "object",
+          "properties": {
+            "compatible_with": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "List of compatible chunk IDs"
+            }
+          },
+          "description": "ABI compatibility for blobs"
+        },
+        "migration": {
+          "type": "object",
+          "properties": {
+            "automatic": {
+              "type": "boolean",
+              "description": "Can auto-migrate"
+            },
+            "migration_chunk": {
+              "type": ["string", "null"],
+              "description": "Chunk containing migration logic"
+            },
+            "migration_instructions": {
+              "type": ["string", "null"],
+              "description": "Human-readable migration instructions"
+            }
+          }
+        }
+      },
+      "description": "Compatibility declarations"
+    },
+    "deprecation": {
+      "type": "object",
+      "properties": {
+        "deprecated": {
+          "type": "boolean",
+          "default": false,
+          "description": "Whether this version is deprecated"
+        },
+        "deprecated_at": {
+          "type": ["string", "null"],
+          "format": "date-time",
+          "description": "Deprecation timestamp"
+        },
+        "reason": {
+          "type": ["string", "null"],
+          "description": "Deprecation reason"
+        },
+        "replacement": {
+          "type": ["string", "null"],
+          "description": "Recommended replacement chunk ID"
+        },
+        "removal_target": {
+          "type": ["string", "null"],
+          "description": "Version/date when will be removed"
+        }
+      }
+    },
+    "schema_evolution": {
+      "type": "object",
+      "properties": {
+        "spec_version": {
+          "type": "string",
+          "description": "CADI spec version"
+        },
+        "compatible_spec_versions": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Compatible spec versions"
+        },
+        "spec_migrations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["from_version", "to_version", "migration_type"],
+            "properties": {
+              "from_version": {"type": "string"},
+              "to_version": {"type": "string"},
+              "migration_type": {
+                "type": "string",
+                "enum": ["automatic", "manual", "breaking"]
+              }
+            }
+          },
+          "description": "Migrations between spec versions"
+        }
+      },
+      "description": "Schema evolution for CADI spec itself"
+    }
+  }
+}

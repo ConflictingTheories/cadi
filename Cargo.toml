@@ -1,0 +1,116 @@
+[workspace]
+resolver = "2"
+members = [
+    "cmd/cadi",
+    "cmd/cadi-server",
+    "cmd/cadi-mcp-server",
+    "internal/cadi-core",
+    "internal/cadi-builder",
+    "internal/cadi-registry",
+    # Examples (optional, can be built standalone)
+    # "examples/todo-suite/todo-core",
+    # "examples/todo-suite/todo-cli",
+]
+
+[workspace.package]
+version = "1.0.0-dev"
+edition = "2021"
+license = "MIT"
+authors = ["CADI Project Contributors"]
+repository = "https://github.com/cadi-project/cadi"
+homepage = "https://cadi.dev"
+documentation = "https://docs.cadi.dev"
+keywords = ["build-system", "content-addressed", "wasm", "mcp", "llm"]
+categories = ["development-tools::build-utils", "command-line-utilities"]
+
+[workspace.dependencies]
+# Async runtime
+tokio = { version = "1.35", features = ["full"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+serde_yaml = "0.9"
+
+# HTTP
+axum = "0.7"
+reqwest = { version = "0.11", features = ["json", "rustls-tls"] }
+tower = "0.4"
+tower-http = { version = "0.5", features = ["cors", "trace", "auth"] }
+
+# CLI
+clap = { version = "4.4", features = ["derive", "env"] }
+indicatif = "0.17"
+console = "0.15"
+dialoguer = "0.11"
+
+# Database
+sqlx = { version = "0.7", features = ["runtime-tokio", "postgres", "uuid", "chrono"] }
+
+# Object storage
+aws-sdk-s3 = "1.12"
+aws-config = "1.1"
+
+# Hashing and crypto
+sha2 = "0.10"
+blake3 = "1.5"
+ed25519-dalek = "2.1"
+ring = "0.17"
+
+# UUID and time
+uuid = { version = "1.6", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+
+# WASM
+wasmtime = "16.0"
+wasm-encoder = "0.38"
+wasmparser = "0.118"
+
+# OCI/Container
+oci-distribution = "0.10"
+
+# Error handling
+thiserror = "1.0"
+anyhow = "1.0"
+
+# Logging and tracing
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "json"] }
+
+# Testing
+tempfile = "3.9"
+assert_cmd = "2.0"
+predicates = "3.0"
+
+# JSON Schema validation
+jsonschema = "0.17"
+
+# Embedding/Vector search
+pgvector = "0.3"
+
+# Semver
+semver = "1.0"
+
+# Process execution
+tokio-process = "0.2"
+
+# File watching
+notify = "6.1"
+
+# Configuration
+config = "0.13"
+directories = "5.0"
+
+# Templating
+handlebars = "5.1"
+
+[profile.release]
+lto = true
+codegen-units = 1
+strip = true
+
+[profile.dev]
+opt-level = 0
+
+[profile.dev.package."*"]
+opt-level = 2

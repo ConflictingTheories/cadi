@@ -1,0 +1,247 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cadi.dev/schemas/registry-federation.schema.json",
+  "title": "Registry Federation Schema",
+  "description": "Schema for registry federation - how registries interact, namespace, and trust",
+  "type": "object",
+  "required": ["federation_id", "registry", "namespace"],
+  "properties": {
+    "federation_id": {
+      "type": "string",
+      "pattern": "^federation:sha256:[a-f0-9]{64}$",
+      "description": "Content-addressed federation configuration identifier"
+    },
+    "registry": {
+      "type": "object",
+      "required": ["id", "name", "url", "api_version"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique registry identifier"
+        },
+        "name": {
+          "type": "string",
+          "description": "Human-readable registry name"
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Registry base URL"
+        },
+        "api_version": {
+          "type": "string",
+          "const": "v1",
+          "description": "CADI API version"
+        }
+      }
+    },
+    "namespace": {
+      "type": "object",
+      "required": ["scheme", "separator"],
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "enum": ["flat", "hierarchical", "scoped"],
+          "default": "hierarchical",
+          "description": "Namespace scheme"
+        },
+        "separator": {
+          "type": "string",
+          "default": "/",
+          "description": "Namespace separator character"
+        },
+        "root": {
+          "type": "string",
+          "description": "Root namespace (e.g., github.com/org)"
+        },
+        "allocation": {
+          "type": "object",
+          "properties": {
+            "mode": {
+              "type": "string",
+              "enum": ["open", "verified", "invite"],
+              "default": "verified",
+              "description": "Namespace allocation mode"
+            },
+            "verification_required": {
+              "type": "array",
+              "items": {"type": "string"},
+              "description": "Required verification methods (e.g., domain, github)"
+            }
+          }
+        },
+        "collision_policy": {
+          "type": "object",
+          "properties": {
+            "check_upstream": {
+              "type": "boolean",
+              "default": true,
+              "description": "Check federated registries for collisions"
+            },
+            "allow_shadows": {
+              "type": "boolean",
+              "default": false,
+              "description": "Allow local chunks that shadow upstream"
+            },
+            "conflict_resolution": {
+              "type": "string",
+              "enum": ["local_priority", "upstream_priority", "error"],
+              "default": "error",
+              "description": "How to handle conflicts"
+            }
+          }
+        }
+      }
+    },
+    "upstreams": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["registry_id", "url", "priority"],
+        "properties": {
+          "registry_id": {
+            "type": "string",
+            "description": "Upstream registry identifier"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Upstream registry URL"
+          },
+          "priority": {
+            "type": "integer",
+            "minimum": 0,
+            "description": "Priority (lower = higher priority)"
+          },
+          "sync": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": ["mirror", "proxy", "cache", "none"],
+                "default": "cache",
+                "description": "Sync mode"
+              },
+              "refresh_interval_seconds": {
+                "type": "integer",
+                "minimum": 0,
+                "description": "Refresh interval for sync"
+              },
+              "sync_filter": {
+                "type": "object",
+                "properties": {
+                  "namespaces": {
+                    "type": ["array", "null"],
+                    "items": {"type": "string"},
+                    "description": "Namespaces to sync"
+                  },
+                  "concepts": {
+                    "type": ["array", "null"],
+                    "items": {"type": "string"},
+                    "description": "Concepts to sync"
+                  },
+                  "languages": {
+                    "type": ["array", "null"],
+                    "items": {"type": "string"},
+                    "description": "Languages to sync"
+                  }
+                }
+              }
+            }
+          },
+          "trust_policy": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": ["verify_all", "trust_signatures", "trust_upstream", "local_only"],
+                "default": "verify_all",
+                "description": "Trust verification mode"
+              },
+              "required_signers": {
+                "type": ["array", "null"],
+                "items": {"type": "string"},
+                "description": "Required signer identities"
+              },
+              "signature_threshold": {
+                "type": ["integer", "null"],
+                "minimum": 1,
+                "description": "Minimum signatures required"
+              },
+              "allowed_attestation_types": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Allowed attestation types (e.g., slsa-provenance-v1)"
+              }
+            }
+          }
+        }
+      },
+      "description": "Upstream registries for federation"
+    },
+    "downstreams": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["registry_id", "url"],
+        "properties": {
+          "registry_id": {
+            "type": "string",
+            "description": "Downstream registry identifier"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "description": "Downstream registry URL"
+          },
+          "last_sync": {
+            "type": ["string", "null"],
+            "format": "date-time",
+            "description": "Last sync timestamp"
+          }
+        }
+      },
+      "description": "Downstream registries that mirror this one"
+    },
+    "offline": {
+      "type": "object",
+      "properties": {
+        "enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable offline/air-gapped support"
+        },
+        "snapshot_schedule": {
+          "type": ["string", "null"],
+          "description": "Cron expression for snapshot schedule"
+        },
+        "snapshot_retention_days": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 30,
+          "description": "Snapshot retention period"
+        }
+      }
+    },
+    "reference_format": {
+      "type": "object",
+      "properties": {
+        "scheme": {
+          "type": "string",
+          "const": "cadi",
+          "description": "URI scheme"
+        },
+        "include_registry": {
+          "type": "boolean",
+          "default": true,
+          "description": "Include registry in chunk_id"
+        },
+        "canonical_registry": {
+          "type": ["string", "null"],
+          "description": "Default registry for unqualified refs"
+        }
+      },
+      "description": "Cross-registry reference format configuration"
+    }
+  }
+}

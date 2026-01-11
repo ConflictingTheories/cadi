@@ -1,0 +1,16 @@
+[package]
+name = "cadi-builder"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "CADI build engine and transformation pipeline"
+
+[dependencies]
+cadi-core = { path = "../cadi-core" }
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+sha2.workspace = true
+tokio.workspace = true
+thiserror.workspace = true
+tracing.workspace = true
