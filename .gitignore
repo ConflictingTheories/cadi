@@ -31,3 +31,6 @@ coverage/
 
 # Distribution
 dist/
+
+# Node modules (if applicable)
+**/node_modules/
