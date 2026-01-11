@@ -16,11 +16,11 @@ members = [
 version = "1.0.0-dev"
 edition = "2021"
 license = "MIT"
-authors = ["CADI Project Contributors"]
-repository = "https://github.com/cadi-project/cadi"
-homepage = "https://cadi.dev"
-documentation = "https://docs.cadi.dev"
-keywords = ["build-system", "content-addressed", "wasm", "mcp", "llm"]
+authors = ["ConflictingTheories", "kderbyma"]
+repository = "https://github.com/ConflictingTheories/cadi"
+homepage = "https://github.com/ConflictingTheories/cadi"
+documentation = "https://github.com/ConflictingTheories/cadi"
+keywords = ["cadi", "build-system", "content-addressed", "wasm", "mcp", "llm"]
 categories = ["development-tools::build-utils", "command-line-utilities"]
 
 [workspace.dependencies]

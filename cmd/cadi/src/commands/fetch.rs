@@ -1,6 +1,7 @@
 use anyhow::Result;
 use clap::Args;
 use console::style;
+use cadi_registry::client::{RegistryClient, RegistryConfig};
 
 use crate::config::CadiConfig;
 
@@ -70,11 +71,25 @@ pub async fn execute(args: FetchArgs, config: &CadiConfig) -> Result<()> {
     Ok(())
 }
 
-async fn fetch_chunk(chunk_id: &str, _tier: &str, config: &CadiConfig, verify: bool) -> Result<()> {
-    let hash = chunk_id.strip_prefix("chunk:sha256:").unwrap_or(chunk_id);
-    let chunk_file = config.cache.dir.join("chunks").join(format!("{}.json", hash));
+async fn fetch_chunk(chunk_id: &str, _tier: &str, config: &CadiConfig, _verify: bool) -> Result<()> {
+    // Initialize registry client
+    let registry_url = config.registry.url.clone();
+    let reg_config = RegistryConfig {
+        url: registry_url.clone(),
+        token: config.auth.token.clone(),
+        timeout: std::time::Duration::from_secs(30),
+        verify_tls: true,
+        max_concurrent: 4,
+    };
+    
+    let client = RegistryClient::new(reg_config)
+        .map_err(|e| anyhow::anyhow!("Failed to create registry client: {}", e))?;
 
-    // Check if already cached
+    // Check if chunk already exists locally
+    let cache_dir = config.cache.dir.join("chunks");
+    let hash = chunk_id.strip_prefix("chunk:sha256:").unwrap_or(chunk_id);
+    let chunk_file = cache_dir.join(format!("{}.bin", hash));
+
     if chunk_file.exists() {
         println!("  {} {} (cached)", style("✓").green(), &chunk_id[..40.min(chunk_id.len())]);
         return Ok(());
@@ -82,23 +97,30 @@ async fn fetch_chunk(chunk_id: &str, _tier: &str, config: &CadiConfig, verify: b
 
     println!("  {} Fetching {}...", style("→").cyan(), &chunk_id[..40.min(chunk_id.len())]);
 
-    // Fetch from registry (simulated)
-    // Real implementation would use reqwest to GET from registry
-    std::thread::sleep(std::time::Duration::from_millis(300));
-
-    // Verify signature if required
-    if verify && config.security.verify_on_fetch {
-        println!("    {} Verifying signature", style("→").dim());
+    // Fetch from registry
+    match client.fetch_chunk(chunk_id).await {
+        Ok(data) => {
+            // Save to local cache
+            std::fs::create_dir_all(&cache_dir)?;
+            std::fs::write(&chunk_file, &data)?;
+            
+            // Also save metadata
+            let meta_file = cache_dir.join(format!("{}.json", hash));
+            let metadata = serde_json::json!({
+                "chunk_id": chunk_id,
+                "size": data.len(),
+                "fetched_at": chrono::Utc::now().to_rfc3339(),
+                "registry": registry_url
+            });
+            std::fs::write(&meta_file, serde_json::to_string_pretty(&metadata)?)?;
+            
+            println!("  {} {} fetched ({} bytes)", style("✓").green(), &chunk_id[..40.min(chunk_id.len())], data.len());
+        }
+        Err(e) => {
+            eprintln!("  {} Failed to fetch: {}", style("✗").red(), e);
+            return Err(anyhow::anyhow!("Fetch failed: {}", e));
+        }
     }
-
-    // For demo, create a placeholder
-    std::fs::create_dir_all(chunk_file.parent().unwrap())?;
-    std::fs::write(&chunk_file, serde_json::json!({
-        "chunk_id": chunk_id,
-        "fetched_at": chrono::Utc::now().to_rfc3339()
-    }).to_string())?;
-
-    println!("  {} {} fetched", style("✓").green(), &chunk_id[..40.min(chunk_id.len())]);
 
     Ok(())
 }

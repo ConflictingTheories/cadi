@@ -2,6 +2,8 @@ use anyhow::Result;
 use clap::Args;
 use console::style;
 use std::path::PathBuf;
+use cadi_builder::engine::{BuildEngine, BuildConfig};
+use cadi_core::Manifest;
 
 use crate::config::CadiConfig;
 
@@ -38,81 +40,30 @@ pub async fn execute(args: BuildArgs, config: &CadiConfig) -> Result<()> {
         println!("  Target: {}", target);
     }
 
-    // Load manifest
+    // Load manifest from file
     let manifest_content = std::fs::read_to_string(&args.manifest)?;
-    let manifest: serde_json::Value = if args.manifest.extension().map(|e| e == "yaml" || e == "yml").unwrap_or(false) {
+    let manifest: Manifest = if args.manifest.extension().map(|e| e == "yaml" || e == "yml").unwrap_or(false) {
         serde_yaml::from_str(&manifest_content)?
     } else {
         serde_json::from_str(&manifest_content)?
     };
 
-    let app_name = manifest["application"]["name"].as_str().unwrap_or("unknown");
-    println!("  Application: {}", app_name);
+    println!("  Application: {}", manifest.application.name);
+    println!("  Version: {}", manifest.application.version.as_deref().unwrap_or("0.1.0"));
 
-    // Get build targets
-    let targets = manifest["build_targets"].as_array();
     let target_name = args.target.as_deref().unwrap_or("dev");
     
-    let build_target = targets
-        .and_then(|t| t.iter().find(|bt| bt["name"].as_str() == Some(target_name)));
-
-    if build_target.is_none() {
-        println!("  {} Target '{}' not found. Available targets:", style("⚠").yellow(), target_name);
-        if let Some(targets) = targets {
-            for t in targets {
-                if let Some(name) = t["name"].as_str() {
-                    println!("    - {}", name);
-                }
-            }
-        }
-        return Ok(());
-    }
-
-    let build_target = build_target.unwrap();
-    let platform = build_target["platform"].as_str().unwrap_or("any");
-    println!("  Platform: {}", platform);
-
     println!();
     println!("{}", style("Build Plan:").bold());
 
-    // Get nodes to build
-    let nodes = manifest["build_graph"]["nodes"].as_array();
-    let target_nodes = build_target["nodes"].as_array();
-
-    let mut build_steps = Vec::new();
-
-    if let (Some(nodes), Some(target_nodes)) = (nodes, target_nodes) {
-        for target_node in target_nodes {
-            let node_id = target_node["id"].as_str().unwrap_or("");
-            let prefer = target_node["prefer"].as_array()
-                .map(|p| p.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
-                .unwrap_or_else(|| vec!["source"]);
-
-            if let Some(node) = nodes.iter().find(|n| n["id"].as_str() == Some(node_id)) {
-                let source_cadi = node["source_cadi"].as_str();
-                let has_cached = check_cached(source_cadi, config)?;
-
-                build_steps.push(BuildStep {
-                    node_id: node_id.to_string(),
-                    source_chunk: source_cadi.map(String::from),
-                    prefer: prefer.iter().map(|s| s.to_string()).collect(),
-                    cached: has_cached,
-                });
-
-                let status = if has_cached {
-                    style("cached").green()
-                } else {
-                    style("build").yellow()
-                };
-
-                println!("  {} {} (prefer: {:?}) [{}]", 
-                    style("→").cyan(), 
-                    node_id, 
-                    prefer, 
-                    status
-                );
-            }
-        }
+    // Show nodes to be built
+    for (idx, node) in manifest.build_graph.nodes.iter().enumerate().take(10) {
+        println!("  {} Build node: {} ({})", style("→").cyan(), node.id, 
+            if node.source_cadi.is_some() { "source" } else { "derived" });
+    }
+    
+    if manifest.build_graph.nodes.len() > 10 {
+        println!("  ... and {} more nodes", manifest.build_graph.nodes.len() - 10);
     }
 
     if args.dry_run {
@@ -124,39 +75,43 @@ pub async fn execute(args: BuildArgs, config: &CadiConfig) -> Result<()> {
     println!();
     println!("{}", style("Executing build...").bold());
 
-    // Execute build steps
-    for step in &build_steps {
-        if step.cached && !args.force {
-            println!("  {} {} (using cache)", style("✓").green(), step.node_id);
-        } else {
-            println!("  {} Building {}...", style("→").cyan(), step.node_id);
+    // Create and run build engine
+    let build_config = BuildConfig {
+        parallel_jobs: config.build.parallelism,
+        cache_dir: config.cache.dir.clone(),
+        use_remote_cache: true,
+        fail_fast: false,
+        verbose: true,
+    };
+    
+    let engine = BuildEngine::new(build_config);
+    let start = std::time::Instant::now();
+    
+    match engine.build(&manifest, target_name).await {
+        Ok(result) => {
+            println!("  {} Successfully built {} chunks", style("✓").green(), result.built.len());
+            if !result.cached.is_empty() {
+                println!("  {} Using cache for {} chunks", style("✓").green(), result.cached.len());
+            }
             
-            // Simulate build (real implementation would invoke transformations)
-            std::thread::sleep(std::time::Duration::from_millis(500));
+            if !result.failed.is_empty() {
+                println!("  {} {} builds failed", style("✗").red(), result.failed.len());
+                for failure in &result.failed {
+                    println!("    - {}: {}", failure.chunk_id, failure.error);
+                }
+                return Err(anyhow::anyhow!("Some builds failed"));
+            }
             
-            println!("  {} {} built successfully", style("✓").green(), step.node_id);
+            let elapsed = start.elapsed().as_secs_f64();
+            println!();
+            println!("{}", style(format!("Build complete in {:.2}s!", elapsed)).green().bold());
+        }
+        Err(e) => {
+            eprintln!("  {} Build failed: {}", style("✗").red(), e);
+            return Err(anyhow::anyhow!("Build failed: {}", e));
         }
     }
-
-    println!();
-    println!("{}", style("Build complete!").green().bold());
 
     Ok(())
 }
 
-struct BuildStep {
-    node_id: String,
-    source_chunk: Option<String>,
-    prefer: Vec<String>,
-    cached: bool,
-}
-
-fn check_cached(chunk_id: Option<&str>, config: &CadiConfig) -> Result<bool> {
-    if let Some(id) = chunk_id {
-        let hash = id.strip_prefix("chunk:sha256:").unwrap_or(id);
-        let chunk_file = config.cache.dir.join("chunks").join(format!("{}.json", hash));
-        Ok(chunk_file.exists())
-    } else {
-        Ok(false)
-    }
-}
