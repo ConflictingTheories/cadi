@@ -1,0 +1,25 @@
+application:
+  description: minimalist-todo application
+  name: minimalist-todo
+  version: 0.1.0
+build_graph:
+  edges: []
+  nodes:
+  - blob_cadi: null
+    container_cadi: null
+    id: main
+    ir_cadi: null
+    representations:
+    - chunk: chunk:sha256:ddb48c2f48dff490b06cf71279dea8721fe46527ec35b7c8baff434da1257198
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:ddb48c2f48dff490b06cf71279dea8721fe46527ec35b7c8baff434da1257198
+build_targets:
+- name: dev
+  nodes:
+  - id: main
+    prefer:
+    - source
+  platform: any
+manifest_id: app:uuid:fe44f7b6-57d8-46cc-849b-93763d911bed
+manifest_version: '1.0'

@@ -1,0 +1,49 @@
+# CADI Manifest for Custom Todo Web App
+manifest_id: "custom-todo-web-manifest"
+manifest_version: "1.0"
+
+application:
+  name: "custom-todo-web"
+  description: "Custom Todo Web App with Hacker Styling"
+  version: "0.1.0"
+  authors:
+    - "CADI User"
+  license: "MIT"
+
+build_graph:
+  nodes:
+    - id: "todo-core"
+      source_cadi: "chunk:sha256:2fab1892a5c70423309d7da6a295b32bb260901a7c60b7d1819a45af362bcdb7"
+      representations:
+        - form: "source"
+          language: "rust"
+          chunk: "chunk:sha256:2fab1892a5c70423309d7da6a295b32bb260901a7c60b7d1819a45af362bcdb7"
+      
+    - id: "custom-todo-web"
+      source_cadi: "chunk:sha256:9edd57ddb3fa0a7b1c686600089ea58fc9b23ead383037b4c1ce8c4290734328"
+      representations:
+        - form: "source"
+          language: "typescript"
+          chunk: "chunk:sha256:9edd57ddb3fa0a7b1c686600089ea58fc9b23ead383037b4c1ce8c4290734328"
+        - form: "bundle"
+          format: "esm"
+          chunk: "chunk:sha256:9edd57ddb3fa0a7b1c686600089ea58fc9b23ead383037b4c1ce8c4290734328"
+      
+  edges:
+    - from: "custom-todo-web"
+      to: "todo-core"
+      interface: "TodoService"
+      relation: "depends_on"
+
+build_targets:
+  - name: "web"
+    platform: "wasm32-unknown-unknown"
+    nodes:
+      - id: "todo-core"
+        prefer: ["source:rust"]
+      - id: "custom-todo-web"
+        prefer: ["bundle:esm"]
+    bundle:
+      format: "esm"
+      output: "dist/custom-todo-web"
+      minify: true

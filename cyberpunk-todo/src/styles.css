@@ -1,0 +1,42 @@
+/* Cyberpunk Theme - Neon Glow */
+body {
+  margin: 0;
+  padding: 0;
+  font-family: 'Courier New', monospace;
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #16213e 100%);
+  color: #00ff41;
+  overflow-x: hidden;
+}
+
+.app {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 30px;
+  background: rgba(0, 20, 40, 0.9);
+  border: 1px solid #00ff41;
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.3);
+}
+
+header h1 {
+  font-size: 3em;
+  text-shadow: 0 0 10px #00ff41, 0 0 20px #00ff41;
+  animation: neon 2s ease-in-out infinite alternate;
+}
+
+@keyframes neon {
+  from { text-shadow: 0 0 5px #00ff41; }
+  to { text-shadow: 0 0 10px #00ff41, 0 0 20px #00ff41; }
+}
+
+.todo-item {
+  border: 1px solid #00ff41;
+  background: rgba(0, 255, 65, 0.05);
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.2);
+}
+
+.add-todo button {
+  background: linear-gradient(45deg, #ff0080, #8000ff);
+  border: 1px solid #00ff41;
+  color: #00ff41;
+  box-shadow: 0 0 10px rgba(255, 0, 128, 0.5);
+}

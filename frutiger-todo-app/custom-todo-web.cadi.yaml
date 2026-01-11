@@ -1,0 +1,25 @@
+application:
+  description: custom-todo-web application
+  name: custom-todo-web
+  version: 0.1.0
+build_graph:
+  edges: []
+  nodes:
+  - blob_cadi: null
+    container_cadi: null
+    id: main
+    ir_cadi: null
+    representations:
+    - chunk: chunk:sha256:9edd57ddb3fa0a7b1c686600089ea58fc9b23ead383037b4c1ce8c4290734328
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:9edd57ddb3fa0a7b1c686600089ea58fc9b23ead383037b4c1ce8c4290734328
+build_targets:
+- name: dev
+  nodes:
+  - id: main
+    prefer:
+    - source
+  platform: any
+manifest_id: app:uuid:9509f513-c319-4d4f-8e5f-b10e6bb881d9
+manifest_version: '1.0'

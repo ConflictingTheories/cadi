@@ -1,0 +1,25 @@
+application:
+  description: ocean-todo application
+  name: ocean-todo
+  version: 0.1.0
+build_graph:
+  edges: []
+  nodes:
+  - blob_cadi: null
+    container_cadi: null
+    id: main
+    ir_cadi: null
+    representations:
+    - chunk: chunk:sha256:e4d1724c274dc88cfbb5044846068265b288307cd789384099845efc42307f27
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:e4d1724c274dc88cfbb5044846068265b288307cd789384099845efc42307f27
+build_targets:
+- name: dev
+  nodes:
+  - id: main
+    prefer:
+    - source
+  platform: any
+manifest_id: app:uuid:bf48de67-c67b-4d85-8d48-c519abfa1bc0
+manifest_version: '1.0'

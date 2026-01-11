@@ -1,0 +1,25 @@
+application:
+  description: cyberpunk-todo application
+  name: cyberpunk-todo
+  version: 0.1.0
+build_graph:
+  edges: []
+  nodes:
+  - blob_cadi: null
+    container_cadi: null
+    id: main
+    ir_cadi: null
+    representations:
+    - chunk: chunk:sha256:e654b0311a5944aeb94604261dd3c9dc02859533e11ec45d32e6bfaee605b605
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:e654b0311a5944aeb94604261dd3c9dc02859533e11ec45d32e6bfaee605b605
+build_targets:
+- name: dev
+  nodes:
+  - id: main
+    prefer:
+    - source
+  platform: any
+manifest_id: app:uuid:cad8c853-c691-4b4b-817d-18fc21f276c8
+manifest_version: '1.0'
