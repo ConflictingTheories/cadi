@@ -55,13 +55,14 @@ pub async fn put_chunk(
     Path(chunk_id): Path<String>,
     body: axum::body::Bytes,
 ) -> Result<Json<PutResponse>, StatusCode> {
-    // Parse chunk ID
-    let _expected_hash = chunk_id.strip_prefix("chunk:sha256:")
-        .ok_or(StatusCode::BAD_REQUEST)?;
-    
-    // Note: We don't verify the hash here because the chunk ID may be based on
-    // the logical content (file hashes) rather than the envelope bytes.
-    // A full implementation would parse the envelope and verify the internal hashes.
+    // Verify hash matches
+    if !cadi_core::hash::verify_chunk_content(&chunk_id, &body) {
+        return Ok(Json(PutResponse {
+            success: false,
+            chunk_id: Some(chunk_id),
+            message: Some("Hash mismatch".to_string()),
+        }));
+    }
     
     // Check size limit
     if body.len() > state.config.max_chunk_size {

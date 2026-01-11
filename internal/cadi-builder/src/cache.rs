@@ -167,6 +167,11 @@ impl BuildCache {
     }
 
     /// Get the path for a chunk
+    pub fn get_path(&self, chunk_id: &str) -> PathBuf {
+        self.chunk_path(chunk_id)
+    }
+
+    /// Internal helper to get the path for a chunk
     fn chunk_path(&self, chunk_id: &str) -> PathBuf {
         // Use first 2 chars of hash as subdirectory for better filesystem performance
         let hash = chunk_id.strip_prefix("chunk:sha256:")

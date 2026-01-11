@@ -139,9 +139,19 @@ impl BuildEngine {
     async fn execute_step(&self, step: &super::BuildStep) -> CadiResult<String> {
         tracing::info!("Executing step: {}", step.name);
         
+        // Prepare inputs with paths
+        let mut prepared_inputs = Vec::new();
+        for input in &step.inputs {
+            let mut prepared = input.clone();
+            if self.cache.has(&input.chunk_id)? {
+                prepared.path = Some(self.cache.get_path(&input.chunk_id).to_string_lossy().to_string());
+            }
+            prepared_inputs.push(prepared);
+        }
+
         // Execute the transformation
         let transformer = super::Transformer::new();
-        let result = transformer.transform(&step.transform, &step.inputs).await?;
+        let result = transformer.transform(&step.transform, &prepared_inputs).await?;
         
         // Store in cache
         if let Some(ref chunk_id) = step.chunk_id {

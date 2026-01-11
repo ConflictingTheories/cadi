@@ -200,18 +200,21 @@ fn build_inputs(
             chunk_id: source_id.clone(),
             data: None,
             role: "main".to_string(),
+            path: None,
         });
     } else if let Some(ref ir_id) = node.ir_cadi {
         inputs.push(super::TransformInput {
             chunk_id: ir_id.clone(),
             data: None,
             role: "main".to_string(),
+            path: None,
         });
     } else if let Some(ref blob_id) = node.blob_cadi {
         inputs.push(super::TransformInput {
             chunk_id: blob_id.clone(),
             data: None,
             role: "main".to_string(),
+            path: None,
         });
     }
     
@@ -222,6 +225,7 @@ fn build_inputs(
                 chunk_id: format!("pending:{}", dep_id),
                 data: None,
                 role: "dependency".to_string(),
+                path: None,
             });
         }
     }

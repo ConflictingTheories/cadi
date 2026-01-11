@@ -1,6 +1,10 @@
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use clap::Args;
 use console::style;
+use std::process::Stdio;
+use tokio::process::Command;
+use cadi_builder::engine::{BuildEngine, BuildConfig};
+use cadi_core::Manifest;
 
 use crate::config::CadiConfig;
 
@@ -21,7 +25,7 @@ pub struct DemoArgs {
 }
 
 /// Execute the demo command
-pub async fn execute(args: DemoArgs, _config: &CadiConfig) -> Result<()> {
+pub async fn execute(args: DemoArgs, config: &CadiConfig) -> Result<()> {
     if args.list || args.demo == "list" {
         println!("{}", style("Available Demos").bold());
         println!("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━");
@@ -39,7 +43,7 @@ pub async fn execute(args: DemoArgs, _config: &CadiConfig) -> Result<()> {
     }
 
     match args.demo.as_str() {
-        "todo-suite" => run_todo_suite_demo(&args).await,
+        "todo-suite" => run_todo_suite_demo(&args, config).await,
         _ => {
             println!("{} Unknown demo: {}", style("✗").red(), args.demo);
             println!("Run 'cadi demo --list' to see available demos.");
@@ -48,7 +52,18 @@ pub async fn execute(args: DemoArgs, _config: &CadiConfig) -> Result<()> {
     }
 }
 
-async fn run_todo_suite_demo(args: &DemoArgs) -> Result<()> {
+async fn check_tool(name: &str) -> bool {
+    Command::new(name)
+        .arg("--version")
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .status()
+        .await
+        .map(|s| s.success())
+        .unwrap_or(false)
+}
+
+async fn run_todo_suite_demo(args: &DemoArgs, config: &CadiConfig) -> Result<()> {
     let target = args.target.as_deref().unwrap_or("web-dev");
 
     println!("{}", style("CADI Todo Suite Demo").bold());
@@ -57,69 +72,76 @@ async fn run_todo_suite_demo(args: &DemoArgs) -> Result<()> {
     println!("This demo showcases CADI's multi-language, multi-platform capabilities.");
     println!();
 
-    println!("{}", style("Components:").bold());
-    println!("  📦 Shared PostgreSQL schema");
-    println!("  📄 OpenAPI specification (TodoApi)");
-    println!("  🌐 React/TypeScript frontend");
-    println!("  ⚡ Node.js REST server");
-    println!("  🔌 Node.js WebSocket server");
-    println!("  🔧 C REST server (with WASM support)");
+    // Check prerequisites
+    println!("{}", style("Checking Prerequisites:").bold());
+    
+    let docker_ok = check_tool("docker").await;
+    println!("  {} Docker:  {}", 
+        if docker_ok { style("✓").green() } else { style("✗").red() },
+        if docker_ok { "Found" } else { "Not found (required for containers)" });
+
+    let node_ok = check_tool("node").await;
+    println!("  {} Node.js: {}", 
+        if node_ok { style("✓").green() } else { style("✗").red() },
+        if node_ok { "Found" } else { "Not found (required for web-dev)" });
+
+    let gcc_ok = check_tool("gcc").await;
+    println!("  {} GCC:     {}", 
+        if gcc_ok { style("✓").green() } else { style("✗").red() },
+        if gcc_ok { "Found" } else { "Not found (required for C server)" });
+
     println!();
+
+    if target == "web-dev" && !node_ok {
+        return Err(anyhow!("Node.js is required for the 'web-dev' target. Please install it first."));
+    }
+
+    if (target == "web-prod" || target == "c-server-prod") && !docker_ok {
+        return Err(anyhow!("Docker is required for production targets. Please start Docker first."));
+    }
 
     println!("Target: {}", style(target).cyan());
     println!();
 
+    // Load manifest
+    let manifest_path = "examples/todo-suite/todo-suite.cadi.yaml";
+    if !std::path::Path::new(manifest_path).exists() {
+        return Err(anyhow!("Demo manifest not found at {}", manifest_path));
+    }
+
+    let manifest_content = std::fs::read_to_string(manifest_path)?;
+    let manifest: Manifest = serde_yaml::from_str(&manifest_content)?;
+
+    println!("{}", style("Building components...").bold());
+
+    let build_config = BuildConfig {
+        parallel_jobs: config.build.parallelism,
+        cache_dir: config.cache.dir.clone(),
+        use_remote_cache: true,
+        fail_fast: true,
+        verbose: true,
+    };
+    
+    let engine = BuildEngine::new(build_config);
+    let result = engine.build(&manifest, target).await?;
+
+    if !result.failed.is_empty() {
+        return Err(anyhow!("Demo build failed."));
+    }
+
+    println!();
+    println!("{}", style("Demo ready!").green().bold());
+    
     match target {
         "web-dev" => {
-            println!("{}", style("Setting up development environment...").bold());
-            println!();
-            println!("  {} Checking for PostgreSQL...", style("→").cyan());
-            println!("  {} Starting database (docker-compose)...", style("→").cyan());
-            println!("  {} Building React frontend...", style("→").cyan());
-            println!("  {} Starting Node.js server...", style("→").cyan());
-            println!();
-            println!("{}", style("Development servers ready:").green().bold());
             println!("  Frontend:  http://localhost:3000");
             println!("  API:       http://localhost:8080");
-            println!("  Database:  localhost:5432");
             println!();
-            println!("Press Ctrl+C to stop all services.");
-        }
-        "web-prod" => {
-            println!("{}", style("Building production containers...").bold());
-            println!();
-            println!("  {} Building optimized frontend bundle...", style("→").cyan());
-            println!("  {} Creating Node.js container image...", style("→").cyan());
-            println!("  {} Pushing to registry...", style("→").cyan());
-            println!();
-            println!("{}", style("Production artifacts:").green().bold());
-            println!("  Frontend:  dist/todo-frontend.tar.gz");
-            println!("  Container: ghcr.io/cadi/todo-node:latest");
-        }
-        "c-server-prod" => {
-            println!("{}", style("Building C server...").bold());
-            println!();
-            println!("  {} Compiling C source to native binary...", style("→").cyan());
-            println!("  {} Creating minimal container...", style("→").cyan());
-            println!("  {} Signing artifacts...", style("→").cyan());
-            println!();
-            println!("{}", style("Artifacts:").green().bold());
-            println!("  Binary:    build/todo-c-server");
-            println!("  Container: ghcr.io/cadi/todo-c:latest");
-            println!("  WASM:      build/todo-c-server.wasm (fallback)");
-        }
-        "wasm-demo" => {
-            println!("{}", style("Building WASM components...").bold());
-            println!();
-            println!("  {} Compiling C to WASM...", style("→").cyan());
-            println!("  {} Running in browser...", style("→").cyan());
-            println!();
-            println!("{}", style("WASM demo ready:").green().bold());
-            println!("  URL: http://localhost:3000/wasm-demo");
+            println!("Note: In this demo, services are built but not automatically started by the CLI.");
+            println!("Run the generated artifacts to start the services.");
         }
         _ => {
-            println!("{} Unknown target: {}", style("✗").red(), target);
-            println!("Available targets: web-dev, web-prod, c-server-prod, wasm-demo");
+            println!("Artifacts generated successfully in the CADI cache.");
         }
     }
 

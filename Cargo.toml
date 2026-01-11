@@ -7,6 +7,7 @@ members = [
     "internal/cadi-core",
     "internal/cadi-builder",
     "internal/cadi-registry",
+    "internal/llm",
     # Examples (optional, can be built standalone)
     # "examples/todo-suite/todo-core",
     # "examples/todo-suite/todo-cli",
