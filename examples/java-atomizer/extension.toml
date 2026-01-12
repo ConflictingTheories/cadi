@@ -1,0 +1,16 @@
+[extension]
+name = "cadi-atomizer-java"
+version = "1.0.0"
+description = "Atomizer for Java programming language"
+author = "CADI Team"
+homepage = "https://cadi.dev"
+repository = "https://github.com/cadi-project/cadi"
+license = "MIT OR Apache-2.0"
+type = "atomizer"
+
+[dependencies]
+cadi-core = "2.0"
+cadi-extensions = "2.0"
+
+[config]
+java_version = "11"

@@ -8,10 +8,14 @@ members = [
     "internal/cadi-builder",
     "internal/cadi-registry",
     "internal/cadi-scraper",
+    "internal/cadi-extensions",
     "internal/llm",
     # Examples (optional, can be built standalone)
     # "examples/todo-suite/todo-core",
     # "examples/todo-suite/todo-cli",
+]
+exclude = [
+    "examples/java-atomizer",
 ]
 
 [workspace.package]
@@ -93,6 +97,12 @@ pgvector = "0.3"
 
 # Semver
 semver = "1.0"
+
+# Dynamic loading
+libloading = "0.8"
+
+# Async traits
+async-trait = "0.1"
 
 # Process execution
 tokio-process = "0.2"

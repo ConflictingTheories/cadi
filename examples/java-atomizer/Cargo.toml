@@ -1,0 +1,23 @@
+[package]
+name = "cadi-atomizer-java"
+version = "1.0.0"
+edition = "2021"
+description = "Java language atomizer for CADI"
+license = "MIT OR Apache-2.0"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+cadi-core = { path = "../../internal/cadi-core", version = "2.0" }
+cadi-extensions = { path = "../../internal/cadi-extensions", version = "2.0" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+anyhow = "1.0"
+async-trait = "0.1"
+regex = "1.10"
+uuid = { version = "1.0", features = ["v4"] }
+chrono = { version = "0.4", features = ["serde"] }
+semver = "1.0"
+blake3 = "1.5"
