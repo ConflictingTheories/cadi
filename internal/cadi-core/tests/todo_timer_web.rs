@@ -1,10 +1,8 @@
 use std::path::PathBuf;
-use cadi_core::atomizer::AtomizerConfig;
 use cadi_core::project_analyzer::ProjectAnalyzer;
 use cadi_core::rehydration::RehydrationEngine;
 use cadi_core::graph::GraphStore;
 use cadi_core::graph::node::GraphNode;
-use cadi_core::graph::EdgeType;
 
 #[test]
 fn import_and_view_todo_timer_web() {
@@ -18,7 +16,7 @@ fn import_and_view_todo_timer_web() {
     let graph = GraphStore::in_memory().expect("graph open failed");
     for chunk in &result.chunks {
         // Build graph node
-        let mut node = GraphNode::new(&chunk.chunk_id, &chunk.content_hash)
+        let node = GraphNode::new(&chunk.chunk_id, &chunk.content_hash)
             .with_alias(chunk.name.clone())
             .with_language(chunk.language.clone())
             .with_granularity(format!("{:?}", chunk.granularity))

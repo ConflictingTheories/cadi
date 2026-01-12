@@ -955,7 +955,7 @@ impl SmartChunker {
         imports
     }
 
-    fn extract_exports(&self, content: &str, language: &str, entities: &[CodeEntity]) -> Vec<String> {
+    fn extract_exports(&self, _content: &str, _language: &str, entities: &[CodeEntity]) -> Vec<String> {
         entities
             .iter()
             .filter(|e| e.visibility == Visibility::Public)

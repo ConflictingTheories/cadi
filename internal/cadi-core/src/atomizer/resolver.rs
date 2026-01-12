@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 
-use crate::error::{CadiError, CadiResult};
+use crate::error::CadiResult;
 use crate::graph::GraphStore;
 
 /// Symbol resolver for import-to-chunk mapping

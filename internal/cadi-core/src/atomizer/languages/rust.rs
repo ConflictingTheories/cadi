@@ -5,12 +5,12 @@ use crate::error::CadiResult;
 
 /// Rust-specific atomizer with Tree-sitter support
 pub struct RustAtomizer {
-    config: AtomizerConfig,
+    _config: AtomizerConfig,
 }
 
 impl RustAtomizer {
     pub fn new(config: AtomizerConfig) -> Self {
-        Self { config }
+        Self { _config: config }
     }
 
     /// Extract atoms using Tree-sitter (when feature enabled)
@@ -56,7 +56,7 @@ impl RustAtomizer {
             // Build a map of capture name -> node for this match
             let mut caps: std::collections::HashMap<String, tree_sitter::Node> = std::collections::HashMap::new();
             for cap in m.captures.iter() {
-                let name = query.capture_names()[cap.index as usize].clone();
+                let name = query.capture_names()[cap.index as usize];
                 caps.insert(name.to_string(), cap.node);
             }
 

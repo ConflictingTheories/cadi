@@ -33,11 +33,34 @@ jobs:
         uses: actions/checkout@v4
       - name: Setup Pages
         uses: actions/configure-pages@v5
+      - name: Prepare Docs for deployment
+        run: |
+          set -euo pipefail
+          mkdir -p website/docs
+          # Copy docs content into the website directory so Pages serves docs alongside the site
+          rsync -a --delete docs/ website/docs/
+          # Adjust HTML references to site assets (docs were authored referencing ../website/...)
+          find website/docs -type f -name "*.html" -exec sed -i 's|../website/css/|../css/|g' {} + || true
+          find website/docs -type f -name "*.html" -exec sed -i 's|../website/assets/|../assets/|g' {} + || true
+          # Convert local Markdown docs to HTML using pandoc so navigation doesn't 404
+          sudo apt-get update -y
+          sudo apt-get install -y pandoc
+          for f in website/docs/*.md; do
+            [ -f "$f" ] || continue
+            name="$(basename "$f" .md)"
+            pandoc "$f" -o "website/docs/${name}.html" --standalone --metadata title="CADI Docs - ${name}"
+          done
+          # Update docs index to reference .html pages instead of .md
+          if [ -f website/docs/index.html ]; then
+            sed -i 's|getting-started.md|getting-started.html|g' website/docs/index.html || true
+            sed -i 's|cli-reference.md|cli-reference.html|g' website/docs/index.html || true
+            sed -i 's|architecture.md|architecture.html|g' website/docs/index.html || true
+          fi
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
           # Upload entire repository
-          path: './website/'
+          path: "./website/"
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4

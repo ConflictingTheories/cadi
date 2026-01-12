@@ -971,7 +971,7 @@ async fn call_view_context(args: Value) -> Result<Vec<Value>, Box<dyn std::error
         .and_then(|v| v.as_u64())
         .unwrap_or(1) as usize;
     
-    let format = args.get("format")
+    let _format = args.get("format")
         .and_then(|v| v.as_str())
         .unwrap_or("source");
     
@@ -1010,7 +1010,7 @@ async fn call_view_context(args: Value) -> Result<Vec<Value>, Box<dyn std::error
             
             // Expand dependencies
             let mut frontier = atoms.clone();
-            for depth in 0..expand_depth {
+            for _depth in 0..expand_depth {
                 let mut next_frontier = Vec::new();
                 
                 for atom_id in &frontier {

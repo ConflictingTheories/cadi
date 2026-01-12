@@ -5,12 +5,12 @@ use crate::error::CadiResult;
 
 /// CSS-specific atomizer with Tree-sitter support
 pub struct CssAtomizer {
-    config: AtomizerConfig,
+    _config: AtomizerConfig,
 }
 
 impl CssAtomizer {
     pub fn new(config: AtomizerConfig) -> Self {
-        Self { config }
+        Self { _config: config }
     }
 
     /// Extract atoms using Tree-sitter (when feature enabled)
@@ -102,7 +102,7 @@ impl CssAtomizer {
     #[cfg(not(feature = "ast-parsing"))]
     pub fn extract(&self, source: &str) -> CadiResult<Vec<ExtractedAtom>> {
         use crate::atomizer::AtomExtractor;
-        AtomExtractor::new("css", self.config.clone()).extract(source)
+        AtomExtractor::new("css", self._config.clone()).extract(source)
     }
 }
 

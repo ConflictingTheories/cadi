@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="50" height="50">
+  <defs>
+    <style>
+      .hat-fill{fill:#4CAF50}
+      .hat-band{fill:#2a2a2a}
+      .pompom{fill:#ff6f61}
+    </style>
+  </defs>
+  <g>
+    <!-- Tam o' Shanter: rounded crown -->
+    <ellipse cx="50" cy="42" rx="34" ry="20" class="hat-fill"/>
+    <!-- Rim -->
+    <ellipse cx="50" cy="56" rx="38" ry="8" class="hat-band"/>
+    <!-- Pompom -->
+    <circle cx="50" cy="22" r="6" class="pompom"/>
+    <!-- Subtle highlight -->
+    <ellipse cx="40" cy="38" rx="10" ry="6" fill="#66bb6a" opacity="0.15"/>
+  </g>
+</svg>

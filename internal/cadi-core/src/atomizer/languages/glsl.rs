@@ -5,12 +5,12 @@ use crate::error::CadiResult;
 
 /// GLSL-specific atomizer with Tree-sitter support
 pub struct GlslAtomizer {
-    config: AtomizerConfig,
+    _config: AtomizerConfig,
 }
 
 impl GlslAtomizer {
     pub fn new(config: AtomizerConfig) -> Self {
-        Self { config }
+        Self { _config: config }
     }
 
     /// Extract atoms using Tree-sitter (when feature enabled)
@@ -109,7 +109,7 @@ impl GlslAtomizer {
     #[cfg(not(feature = "ast-parsing"))]
     pub fn extract(&self, source: &str) -> CadiResult<Vec<ExtractedAtom>> {
         use crate::atomizer::AtomExtractor;
-        AtomExtractor::new("glsl", self.config.clone()).extract(source)
+        AtomExtractor::new("glsl", self._config.clone()).extract(source)
     }
 }
 

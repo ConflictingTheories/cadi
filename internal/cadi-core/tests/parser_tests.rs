@@ -1,6 +1,5 @@
 use cadi_core::parser::parse_file;
 use cadi_core::ast::*;
-use std::collections::HashMap;
 
 #[test]
 fn test_parse_simple_interface() {

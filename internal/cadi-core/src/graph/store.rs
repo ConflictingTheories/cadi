@@ -8,7 +8,7 @@ use std::collections::{HashSet, VecDeque};
 use std::path::Path;
 use std::time::Instant;
 
-use super::{Edge, EdgeType, GraphNode, GraphQuery, QueryNode, QueryResult, TraversalDirection};
+use super::{EdgeType, GraphNode, GraphQuery, QueryNode, QueryResult, TraversalDirection};
 use crate::error::{CadiError, CadiResult};
 
 /// The main graph store
@@ -266,7 +266,7 @@ impl GraphStore {
         }
 
         // BFS traversal
-        while let Some((current_id, depth, reached_via, parent)) = queue.pop_front() {
+        while let Some((current_id, depth, _reached_via, _parent)) = queue.pop_front() {
             if depth >= query.max_depth {
                 continue;
             }
@@ -376,7 +376,7 @@ impl GraphStore {
         &self,
         chunk_id: &str,
         outgoing: &[(EdgeType, String)],
-        incoming: &[(EdgeType, String)],
+        _incoming: &[(EdgeType, String)],
     ) -> CadiResult<()> {
         // Store outgoing edges
         if !outgoing.is_empty() {

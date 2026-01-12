@@ -5,7 +5,7 @@
 use std::collections::HashMap;
 
 #[cfg(feature = "ast-parsing")]
-use tree_sitter::{Parser, Language, Tree};
+use tree_sitter::{Parser, Tree};
 
 use crate::error::{CadiError, CadiResult};
 
@@ -143,13 +143,13 @@ pub struct ParsedAst {
 impl ParsedAst {
     /// Get the root node
     #[cfg(feature = "ast-parsing")]
-    pub fn root_node(&self) -> tree_sitter::Node {
+    pub fn root_node(&self) -> tree_sitter::Node<'_> {
         self.tree.root_node()
     }
     
     /// Walk the tree
     #[cfg(feature = "ast-parsing")]
-    pub fn walk(&self) -> tree_sitter::TreeCursor {
+    pub fn walk(&self) -> tree_sitter::TreeCursor<'_> {
         self.tree.walk()
     }
     

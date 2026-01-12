@@ -3,9 +3,8 @@
 //! Provides efficient queries over the chunk dependency graph.
 
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
 
-use super::{EdgeType, GraphNode};
+use super::EdgeType;
 
 /// A query against the graph
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]

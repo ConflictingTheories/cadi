@@ -341,10 +341,9 @@ impl ProjectAnalyzer {
                     continue;
                 }
 
-                let relative_path = file_analysis
+                let _relative_path = file_analysis
                     .path
-                    .strip_prefix(&analysis.root)
-                    .unwrap_or(&file_analysis.path);
+                    .clone();
 
                 let file_chunks =
                     self.chunker

@@ -5,12 +5,12 @@ use crate::error::CadiResult;
 
 /// C#-specific atomizer with Tree-sitter support
 pub struct CSharpAtomizer {
-    config: AtomizerConfig,
+    _config: AtomizerConfig,
 }
 
 impl CSharpAtomizer {
     pub fn new(config: AtomizerConfig) -> Self {
-        Self { config }
+        Self { _config: config }
     }
 
     /// Extract atoms using Tree-sitter (when feature enabled)
@@ -128,7 +128,7 @@ impl CSharpAtomizer {
     #[cfg(not(feature = "ast-parsing"))]
     pub fn extract(&self, source: &str) -> CadiResult<Vec<ExtractedAtom>> {
         use crate::atomizer::AtomExtractor;
-        AtomExtractor::new("csharp", self.config.clone()).extract(source)
+        AtomExtractor::new("csharp", self._config.clone()).extract(source)
     }
 }
 

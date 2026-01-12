@@ -5,12 +5,12 @@ use crate::error::CadiResult;
 
 /// JSX atomizer (uses JS extractor semantics)
 pub struct JSXAtomizer {
-    config: AtomizerConfig,
+    _config: AtomizerConfig,
 }
 
 impl JSXAtomizer {
     pub fn new(config: AtomizerConfig) -> Self {
-        Self { config }
+        Self { _config: config }
     }
 
     /// Extract atoms from JSX/JS files using Tree-sitter when available

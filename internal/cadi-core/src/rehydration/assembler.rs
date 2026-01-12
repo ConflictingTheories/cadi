@@ -4,7 +4,7 @@
 
 use super::config::{ViewConfig, ViewFormat};
 use super::view::{ViewFragment, InclusionReason};
-use crate::graph::{GraphNode, EdgeType};
+use crate::graph::GraphNode;
 
 /// Assembler for creating virtual views from atoms
 pub struct Assembler {

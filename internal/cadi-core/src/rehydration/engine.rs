@@ -2,13 +2,13 @@
 //!
 //! The main engine for creating virtual views from atoms.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 
 use super::assembler::Assembler;
 use super::config::ViewConfig;
-use super::view::{VirtualView, ViewFragment, InclusionReason};
+use super::view::VirtualView;
 use crate::error::{CadiError, CadiResult};
-use crate::graph::{GraphStore, GraphQuery, EdgeType, TraversalDirection};
+use crate::graph::GraphStore;
 
 /// The rehydration engine
 pub struct RehydrationEngine {
@@ -116,7 +116,7 @@ impl RehydrationEngine {
         // BFS expansion
         let mut frontier: Vec<String> = atom_ids.to_vec();
         
-        for current_depth in 0..depth {
+        for _current_depth in 0..depth {
             let mut next_frontier = Vec::new();
 
             for atom_id in &frontier {
@@ -197,7 +197,7 @@ impl RehydrationEngine {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::graph::GraphNode;
+    use crate::graph::{GraphNode, EdgeType};
 
     #[test]
     fn test_create_view() {

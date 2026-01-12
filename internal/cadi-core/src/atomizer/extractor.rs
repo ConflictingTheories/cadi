@@ -166,7 +166,7 @@ impl AtomExtractor {
     /// Extract atoms from Rust source
     fn extract_rust(&self, source: &str) -> CadiResult<Vec<ExtractedAtom>> {
         let mut atoms = Vec::new();
-        let lines: Vec<&str> = source.lines().collect();
+        let _lines: Vec<&str> = source.lines().collect();
 
         // Regex-based extraction (fallback when tree-sitter not enabled)
         // This is a simplified version - the real implementation uses Tree-sitter
@@ -179,15 +179,15 @@ impl AtomExtractor {
             r"(?m)^(\s*)(///.*\n)*(\s*)(?:pub(?:\([^)]*\))?\s+)?struct\s+(\w+)"
         ).map_err(|e| CadiError::AtomizerError(e.to_string()))?;
 
-        let enum_regex = regex::Regex::new(
+        let _enum_regex = regex::Regex::new(
             r"(?m)^(\s*)(///.*\n)*(\s*)(?:pub(?:\([^)]*\))?\s+)?enum\s+(\w+)"
         ).map_err(|e| CadiError::AtomizerError(e.to_string()))?;
 
-        let trait_regex = regex::Regex::new(
+        let _trait_regex = regex::Regex::new(
             r"(?m)^(\s*)(///.*\n)*(\s*)(?:pub(?:\([^)]*\))?\s+)?trait\s+(\w+)"
         ).map_err(|e| CadiError::AtomizerError(e.to_string()))?;
 
-        let impl_regex = regex::Regex::new(
+        let _impl_regex = regex::Regex::new(
             r"(?m)^impl(?:<[^>]*>)?\s+(?:(\w+)\s+for\s+)?(\w+)"
         ).map_err(|e| CadiError::AtomizerError(e.to_string()))?;
 
@@ -265,11 +265,11 @@ impl AtomExtractor {
             r"(?m)^(\s*)(export\s+)?class\s+(\w+)"
         ).map_err(|e| CadiError::AtomizerError(e.to_string()))?;
 
-        let interface_regex = regex::Regex::new(
+        let _interface_regex = regex::Regex::new(
             r"(?m)^(\s*)(export\s+)?interface\s+(\w+)"
         ).map_err(|e| CadiError::AtomizerError(e.to_string()))?;
 
-        let const_regex = regex::Regex::new(
+        let _const_regex = regex::Regex::new(
             r"(?m)^(\s*)(export\s+)?const\s+(\w+)\s*="
         ).map_err(|e| CadiError::AtomizerError(e.to_string()))?;
 
