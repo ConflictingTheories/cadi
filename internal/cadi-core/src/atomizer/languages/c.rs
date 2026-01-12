@@ -50,6 +50,10 @@ impl CAtomizer {
         let query = Query::new(&tree_sitter_c::language(), query_src)?;
         let mut cursor = QueryCursor::new();
         
+        // Query for references (identifiers) within a node
+        let ref_query_src = r#"(identifier) @ref"#;
+        let ref_query = Query::new(&tree_sitter_c::language(), ref_query_src)?;
+        
         let matches = cursor.matches(&query, tree.root_node(), source.as_bytes());
         
         for m in matches {
@@ -89,6 +93,23 @@ impl CAtomizer {
                 let start_point = node.start_position();
                 let end_point = node.end_position();
 
+                // Extract references
+                let mut references = Vec::new();
+                let mut ref_cursor = QueryCursor::new();
+                let ref_matches = ref_cursor.matches(&ref_query, node, source.as_bytes());
+                
+                for rm in ref_matches {
+                    for cap in rm.captures {
+                        let ref_name = cap.node.utf8_text(source.as_bytes()).unwrap_or("").to_string();
+                        if !ref_name.is_empty() && ref_name != name {
+                             // Basic filtering of keywords could happen here, or later in resolution
+                            references.push(ref_name);
+                        }
+                    }
+                }
+                references.sort();
+                references.dedup();
+
                 atoms.push(ExtractedAtom {
                     name,
                     kind,
@@ -98,7 +119,7 @@ impl CAtomizer {
                     start_line: start_point.row + 1,
                     end_line: end_point.row + 1,
                     defines: vec![], // Will be filled by extractor/resolver
-                    references: Vec::new(),
+                    references,
                     doc_comment: None,
                     visibility: crate::atomizer::extractor::Visibility::Public,
                     parent: None,

@@ -5,6 +5,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::config::AtomizerConfig;
+use super::resolver::SymbolResolver;
 use crate::error::{CadiError, CadiResult};
 
 /// Kind of code atom
@@ -39,6 +40,10 @@ pub enum AtomKind {
     ImplBlock,
     /// A decorator/attribute (Python/Rust)
     Decorator,
+    /// An import statement or require
+    Import,
+    /// A header file inclusion (C/C++)
+    Header,
 }
 
 impl AtomKind {
@@ -52,6 +57,14 @@ impl AtomKind {
                 | AtomKind::Interface
                 | AtomKind::Enum
                 | AtomKind::TypeAlias
+        )
+    }
+
+    /// Is this a dependency/import?
+    pub fn is_dependency(&self) -> bool {
+        matches!(
+            self,
+            AtomKind::Import | AtomKind::Header
         )
     }
 
@@ -160,7 +173,92 @@ impl AtomExtractor {
             "css" => self.extract_css(source),
             "glsl" => self.extract_glsl(source),
             _ => self.extract_fallback(source),
+            _ => self.extract_fallback(source),
+        };
+
+        // Post-processing: Extract imports as first-class atoms
+        if let Ok(mut atoms) = result {
+            if let Ok(imports) = self.extract_imports_as_atoms(source) {
+                atoms.extend(imports);
+            }
+            Ok(atoms)
+        } else {
+            result
         }
+    }
+
+    /// Extract imports as atoms using SymbolResolver logic
+    fn extract_imports_as_atoms(&self, source: &str) -> CadiResult<Vec<ExtractedAtom>> {
+        // Use a dummy path since we only need extraction logic, not resolution
+        let resolver = SymbolResolver::new(std::path::PathBuf::from("/"), &self.language);
+        let raw_imports = resolver.extract_imports(source);
+        let mut atoms = Vec::new();
+        
+        // Cache source lines for quick access
+        let source_lines: Vec<&str> = source.lines().collect();
+        let mut byte_offset = 0;
+        let mut line_offsets = Vec::new();
+        for line in &source_lines {
+            line_offsets.push(byte_offset);
+            byte_offset += line.len() + 1; // +1 for newline
+        }
+
+        for import in raw_imports {
+            if import.line == 0 || import.line > source_lines.len() {
+                continue;
+            }
+
+            let line_idx = import.line - 1;
+            let line_content = source_lines[line_idx];
+            let start_byte = line_offsets[line_idx];
+            let end_byte = start_byte + line_content.len();
+
+            let kind = if self.language == "c" || self.language == "cpp" || self.language == "glsl" {
+                AtomKind::Header
+            } else {
+                AtomKind::Import
+            };
+
+            // Defines: symbols imported by this statement
+            let mut defines = Vec::new();
+            if !import.is_namespace && !import.symbols.is_empty() {
+                for sym in &import.symbols {
+                    if let Some(alias) = &sym.alias {
+                        defines.push(alias.clone());
+                    } else {
+                        defines.push(sym.name.clone());
+                    }
+                }
+            } else if import.is_namespace {
+                // For namespace imports, it defines the namespace name
+                if let Some(first) = import.symbols.first() {
+                    defines.push(first.name.clone());
+                }
+            }
+            // For C headers, we might say it "defines" the header name itself as a crude proxy
+            // or leave it empty. The graph will link based on the AtomKind::Header edge.
+            if kind == AtomKind::Header {
+                defines.push(import.source.clone());
+            }
+
+            atoms.push(ExtractedAtom {
+                name: import.source.clone(),
+                kind,
+                source: line_content.to_string(),
+                start_byte,
+                end_byte,
+                start_line: import.line,
+                end_line: import.line,
+                defines,
+                references: vec![], // Imports don't strictly refer to other user code, they refer to external chunks
+                doc_comment: None,
+                visibility: Visibility::Private, // Imports are local unless re-exported
+                parent: None,
+                decorators: Vec::new(),
+            });
+        }
+
+        Ok(atoms)
     }
 
     /// Extract atoms from Rust source

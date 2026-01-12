@@ -26,6 +26,8 @@ pub enum ChunkGranularity {
     Package,
     /// An entire project or workspace
     Project,
+    /// A single import or header inclusion
+    Import,
 }
 
 

@@ -49,6 +49,10 @@ impl GlslAtomizer {
         let query = Query::new(&tree_sitter_glsl::language(), query_src)?;
         let mut cursor = QueryCursor::new();
         
+        // Query for references (identifiers) within a node
+        let ref_query_src = r#"(identifier) @ref"#;
+        let ref_query = Query::new(&tree_sitter_glsl::language(), ref_query_src)?;
+        
         let matches = cursor.matches(&query, tree.root_node(), source.as_bytes());
         
         for m in matches {
@@ -84,6 +88,23 @@ impl GlslAtomizer {
                 let start_point = node.start_position();
                 let end_point = node.end_position();
 
+                // Extract references
+                let mut references = Vec::new();
+                let mut ref_cursor = QueryCursor::new();
+                let ref_matches = ref_cursor.matches(&ref_query, node, source.as_bytes());
+                
+                for rm in ref_matches {
+                    for cap in rm.captures {
+                        let ref_name = cap.node.utf8_text(source.as_bytes()).unwrap_or("").to_string();
+                        if !ref_name.is_empty() && ref_name != name {
+                             // Basic filtering of keywords/types (int, float, vec3) could happen here
+                            references.push(ref_name);
+                        }
+                    }
+                }
+                references.sort();
+                references.dedup();
+
                 atoms.push(ExtractedAtom {
                     name,
                     kind,
@@ -93,7 +114,7 @@ impl GlslAtomizer {
                     start_line: start_point.row + 1,
                     end_line: end_point.row + 1,
                     defines: vec![],
-                    references: Vec::new(),
+                    references,
                     doc_comment: None,
                     visibility: crate::atomizer::extractor::Visibility::Public,
                     parent: None,

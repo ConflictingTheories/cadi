@@ -112,7 +112,9 @@ pub enum EntityKind {
     Module,
     Type,
     Test,
+    Test,
     Macro,
+    Import,
 }
 
 /// Visibility of entity
@@ -394,6 +396,73 @@ impl SmartChunker {
             _ => {}
         }
 
+        entities.extend(self.extract_import_entities(content, language));
+        
+        entities
+    }
+
+    fn extract_import_entities(&self, content: &str, language: &str) -> Vec<CodeEntity> {
+        let mut entities = Vec::new();
+        for (i, line) in content.lines().enumerate() {
+            let trimmed = line.trim();
+            if trimmed.is_empty() { continue; }
+            
+            let mut is_import = false;
+            let mut name = String::new();
+
+            match language {
+                "rust" => {
+                    if trimmed.starts_with("use ") {
+                        is_import = true;
+                        name = trimmed.trim_start_matches("use ").trim_end_matches(';').to_string();
+                    }
+                }
+                "typescript" | "javascript" => {
+                    if trimmed.starts_with("import ") {
+                        is_import = true;
+                        name = trimmed.to_string(); // Keep full statement for JS imports
+                    }
+                }
+                "python" => {
+                    if trimmed.starts_with("import ") || trimmed.starts_with("from ") {
+                        is_import = true;
+                        name = trimmed.to_string(); 
+                    }
+                }
+                "go" => {
+                    if trimmed.starts_with("import ") && !trimmed.contains('(') { // One-line import
+                         is_import = true;
+                         name = trimmed.trim_start_matches("import ").trim().replace('"', "");
+                    } else if trimmed.starts_with('"') && !trimmed.contains("func") { // Import in block (simplified assumption)
+                         // This is tricky without context, skipping distinct handling for now or assuming context via extract_imports
+                         // For now, let's just stick to single line imports or rely on specific parsing if needed
+                         // Go import blocks are hard line-by-line. 
+                    }
+                }
+                "c" | "cpp" | "h" | "hpp" => {
+                    if trimmed.starts_with("#include") {
+                        is_import = true;
+                        name = trimmed.trim_start_matches("#include").trim().replace(['<', '>', '"'], "");
+                    }
+                }
+                _ => {}
+            }
+
+            if is_import {
+                 entities.push(CodeEntity {
+                    name: name.clone(),
+                    kind: EntityKind::Import,
+                    start_line: i + 1,
+                    end_line: i + 1,
+                    visibility: Visibility::Private,
+                    doc_comment: None,
+                    imports: Vec::new(),
+                    exports: vec![name], // The import chunk provides the imported module/symbol
+                    calls: Vec::new(),
+                    complexity: 0,
+                });
+            }
+        }
         entities
     }
 
@@ -1209,6 +1278,7 @@ impl SmartChunker {
                     | EntityKind::Interface
                     | EntityKind::Enum => ChunkGranularity::Type,
                     EntityKind::Module => ChunkGranularity::Module,
+                    EntityKind::Import => ChunkGranularity::Import,
                     _ => ChunkGranularity::Function,
                 };
 
@@ -1223,8 +1293,8 @@ impl SmartChunker {
                     category: analysis.category.clone(),
                     concepts: vec![entity.name.clone()],
                     requires: entity.imports.clone(),
-                    provides: if entity.visibility == Visibility::Public {
-                        vec![entity.name.clone()]
+                    provides: if entity.visibility == Visibility::Public || entity.kind == EntityKind::Import {
+                        entity.exports.clone() // Use pre-calculated exports (which includes the name for Imports)
                     } else {
                         Vec::new()
                     },
