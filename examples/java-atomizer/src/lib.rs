@@ -36,7 +36,7 @@ impl JavaAtomizer {
                 description: "Atomizer for Java programming language".into(),
                 author: "CADI Team".into(),
                 homepage: Some("https://cadi.dev".into()),
-                repository: Some("https://github.com/cadi-project/cadi".into()),
+                repository: Some("https://github.com/ConflictingTheories/cadi".into()),
                 license: "MIT OR Apache-2.0".into(),
                 extension_type: ExtensionType::Atomizer,
             },

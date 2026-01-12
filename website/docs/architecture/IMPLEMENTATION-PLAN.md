@@ -1719,7 +1719,7 @@ signature_policy:
       
   # Trusted signers
   trusted_signers:
-    - pattern: "github.com/cadi-project/*"
+    - pattern: "github.com/ConflictingTheories/*"
       trust_level: "full"
       
     - pattern: "github.com/verified-orgs/*"

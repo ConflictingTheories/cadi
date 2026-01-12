@@ -66,7 +66,7 @@ pub async fn execute(args: TrustArgs, config: &CadiConfig) -> Result<()> {
             println!();
             
             // Would read from trust store
-            println!("  {} github.com/cadi-project/* (full)", style("●").green());
+            println!("  {} github.com/ConflictingTheories/* (full)", style("●").green());
             println!("  {} Local signing key (full)", style("●").green());
             println!();
             println!("Trust policy: {}", style(&config.security.trust_policy).cyan());

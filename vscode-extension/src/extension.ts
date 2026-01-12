@@ -25,7 +25,8 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('cadi.importCode', cadiCommands.importCode.bind(cadiCommands)),
         vscode.commands.registerCommand('cadi.viewRegistry', cadiCommands.viewRegistry.bind(cadiCommands)),
         vscode.commands.registerCommand('cadi.createManifest', cadiCommands.createManifest.bind(cadiCommands)),
-        vscode.commands.registerCommand('cadi.installExtension', cadiCommands.installExtension.bind(cadiCommands))
+        vscode.commands.registerCommand('cadi.installExtension', cadiCommands.installExtension.bind(cadiCommands)),
+        vscode.commands.registerCommand('cadi.importChunk', cadiCommands.importChunk.bind(cadiCommands))
     );
 
     // Register tree data provider for registry view

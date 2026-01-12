@@ -143,7 +143,7 @@ CREATE TRIGGER chunks_updated_at
 
 -- Default trusted signers
 INSERT INTO trusted_signers (signer_pattern, trust_level, description) VALUES
-    ('github.com/cadi-project/*', 'full', 'Official CADI project'),
+    ('github.com/ConflictingTheories/*', 'full', 'Official CADI project'),
     ('local', 'full', 'Local development')
 ON CONFLICT DO NOTHING;
 
