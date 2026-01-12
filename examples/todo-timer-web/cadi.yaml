@@ -1,0 +1,12 @@
+name: todo-timer-web
+language: typescript
+entry: src/App.tsx
+chunking:
+  strategy: semantic
+  atomic: true
+build:
+  target: web
+  commands:
+    - name: bundle
+      tool: esbuild
+      args: ["src/App.tsx", "--bundle", "--outfile=dist/app.js", "--minify"]

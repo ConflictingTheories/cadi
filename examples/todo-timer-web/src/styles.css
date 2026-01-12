@@ -1,0 +1,13 @@
+.todo-app {
+    font-family: system-ui, sans-serif;
+    padding: 20px;
+}
+
+.timer {
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+button {
+    margin-right: 8px;
+}
