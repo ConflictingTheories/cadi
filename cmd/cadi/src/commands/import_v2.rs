@@ -6,6 +6,7 @@
 //! - Creates human-readable aliases for easy reference
 //! - Detects compositions (chunks made of other chunks)
 //! - Handles any codebase - from simple scripts to complex monorepos
+//! - Optionally publishes directly to a CADI registry
 
 use anyhow::{Context, Result};
 use clap::Args;
@@ -19,6 +20,8 @@ use cadi_core::{
     ImportResult, ProjectAnalyzer, ProjectAnalyzerConfig,
     SmartChunkerConfig,
 };
+
+use cadi_registry::{RegistryClient, RegistryConfig as ClientRegistryConfig};
 
 use crate::config::CadiConfig;
 
@@ -64,6 +67,26 @@ pub struct ImportArgs {
     /// Don't publish to registry (local only)
     #[arg(long)]
     pub no_publish: bool,
+
+    /// Publish chunks directly to registry
+    #[arg(long)]
+    pub publish: bool,
+
+    /// Registry URL (default: from config or https://registry.cadi.dev)
+    #[arg(long)]
+    pub registry: Option<String>,
+
+    /// Authentication token for the registry
+    #[arg(long, env = "CADI_AUTH_TOKEN")]
+    pub auth_token: Option<String>,
+
+    /// Maximum concurrent uploads when publishing
+    #[arg(long, default_value = "4")]
+    pub concurrency: usize,
+
+    /// Skip chunks that already exist in registry
+    #[arg(long, default_value = "true")]
+    pub skip_existing: bool,
 
     /// Dry run - show what would be imported
     #[arg(long)]
@@ -163,7 +186,7 @@ pub async fn execute(args: ImportArgs, config: &CadiConfig) -> Result<()> {
 
     // Save chunks if not dry run
     if !args.dry_run {
-        let output_dir = args.output.unwrap_or_else(|| {
+        let output_dir = args.output.clone().unwrap_or_else(|| {
             config.cache.dir.join("chunks")
         });
 
@@ -193,6 +216,29 @@ pub async fn execute(args: ImportArgs, config: &CadiConfig) -> Result<()> {
         println!();
         println!("  {} Manifest: {}", style("→").cyan(), manifest_path.display());
         println!("  {} Chunks:   {}", style("→").cyan(), output_dir.display());
+
+        // Publish to registry if requested
+        if args.publish && !args.no_publish {
+            println!();
+            let publish_result = publish_chunks(
+                &result,
+                &args,
+                config,
+                &mp,
+                &spinner_style,
+            ).await?;
+
+            println!();
+            println!("{}", style("Publish Summary:").bold());
+            println!("  {} Published: {}", style("✓").green(), publish_result.published);
+            if publish_result.skipped > 0 {
+                println!("  {} Skipped:   {}", style("→").yellow(), publish_result.skipped);
+            }
+            if publish_result.failed > 0 {
+                println!("  {} Failed:    {}", style("✗").red(), publish_result.failed);
+            }
+            println!("  {} Bytes:     {}", style("→").cyan(), format_size(publish_result.bytes_published));
+        }
     } else {
         println!();
         println!("{}", style("Dry run - no files written").yellow());
@@ -203,7 +249,7 @@ pub async fn execute(args: ImportArgs, config: &CadiConfig) -> Result<()> {
     println!("{}", style("Next steps:").bold());
     println!("  {} View chunks:    cadi query --local", style("1.").cyan());
     println!("  {} Build project:  cadi build", style("2.").cyan());
-    if !args.no_publish {
+    if !args.no_publish && !args.publish {
         println!("  {} Publish:        cadi publish", style("3.").cyan());
     }
     println!();
@@ -389,6 +435,129 @@ fn save_chunks(result: &ImportResult, output_dir: &Path, _config: &CadiConfig) -
     std::fs::write(&summary_file, summary_json)?;
 
     Ok(())
+}
+
+/// Statistics from publishing
+struct PublishStats {
+    published: usize,
+    skipped: usize,
+    failed: usize,
+    bytes_published: usize,
+}
+
+/// Publish chunks to a registry
+async fn publish_chunks(
+    result: &ImportResult,
+    args: &ImportArgs,
+    config: &CadiConfig,
+    mp: &MultiProgress,
+    _spinner_style: &ProgressStyle,
+) -> Result<PublishStats> {
+    let registry_url = args.registry.clone()
+        .or_else(|| Some(config.registry.url.clone()))
+        .unwrap_or_else(|| "https://registry.cadi.dev".to_string());
+
+    println!();
+    println!("{}", style("Publishing to Registry").bold().underlined());
+    println!("  {} Registry: {}", style("→").cyan(), &registry_url);
+    println!();
+
+    let registry_config = ClientRegistryConfig {
+        url: registry_url.clone(),
+        token: args.auth_token.clone(),
+        max_concurrent: args.concurrency,
+        ..Default::default()
+    };
+
+    let client = RegistryClient::new(registry_config)
+        .context("Failed to create registry client")?;
+
+    // Check registry health
+    let health = client.health().await;
+    if let Ok(status) = &health {
+        if !status.healthy {
+            println!("{}", style("⚠ Registry may be unhealthy").yellow());
+        }
+    }
+
+    let mut stats = PublishStats {
+        published: 0,
+        skipped: 0,
+        failed: 0,
+        bytes_published: 0,
+    };
+
+    // Combine all chunks
+    let all_chunks: Vec<&AtomicChunk> = result.chunks.iter()
+        .chain(result.compositions.iter())
+        .collect();
+
+    let total = all_chunks.len();
+    let progress = mp.add(ProgressBar::new(total as u64));
+    progress.set_style(
+        ProgressStyle::default_bar()
+            .template("{spinner:.green} [{bar:40.cyan/blue}] {pos}/{len} {msg}")
+            .unwrap()
+            .progress_chars("█▓░"),
+    );
+
+    for chunk in all_chunks {
+        progress.set_message(format!("Publishing {}", short_id(&chunk.chunk_id)));
+
+        // Check if exists (skip if configured)
+        if args.skip_existing {
+            match client.chunk_exists(&chunk.chunk_id).await {
+                Ok(true) => {
+                    stats.skipped += 1;
+                    progress.inc(1);
+                    continue;
+                }
+                Ok(false) => {}
+                Err(_) => {} // Try to publish anyway
+            }
+        }
+
+        // Serialize chunk to JSON
+        let data = serde_json::to_vec(chunk)?;
+        let size = data.len();
+
+        // Publish
+        match client.publish_chunk(&chunk.chunk_id, &data).await {
+            Ok(_) => {
+                stats.published += 1;
+                stats.bytes_published += size;
+            }
+            Err(e) => {
+                if args.verbose {
+                    println!("{} {} {}", 
+                        style("✗").red(), 
+                        short_id(&chunk.chunk_id),
+                        style(e.to_string()).dim()
+                    );
+                }
+                stats.failed += 1;
+            }
+        }
+
+        progress.inc(1);
+    }
+
+    progress.finish_with_message(format!(
+        "{} Published {} chunks",
+        style("✓").green(),
+        stats.published
+    ));
+
+    Ok(stats)
+}
+
+/// Get short form of chunk ID
+fn short_id(chunk_id: &str) -> String {
+    chunk_id
+        .trim_start_matches("chunk:sha256:")
+        .chars()
+        .take(12)
+        .collect()
 }
 
 /// Create a CADI manifest file

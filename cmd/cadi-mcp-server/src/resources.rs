@@ -1,4 +1,7 @@
 //! MCP Resources for CADI
+//!
+//! Resources provide context and documentation to AI agents.
+//! The usage guide explains how to use CADI to save tokens.
 
 use crate::protocol::ResourceDefinition;
 use serde_json::{json, Value};
@@ -6,6 +9,18 @@ use serde_json::{json, Value};
 /// Get all available resources
 pub fn get_resources() -> Vec<ResourceDefinition> {
     vec![
+        ResourceDefinition {
+            uri: "cadi://guide".to_string(),
+            name: "CADI Usage Guide".to_string(),
+            description: "⚡ READ THIS FIRST - How to use CADI to save tokens and reuse code".to_string(),
+            mime_type: "text/markdown".to_string(),
+        },
+        ResourceDefinition {
+            uri: "cadi://aliases".to_string(),
+            name: "Available Aliases".to_string(),
+            description: "List of all cached chunk aliases - use instead of reading files".to_string(),
+            mime_type: "application/json".to_string(),
+        },
         ResourceDefinition {
             uri: "cadi://config".to_string(),
             name: "CADI Configuration".to_string(),
@@ -38,6 +53,8 @@ pub async fn read_resource(
     uri: &str,
 ) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
     match uri {
+        "cadi://guide" => read_usage_guide().await,
+        "cadi://aliases" => read_aliases().await,
         "cadi://config" => read_config().await,
         "cadi://cache/stats" => read_cache_stats().await,
         "cadi://registries" => read_registries().await,
@@ -52,6 +69,142 @@ pub async fn read_resource(
             }
         }
     }
+}
+
+async fn read_usage_guide() -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+    let guide = r#"# CADI Usage Guide for AI Agents
+
+## ⚡ TOKEN SAVING PRIORITY
+
+CADI (Content-Addressed Development Interface) helps you **save tokens** by:
+1. **Reusing existing code chunks** instead of regenerating code
+2. **Using compact aliases** instead of full file paths
+3. **Searching before coding** to find existing solutions
+
+## 🎯 CADI-FIRST WORKFLOW (Recommended)
+
+Before writing ANY code, follow this workflow:
+
+### Step 1: Search CADI First
+```
+cadi_search(query: "what you need")
+```
+This searches all registries for existing chunks. **Costs ~50 tokens vs 500+ to write code.**
+
+### Step 2: Check Local Aliases
+```
+cadi_resolve_alias(alias: "namespace/component")
+```
+If you've imported projects before, chunks are cached with aliases.
+
+### Step 3: Import Existing Projects
+```
+cadi_import(path: "./project", namespace: "myproject")
+```
+Analyzes and chunks a codebase. **Do this once, reuse forever.**
+
+### Step 4: Only Write New Code If Needed
+If CADI has no solution, then write new code. But **import it after** so it's reusable:
+```
+cadi_import(path: "./new-code", publish: true)
+```
+
+## 📊 TOKEN COST COMPARISON
+
+| Action | Tokens | Notes |
+|--------|--------|-------|
+| cadi_search | ~50 | Check for existing solution |
+| cadi_resolve_alias | ~30 | Get chunk by alias |
+| cadi_get_chunk | ~100 | Retrieve full chunk |
+| Writing new code | 500-5000 | Expensive! Avoid if possible |
+| Reading large files | 1000+ | Use CADI chunks instead |
+
+## 🔧 TOOL QUICK REFERENCE
+
+### Search & Discover
+- `cadi_search` - Find chunks by keyword/concept
+- `cadi_suggest` - Get AI suggestions for a task
+- `cadi_resolve_alias` - Look up chunk by alias
+
+### Import & Publish  
+- `cadi_import` - Import any codebase (analyze, chunk, alias)
+- `cadi_publish` - Publish chunks to registry
+
+### Build & Verify
+- `cadi_build` - Build from manifest
+- `cadi_plan` - Show build plan
+- `cadi_verify` - Verify chunk integrity
+- `cadi_explain` - Explain what a chunk does
+
+### Retrieve
+- `cadi_get_chunk` - Get chunk content by ID
+- `cadi_scaffold` - Generate project from manifest
+
+## 💡 BEST PRACTICES
+
+1. **Always search before coding** - Someone may have solved this
+2. **Import projects early** - Makes code reusable via aliases
+3. **Use aliases, not file paths** - `myproject/utils/logger` vs full path
+4. **Publish useful code** - Share solutions to the registry
+5. **Prefer small chunks** - Atomic, reusable units
+
+## 🚫 ANTI-PATTERNS (Waste Tokens)
+
+- ❌ Writing code without searching CADI first
+- ❌ Reading entire files when you need one function
+- ❌ Re-implementing common utilities
+- ❌ Not importing projects you're working on
+
+## 📦 CHUNK GRANULARITY
+
+CADI chunks code at these levels:
+- **Function** - Individual functions (most reusable)
+- **Type** - Structs, classes, enums
+- **Module** - Logical groupings
+- **Package** - Full libraries
+- **Project** - Entire applications
+
+Prefer smaller chunks for maximum reuse.
+"#;
+
+    Ok(vec![json!({
+        "uri": "cadi://guide",
+        "mimeType": "text/markdown",
+        "text": guide
+    })])
+}
+
+async fn read_aliases() -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+    let cache_dir = dirs::cache_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("dev.cadi.cadi")
+        .join("chunks");
+    
+    let registry_file = cache_dir.join("aliases.json");
+    
+    if let Ok(content) = std::fs::read_to_string(&registry_file) {
+        if let Ok(registry) = serde_json::from_str::<Value>(&content) {
+            if let Some(aliases) = registry.get("aliases").and_then(|a| a.as_object()) {
+                let alias_list: Vec<_> = aliases.keys().cloned().collect();
+                let summary = json!({
+                    "total_aliases": alias_list.len(),
+                    "aliases": alias_list,
+                    "usage": "Use cadi_resolve_alias(alias) to get chunk ID, then cadi_get_chunk to retrieve"
+                });
+                return Ok(vec![json!({
+                    "uri": "cadi://aliases",
+                    "mimeType": "application/json",
+                    "text": serde_json::to_string_pretty(&summary)?
+                })]);
+            }
+        }
+    }
+    
+    Ok(vec![json!({
+        "uri": "cadi://aliases",
+        "mimeType": "application/json",
+        "text": json!({"total_aliases": 0, "aliases": [], "hint": "Run cadi_import to populate aliases"}).to_string()
+    })])
 }
 
 async fn read_config() -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {

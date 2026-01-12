@@ -3,10 +3,13 @@
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, Write};
 
+use crate::prompts::PromptDefinition;
+
 /// MCP Server
 pub struct McpServer {
     tools: Vec<ToolDefinition>,
     resources: Vec<ResourceDefinition>,
+    prompts: Vec<PromptDefinition>,
 }
 
 impl McpServer {
@@ -14,6 +17,7 @@ impl McpServer {
         Self {
             tools: crate::tools::get_tools(),
             resources: crate::resources::get_resources(),
+            prompts: crate::prompts::get_prompts(),
         }
     }
 
@@ -58,6 +62,8 @@ impl McpServer {
             "tools/call" => self.handle_call_tool(request.id, request.params).await,
             "resources/list" => self.handle_list_resources(request.id),
             "resources/read" => self.handle_read_resource(request.id, request.params).await,
+            "prompts/list" => self.handle_list_prompts(request.id),
+            "prompts/get" => self.handle_get_prompt(request.id, request.params),
             _ => JsonRpcResponse::error(
                 request.id,
                 -32601,
@@ -71,12 +77,14 @@ impl McpServer {
             "protocolVersion": "2024-11-05",
             "capabilities": {
                 "tools": {},
-                "resources": {}
+                "resources": {},
+                "prompts": {}
             },
             "serverInfo": {
                 "name": "cadi-mcp-server",
                 "version": env!("CARGO_PKG_VERSION")
-            }
+            },
+            "instructions": "⚡ CADI saves tokens! Before writing code, ALWAYS: 1) cadi_search for existing solutions, 2) cadi_resolve_alias for cached code, 3) Only write new code if nothing found. Read cadi://guide for full workflow."
         }))
     }
 
@@ -164,6 +172,46 @@ impl McpServer {
                 "contents": contents
             })),
             Err(e) => JsonRpcResponse::error(id, -32603, e.to_string()),
+        }
+    }
+
+    fn handle_list_prompts(&self, id: Option<serde_json::Value>) -> JsonRpcResponse {
+        let prompts: Vec<_> = self.prompts.iter()
+            .map(|p| serde_json::json!({
+                "name": p.name,
+                "description": p.description,
+                "arguments": p.arguments
+            }))
+            .collect();
+
+        JsonRpcResponse::success(id, serde_json::json!({
+            "prompts": prompts
+        }))
+    }
+
+    fn handle_get_prompt(
+        &self,
+        id: Option<serde_json::Value>,
+        params: Option<serde_json::Value>,
+    ) -> JsonRpcResponse {
+        let params = match params {
+            Some(p) => p,
+            None => return JsonRpcResponse::error(id, -32602, "Missing params".to_string()),
+        };
+
+        let name = params.get("name")
+            .and_then(|n| n.as_str())
+            .unwrap_or("");
+
+        let arguments = params.get("arguments")
+            .cloned()
+            .unwrap_or(serde_json::Value::Object(Default::default()));
+
+        match crate::prompts::get_prompt(name, &arguments) {
+            Ok(messages) => JsonRpcResponse::success(id, serde_json::json!({
+                "messages": messages
+            })),
+            Err(e) => JsonRpcResponse::error(id, -32602, e),
         }
     }
 }

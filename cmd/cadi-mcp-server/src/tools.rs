@@ -1,4 +1,7 @@
 //! MCP Tools for CADI
+//!
+//! Tools are designed to SAVE TOKENS by reusing existing code.
+//! Always search before writing new code!
 
 use crate::protocol::ToolDefinition;
 use serde_json::{json, Value};
@@ -9,24 +12,25 @@ use std::collections::HashMap;
 /// Get all available tools
 pub fn get_tools() -> Vec<ToolDefinition> {
     vec![
+        // === SEARCH & DISCOVER (Use First!) ===
         ToolDefinition {
             name: "cadi_search".to_string(),
-            description: "Search for CADI chunks by concept, language, or keyword".to_string(),
+            description: "⚡ SEARCH FIRST! Find existing code chunks (~50 tokens vs 500+ to write new). Search by keyword, concept, or language.".to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
                     "query": {
                         "type": "string",
-                        "description": "Search query text"
+                        "description": "Search query - what functionality do you need?"
                     },
                     "language": {
                         "type": "string",
-                        "description": "Filter by programming language"
+                        "description": "Filter by programming language (rust, python, typescript, etc.)"
                     },
                     "concepts": {
                         "type": "array",
                         "items": { "type": "string" },
-                        "description": "Filter by concepts"
+                        "description": "Filter by concepts (e.g., ['http', 'server'])"
                     },
                     "limit": {
                         "type": "integer",
@@ -38,8 +42,46 @@ pub fn get_tools() -> Vec<ToolDefinition> {
             }),
         },
         ToolDefinition {
+            name: "cadi_resolve_alias".to_string(),
+            description: "⚡ FAST LOOKUP (~30 tokens). Resolve a human-readable alias to chunk ID. Use for known chunks like 'myproject/utils/logger'.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "alias": {
+                        "type": "string",
+                        "description": "The alias path (e.g., 'namespace/component/name')"
+                    }
+                },
+                "required": ["alias"]
+            }),
+        },
+        ToolDefinition {
+            name: "cadi_suggest".to_string(),
+            description: "Get AI-powered suggestions for chunks that might help with a task. Good when you're not sure what to search for.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "task": {
+                        "type": "string",
+                        "description": "Description of what you're trying to accomplish"
+                    },
+                    "context": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "Current chunk IDs in context"
+                    },
+                    "language": {
+                        "type": "string",
+                        "description": "Preferred programming language"
+                    }
+                },
+                "required": ["task"]
+            }),
+        },
+        // === RETRIEVE ===
+        ToolDefinition {
             name: "cadi_get_chunk".to_string(),
-            description: "Retrieve a CADI chunk by its ID".to_string(),
+            description: "Retrieve chunk content by ID (~100 tokens). Use after search/resolve to get the actual code.".to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -56,9 +98,82 @@ pub fn get_tools() -> Vec<ToolDefinition> {
                 "required": ["chunk_id"]
             }),
         },
+        // === IMPORT & PUBLISH ===
+        ToolDefinition {
+            name: "cadi_import".to_string(),
+            description: "⚡ IMPORT PROJECT ONCE, REUSE FOREVER. Analyzes codebase, creates chunks with aliases. Do this first with any new project!".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Path to the project directory to import"
+                    },
+                    "namespace": {
+                        "type": "string",
+                        "description": "Namespace for aliases (e.g., 'my-org')"
+                    },
+                    "strategy": {
+                        "type": "string",
+                        "enum": ["auto", "atomic", "semantic", "hierarchical"],
+                        "description": "Chunking strategy",
+                        "default": "auto"
+                    },
+                    "atomic": {
+                        "type": "boolean",
+                        "description": "Prefer atomic chunks (don't split files)",
+                        "default": false
+                    },
+                    "publish": {
+                        "type": "boolean",
+                        "description": "Publish chunks to registry after import",
+                        "default": false
+                    },
+                    "registry": {
+                        "type": "string",
+                        "description": "Registry URL for publishing"
+                    }
+                },
+                "required": ["path"]
+            }),
+        },
+        ToolDefinition {
+            name: "cadi_publish".to_string(),
+            description: "Publish chunks to registry for team sharing. Share solutions so others don't rewrite them.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "chunks": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "List of chunk IDs to publish"
+                    },
+                    "manifest": {
+                        "type": "string",
+                        "description": "Path to manifest file (publish all chunks in manifest)"
+                    },
+                    "registry": {
+                        "type": "string",
+                        "description": "Registry URL",
+                        "default": "https://registry.cadi.dev"
+                    },
+                    "namespace": {
+                        "type": "string",
+                        "description": "Namespace for publishing"
+                    },
+                    "skip_existing": {
+                        "type": "boolean",
+                        "description": "Skip chunks that already exist",
+                        "default": true
+                    }
+                },
+                "required": []
+            }),
+        },
+        // === BUILD & VERIFY ===
         ToolDefinition {
             name: "cadi_build".to_string(),
-            description: "Build a CADI manifest for a specific target".to_string(),
+            description: "Build a CADI manifest for a specific target. Assembles chunks into runnable project.".to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -118,7 +233,7 @@ pub fn get_tools() -> Vec<ToolDefinition> {
         },
         ToolDefinition {
             name: "cadi_explain".to_string(),
-            description: "Explain a chunk's purpose, dependencies, and lineage".to_string(),
+            description: "Explain a chunk's purpose, dependencies, and lineage. Useful for understanding what code does.".to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -136,31 +251,8 @@ pub fn get_tools() -> Vec<ToolDefinition> {
             }),
         },
         ToolDefinition {
-            name: "cadi_suggest".to_string(),
-            description: "Suggest chunks that might be useful for a task".to_string(),
-            input_schema: json!({
-                "type": "object",
-                "properties": {
-                    "task": {
-                        "type": "string",
-                        "description": "Description of what you're trying to accomplish"
-                    },
-                    "context": {
-                        "type": "array",
-                        "items": { "type": "string" },
-                        "description": "Current chunk IDs in context"
-                    },
-                    "language": {
-                        "type": "string",
-                        "description": "Preferred programming language"
-                    }
-                },
-                "required": ["task"]
-            }),
-        },
-        ToolDefinition {
             name: "cadi_scaffold".to_string(),
-            description: "Scaffold a project directory structure from a CADI manifest".to_string(),
+            description: "Scaffold a project directory structure from a CADI manifest. Generate full project from chunks.".to_string(),
             input_schema: json!({
                 "type": "object",
                 "properties": {
@@ -201,6 +293,9 @@ pub async fn call_tool(
         "cadi_explain" => call_explain(arguments).await,
         "cadi_suggest" => call_suggest(arguments).await,
         "cadi_scaffold" => call_scaffold(arguments).await,
+        "cadi_import" => call_import(arguments).await,
+        "cadi_publish" => call_publish(arguments).await,
+        "cadi_resolve_alias" => call_resolve_alias(arguments).await,
         _ => Err(format!("Unknown tool: {}", name).into()),
     }
 }
@@ -458,5 +553,326 @@ async fn call_scaffold(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Er
     }
     responses.push(json!({"type": "text", "text": "\n✓ Scaffolding complete!"}));
 
+    Ok(responses)
+}
+
+use cadi_core::{ProjectAnalyzer, ProjectAnalyzerConfig, SmartChunkerConfig};
+use cadi_registry::{RegistryClient, RegistryConfig};
+
+async fn call_import(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+    let path_str = args.get("path").and_then(|v| v.as_str()).unwrap_or(".");
+    let namespace = args.get("namespace").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let atomic = args.get("atomic").and_then(|v| v.as_bool()).unwrap_or(false);
+    let publish = args.get("publish").and_then(|v| v.as_bool()).unwrap_or(false);
+    let registry_url = args.get("registry").and_then(|v| v.as_str())
+        .unwrap_or("https://registry.cadi.dev").to_string();
+
+    let mut responses = Vec::new();
+    let path = std::path::PathBuf::from(path_str);
+    
+    if !path.exists() {
+        return Ok(vec![json!({"type": "text", "text": format!("✗ Path not found: {}", path_str)})]);
+    }
+
+    let path = match path.canonicalize() {
+        Ok(p) => p,
+        Err(e) => return Ok(vec![json!({"type": "text", "text": format!("✗ Failed to resolve path: {}", e)})]),
+    };
+
+    responses.push(json!({"type": "text", "text": format!("📦 Importing project: {}", path.display())}));
+
+    // Configure the analyzer
+    let chunker_config = SmartChunkerConfig {
+        prefer_atomic: atomic,
+        namespace: namespace.clone(),
+        ..Default::default()
+    };
+
+    let analyzer_config = ProjectAnalyzerConfig {
+        chunker_config,
+        detect_compositions: true,
+        namespace: namespace.clone(),
+        ..Default::default()
+    };
+
+    let analyzer = ProjectAnalyzer::new(analyzer_config);
+
+    // Run the import
+    match analyzer.import_project(&path) {
+        Ok(result) => {
+            responses.push(json!({"type": "text", "text": format!("✓ Analysis complete\n")}));
+            responses.push(json!({"type": "text", "text": format!(
+                "Project: {}\nType: {}\nFiles: {}\nLines: {}\n",
+                result.summary.project_name,
+                result.summary.project_type,
+                result.summary.total_files,
+                result.summary.total_lines
+            )}));
+            responses.push(json!({"type": "text", "text": format!(
+                "Chunks Created:\n  • Atomic: {}\n  • Compositions: {}\n  • Aliases: {}\n",
+                result.summary.atomic_chunks,
+                result.summary.composition_chunks,
+                result.summary.aliases_created
+            )}));
+
+            // Save chunks and aliases to cache
+            let cache_dir = dirs::cache_dir()
+                .unwrap_or_else(|| std::path::PathBuf::from("."))
+                .join("dev.cadi.cadi")
+                .join("chunks");
+            
+            if let Err(e) = std::fs::create_dir_all(&cache_dir) {
+                responses.push(json!({"type": "text", "text": format!("⚠ Failed to create cache dir: {}", e)}));
+            } else {
+                // Save all chunks
+                let all_chunks: Vec<_> = result.chunks.iter()
+                    .chain(result.compositions.iter())
+                    .collect();
+                
+                for chunk in &all_chunks {
+                    let hash = chunk.chunk_id.trim_start_matches("chunk:sha256:");
+                    let chunk_file = cache_dir.join(format!("{}.json", &hash[..std::cmp::min(16, hash.len())]));
+                    if let Ok(json) = serde_json::to_string_pretty(chunk) {
+                        let _ = std::fs::write(&chunk_file, json);
+                    }
+                }
+
+                // Save alias registry
+                let registry_file = cache_dir.join("aliases.json");
+                if let Ok(registry_json) = serde_json::to_string_pretty(&result.alias_registry) {
+                    let _ = std::fs::write(&registry_file, registry_json);
+                }
+
+                responses.push(json!({"type": "text", "text": format!("💾 Saved {} chunks to cache", all_chunks.len())}));
+            }
+
+            // Show sample chunks
+            if !result.chunks.is_empty() {
+                responses.push(json!({"type": "text", "text": "\nSample Chunks:"}));
+                for chunk in result.chunks.iter().take(5) {
+                    let alias = chunk.primary_alias()
+                        .map(|a| a.full_path())
+                        .unwrap_or_else(|| chunk.name.clone());
+                    responses.push(json!({"type": "text", "text": format!("  • {} [{}B]", alias, chunk.size)}));
+                }
+                if result.chunks.len() > 5 {
+                    responses.push(json!({"type": "text", "text": format!("  ... and {} more", result.chunks.len() - 5)}));
+                }
+            }
+
+            // Publish if requested
+            if publish {
+                responses.push(json!({"type": "text", "text": format!("\n📤 Publishing to {}", registry_url)}));
+                
+                let registry_config = RegistryConfig {
+                    url: registry_url.clone(),
+                    token: None,
+                    ..Default::default()
+                };
+
+                match RegistryClient::new(registry_config) {
+                    Ok(client) => {
+                        let mut published = 0;
+                        let mut skipped = 0;
+                        let mut failed = 0;
+
+                        let all_chunks: Vec<_> = result.chunks.iter()
+                            .chain(result.compositions.iter())
+                            .collect();
+
+                        for chunk in &all_chunks {
+                            // Check if exists
+                            match client.chunk_exists(&chunk.chunk_id).await {
+                                Ok(true) => {
+                                    skipped += 1;
+                                    continue;
+                                }
+                                _ => {}
+                            }
+
+                            // Publish
+                            let data = match serde_json::to_vec(chunk) {
+                                Ok(d) => d,
+                                Err(_) => {
+                                    failed += 1;
+                                    continue;
+                                }
+                            };
+
+                            match client.publish_chunk(&chunk.chunk_id, &data).await {
+                                Ok(_) => published += 1,
+                                Err(_) => failed += 1,
+                            }
+                        }
+
+                        responses.push(json!({"type": "text", "text": format!(
+                            "\n✓ Published: {}\n→ Skipped: {}\n✗ Failed: {}",
+                            published, skipped, failed
+                        )}));
+                    }
+                    Err(e) => {
+                        responses.push(json!({"type": "text", "text": format!("✗ Failed to create registry client: {}", e)}));
+                    }
+                }
+            }
+
+            // Save manifest path hint
+            let manifest_name = format!("{}.cadi.yaml", 
+                result.summary.project_name.to_lowercase().replace(' ', "-"));
+            responses.push(json!({"type": "text", "text": format!("\n💡 Manifest would be: {}", path.join(manifest_name).display())}));
+        }
+        Err(e) => {
+            responses.push(json!({"type": "text", "text": format!("✗ Import failed: {}", e)}));
+        }
+    }
+
+    Ok(responses)
+}
+
+async fn call_publish(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+    let registry_url = args.get("registry").and_then(|v| v.as_str())
+        .unwrap_or("https://registry.cadi.dev").to_string();
+    let namespace = args.get("namespace").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let skip_existing = args.get("skip_existing").and_then(|v| v.as_bool()).unwrap_or(true);
+    
+    let chunk_ids: Vec<String> = args.get("chunks")
+        .and_then(|v| v.as_array())
+        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+        .unwrap_or_default();
+    
+    let manifest_path = args.get("manifest").and_then(|v| v.as_str()).map(|s| s.to_string());
+
+    let mut responses = Vec::new();
+    responses.push(json!({"type": "text", "text": format!("📤 Publishing to registry: {}", registry_url)}));
+    if let Some(ref ns) = namespace {
+        responses.push(json!({"type": "text", "text": format!("   Namespace: {}", ns)}));
+    }
+
+    let registry_config = RegistryConfig {
+        url: registry_url.clone(),
+        token: None,
+        ..Default::default()
+    };
+
+    let client = match RegistryClient::new(registry_config) {
+        Ok(c) => c,
+        Err(e) => return Ok(vec![json!({"type": "text", "text": format!("✗ Failed to create registry client: {}", e)})]),
+    };
+
+    // Collect chunk IDs to publish
+    let mut chunks_to_publish: Vec<String> = chunk_ids;
+
+    // If manifest provided, load chunks from it
+    if let Some(manifest_path) = manifest_path {
+        let path = std::path::PathBuf::from(&manifest_path);
+        if path.exists() {
+            if let Ok(content) = std::fs::read_to_string(&path) {
+                if let Ok(manifest) = serde_yaml::from_str::<Value>(&content) {
+                    if let Some(nodes) = manifest.get("build_graph")
+                        .and_then(|bg| bg.get("nodes"))
+                        .and_then(|n| n.as_array()) 
+                    {
+                        for node in nodes {
+                            if let Some(chunk_id) = node.get("source_cadi").and_then(|v| v.as_str()) {
+                                chunks_to_publish.push(chunk_id.to_string());
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if chunks_to_publish.is_empty() {
+        return Ok(vec![json!({"type": "text", "text": "✗ No chunks to publish. Provide --chunks or --manifest"})]);
+    }
+
+    responses.push(json!({"type": "text", "text": format!("\nPublishing {} chunk(s)...\n", chunks_to_publish.len())}));
+
+    let mut published = 0;
+    let mut skipped = 0;
+    let mut failed = 0;
+
+    // Load chunks from cache and publish
+    let cache_dir = std::env::var("CADI_CACHE_DIR")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(|_| {
+            dirs::cache_dir()
+                .unwrap_or_else(|| std::path::PathBuf::from("."))
+                .join("dev.cadi.cadi")
+                .join("chunks")
+        });
+
+    for chunk_id in &chunks_to_publish {
+        // Check if exists
+        if skip_existing {
+            match client.chunk_exists(chunk_id).await {
+                Ok(true) => {
+                    skipped += 1;
+                    continue;
+                }
+                _ => {}
+            }
+        }
+
+        // Try to load chunk from cache
+        let hash = chunk_id.trim_start_matches("chunk:sha256:");
+        let chunk_file = cache_dir.join(format!("{}.json", &hash[..std::cmp::min(16, hash.len())]));
+        
+        if let Ok(data) = std::fs::read(&chunk_file) {
+            match client.publish_chunk(chunk_id, &data).await {
+                Ok(_) => published += 1,
+                Err(_) => failed += 1,
+            }
+        } else {
+            failed += 1;
+        }
+    }
+
+    responses.push(json!({"type": "text", "text": format!(
+        "✓ Published: {}\n→ Skipped: {}\n✗ Failed: {}",
+        published, skipped, failed
+    )}));
+
+    Ok(responses)
+}
+
+async fn call_resolve_alias(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+    let alias = args.get("alias").and_then(|v| v.as_str()).unwrap_or("").to_string();
+    
+    let mut responses = Vec::new();
+    responses.push(json!({"type": "text", "text": format!("🔍 Resolving alias: {}", alias)}));
+
+    // Try to load alias registry from cache
+    let cache_dir = dirs::cache_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("dev.cadi.cadi")
+        .join("chunks");
+
+    let registry_file = cache_dir.join("aliases.json");
+    
+    if let Ok(content) = std::fs::read_to_string(&registry_file) {
+        if let Ok(registry) = serde_json::from_str::<Value>(&content) {
+            // The aliases are stored as a direct map: { alias_path: chunk_id }
+            if let Some(aliases) = registry.get("aliases").and_then(|a| a.as_object()) {
+                if let Some(chunk_id) = aliases.get(&alias).and_then(|c| c.as_str()) {
+                    responses.push(json!({"type": "text", "text": format!("✓ Found: {} → {}", alias, chunk_id)}));
+                    return Ok(responses);
+                }
+                
+                // Try partial match (without namespace prefix)
+                for (path, chunk_id) in aliases {
+                    if path.ends_with(&format!("/{}", alias)) || path == &alias {
+                        if let Some(id) = chunk_id.as_str() {
+                            responses.push(json!({"type": "text", "text": format!("✓ Found: {} → {}", path, id)}));
+                            return Ok(responses);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    responses.push(json!({"type": "text", "text": format!("✗ Alias '{}' not found", alias)}));
     Ok(responses)
 }

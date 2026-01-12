@@ -1,10 +1,16 @@
 //! CADI MCP Server
 //!
 //! Model Context Protocol server for LLM integration with CADI.
+//!
+//! ## Token-Saving Features
+//! - Pre-built prompts that guide agents to use CADI-first workflow
+//! - Resources that document efficient usage patterns
+//! - Tools optimized for minimal token consumption
 
 mod protocol;
 mod tools;
 mod resources;
+mod prompts;
 
 use protocol::McpServer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
