@@ -2,6 +2,12 @@
 
 All notable changes to CADI projects are documented in this file.
 
+## [1.1.1] - 2026-01-11
+
+### Fixed
+- Fixed unused variable warnings in cadi-core and cadi-mcp-server
+- Added missing version requirement for cadi-llm dependency
+
 ## [1.0.0] - 2026-01-11
 
 ### Added
