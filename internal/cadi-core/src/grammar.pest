@@ -1,0 +1,52 @@
+WHITESPACE = _{ " " | "\t" | "\r" | "\n" }
+COMMENT = _{ "//" ~ (!"\n" ~ ANY)* | "/*" ~ (!"*/" ~ ANY)* ~ "*/" }
+
+// Identifiers
+identifier = @{ ASCII_ALPHA ~ (ASCII_ALPHANUMERIC | "_" | ".")* }
+
+// Values
+string = ${ "\"" ~ inner ~ "\"" }
+inner = @{ char* }
+char = {
+    !("\"" | "\\") ~ ANY
+    | "\\" ~ ("\"" | "\\" | "/" | "b" | "f" | "n" | "r" | "t")
+    | "\\" ~ ("u" ~ ASCII_HEX_DIGIT{4})
+}
+number = @{ "-"? ~ ASCII_DIGIT+ ~ ("." ~ ASCII_DIGIT+)? }
+boolean = { "true" | "false" }
+null_val = { "null" }
+
+value = { boolean | null_val | number | string | array | object | identifier }
+
+// Data structures
+array = { "[" ~ (value ~ (","? ~ value)*)? ~ ","? ~ "]" }
+object = { "{" ~ (pair ~ (","? ~ pair)*)? ~ ","? ~ "}" }
+pair = { identifier ~ ":" ~ value }
+
+// Methods
+method_def = { identifier ~ "(" ~ params? ~ ")" ~ "->" ~ type_name }
+params = { param ~ ("," ~ param)* }
+param = { identifier ~ ":" ~ type_name }
+type_name = { identifier ~ ("[" ~ "]" )? } 
+
+// Annotations / Tags
+// e.g. @contract { ... } or @contract_impl { ... }
+annotation = { "@" ~ identifier ~ (object | block_body) }
+// Block body is essentially an object but without the outer braces required if inside a context that implies it?
+// Actually in the spec it is always @tag { ... } or @tag.subtag { ... }
+// Wait, spec allows `@interface naming { ... }`.
+// And inside `@interface`, we have methods and contracts.
+
+// File Structure
+file = { SOI ~ (interface_def | impl_def | annotation)* ~ EOI }
+
+interface_def = { "@interface" ~ identifier ~ "{" ~ interface_content ~ "}" }
+interface_content = { (method_def | annotation)* }
+
+impl_def = { "@impl" ~ identifier ~ "{" ~ impl_content ~ "}" }
+impl_content = { (pair | annotation)* }
+
+// Generic block for nested annotations like @contract inside interface
+block_body = { "{" ~ (pair | annotation | named_block)* ~ "}" }
+
+named_block = { identifier ~ block_body }

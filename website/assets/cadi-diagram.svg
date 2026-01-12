@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 300" width="400" height="300">
+  <defs>
+    <style>
+      .node { fill: #2a2a2a; stroke: #4CAF50; stroke-width: 2; }
+      .text { fill: #e0e0e0; font-size: 12px; text-anchor: middle; }
+      .arrow { fill: #4CAF50; }
+    </style>
+  </defs>
+  
+  <!-- Source Code -->
+  <rect x="50" y="50" width="80" height="40" rx="5" class="node"/>
+  <text x="90" y="72" class="text">Source</text>
+  
+  <!-- Build Arrow -->
+  <polygon points="140,70 150,65 150,75" class="arrow"/>
+  <line x1="130" y1="70" x2="150" y2="70" stroke="#4CAF50" stroke-width="2"/>
+  
+  <!-- Binary -->
+  <rect x="160" y="50" width="80" height="40" rx="5" class="node"/>
+  <text x="200" y="72" class="text">Binary</text>
+  
+  <!-- Container Arrow -->
+  <polygon points="250,70 260,65 260,75" class="arrow"/>
+  <line x1="240" y1="70" x2="260" y2="70" stroke="#4CAF50" stroke-width="2"/>
+  
+  <!-- Container -->
+  <rect x="270" y="50" width="80" height="40" rx="5" class="node"/>
+  <text x="310" y="72" class="text">Container</text>
+  
+  <!-- Registry -->
+  <rect x="150" y="150" width="100" height="50" rx="5" class="node"/>
+  <text x="200" y="175" class="text">Registry</text>
+  
+  <!-- Arrows to Registry -->
+  <line x1="90" y1="90" x2="200" y2="150" stroke="#4CAF50" stroke-width="2"/>
+  <polygon points="195,145 200,155 205,145" class="arrow"/>
+  
+  <line x1="200" y1="90" x2="200" y2="150" stroke="#4CAF50" stroke-width="2"/>
+  <polygon points="195,145 200,155 205,145" class="arrow"/>
+  
+  <line x1="310" y1="90" x2="200" y2="150" stroke="#4CAF50" stroke-width="2"/>
+  <polygon points="205,155 200,145 195,155" class="arrow"/>
+  
+  <!-- LLM -->
+  <rect x="150" y="230" width="100" height="40" rx="5" class="node"/>
+  <text x="200" y="250" class="text">LLM via MCP</text>
+  
+  <!-- Arrow to LLM -->
+  <line x1="200" y1="200" x2="200" y2="230" stroke="#4CAF50" stroke-width="2"/>
+  <polygon points="195,225 200,235 205,225" class="arrow"/>
+</svg>

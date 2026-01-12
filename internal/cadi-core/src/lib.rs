@@ -11,3 +11,9 @@ pub use chunk::*;
 pub use manifest::*;
 pub use hash::*;
 pub use error::*;
+
+pub mod ast;
+pub mod parser;
+pub mod validator;
+
+

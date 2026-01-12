@@ -19,3 +19,5 @@ sha2.workspace = true
 uuid.workspace = true
 chrono.workspace = true
 thiserror.workspace = true
+pest = "2.7"
+pest_derive = "2.7"

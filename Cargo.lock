@@ -306,6 +306,8 @@ name = "cadi-core"
 version = "1.0.0"
 dependencies = [
  "chrono",
+ "pest",
+ "pest_derive",
  "serde",
  "serde_json",
  "sha2",

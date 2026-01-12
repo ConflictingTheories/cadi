@@ -1,0 +1,6 @@
+@interface Invalid {
+    // Missing codec in contract
+    @contract {
+        profile: "baseline"
+    }
+}

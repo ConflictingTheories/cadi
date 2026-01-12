@@ -70,6 +70,9 @@ enum Commands {
 
     /// Scrape and chunk repositories or files
     Scrape(commands::scrape::ScrapeArgs),
+
+    /// Validate a CADL file against the specification
+    Validate(commands::validate::ValidateArgs),
 }
 
 #[tokio::main]
@@ -102,5 +105,6 @@ async fn main() -> Result<()> {
         Commands::Stats(args) => commands::stats::execute(args, &config).await,
         Commands::Demo(args) => commands::demo::execute(args, &config).await,
         Commands::Scrape(args) => commands::scrape::execute(args, &config).await,
+        Commands::Validate(args) => commands::validate::execute(args, &config).await,
     }
 }

@@ -12,3 +12,5 @@ pub mod gc;
 pub mod stats;
 pub mod demo;
 pub mod scrape;
+pub mod validate;
+

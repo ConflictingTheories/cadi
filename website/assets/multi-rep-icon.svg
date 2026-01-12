@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="50" height="50">
+  <rect x="10" y="10" width="25" height="25" fill="#2a2a2a" stroke="#4CAF50" stroke-width="2"/>
+  <rect x="40" y="10" width="25" height="25" fill="#2a2a2a" stroke="#4CAF50" stroke-width="2"/>
+  <rect x="10" y="40" width="25" height="25" fill="#2a2a2a" stroke="#4CAF50" stroke-width="2"/>
+  <rect x="40" y="40" width="25" height="25" fill="#2a2a2a" stroke="#4CAF50" stroke-width="2"/>
+  <text x="22" y="27" text-anchor="middle" fill="#4CAF50" font-size="8">SRC</text>
+  <text x="52" y="27" text-anchor="middle" fill="#4CAF50" font-size="8">IR</text>
+  <text x="22" y="57" text-anchor="middle" fill="#4CAF50" font-size="8">BIN</text>
+  <text x="52" y="57" text-anchor="middle" fill="#4CAF50" font-size="8">CTR</text>
+</svg>
