@@ -1,16 +1,16 @@
 // Theme toggle: respects prefers-color-scheme, persists choice in localStorage
 (function () {
-    const root = document.documentElement;
+    const body = document.body;
     const toggleId = 'theme-toggle';
     const storageKey = 'cadi_theme';
 
     function applyTheme(theme) {
         if (theme === 'light') {
-            root.classList.add('light-theme');
-            root.setAttribute('data-theme', 'light');
+            body.classList.add('light-theme');
+            body.setAttribute('data-theme', 'light');
         } else if (theme === 'dark') {
-            root.classList.remove('light-theme');
-            root.setAttribute('data-theme', 'dark');
+            body.classList.remove('light-theme');
+            body.setAttribute('data-theme', 'dark');
         }
         const btn = document.getElementById(toggleId);
         if (btn) btn.setAttribute('aria-pressed', theme === 'light' ? 'true' : 'false');
@@ -32,7 +32,7 @@
 
     // Attach toggle handler
     function toggle() {
-        const isLight = root.classList.contains('light-theme');
+        const isLight = body.classList.contains('light-theme');
         const next = isLight ? 'dark' : 'light';
         try { localStorage.setItem(storageKey, next); } catch (e) { }
         applyTheme(next);
@@ -44,7 +44,7 @@
             btn.addEventListener('click', toggle);
             btn.addEventListener('keyup', (e) => { if (e.key === 'Enter' || e.key === ' ') toggle(); });
             btn.setAttribute('role', 'switch');
-            btn.setAttribute('aria-pressed', root.classList.contains('light-theme') ? 'true' : 'false');
+            btn.setAttribute('aria-pressed', body.classList.contains('light-theme') ? 'true' : 'false');
         }
 
         // Listen for system changes if user hasn't explicitly chosen

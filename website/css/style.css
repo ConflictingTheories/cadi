@@ -1,5 +1,5 @@
-/* Theme variables */
-:root {
+/* Theme variables scoped to docs only: docs pages must add `class="docs-root"` on <body> */
+.docs-root {
     --bg: #0a0a0a;
     --bg-2: #1a1a1a;
     --bg-gradient: linear-gradient(135deg, var(--bg) 0%, var(--bg-2) 50%, var(--bg) 100%);
@@ -13,8 +13,7 @@
     --focus-ring: rgba(129, 199, 132, 0.18);
 }
 
-/* Light theme overrides */
-.light-theme {
+.docs-root.light-theme {
     --bg: #f6f7f8;
     --bg-2: #eef1f0;
     --bg-gradient: linear-gradient(135deg, var(--bg) 0%, var(--bg-2) 50%, var(--bg) 100%);
@@ -45,8 +44,8 @@
 body {
     font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
     line-height: 1.6;
-    color: var(--text);
-    background: var(--bg-gradient);
+    color: var(--text, #e0e0e0);
+    background: var(--bg-gradient, linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%));
     background-attachment: fixed;
 }
 
@@ -119,7 +118,7 @@ header {
 
 .logo h1 {
     margin-left: 10px;
-    color: var(--accent);
+    color: var(--accent, #4CAF50);
     text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
 }
 
@@ -134,7 +133,7 @@ nav ul li {
 }
 
 nav ul li a {
-    color: var(--text);
+    color: var(--text, #e0e0e0);
     text-decoration: none;
     transition: all 0.3s ease;
     position: relative;
@@ -156,7 +155,7 @@ nav ul li a:hover::after {
 }
 
 nav ul li a:hover {
-    color: var(--accent);
+    color: var(--accent, #4CAF50);
     transform: translateY(-2px);
 }
 
@@ -199,10 +198,10 @@ nav ul li a:hover {
 }
 
 .benefit {
-    background: var(--card-bg);
+    background: var(--card-bg, rgba(42, 42, 42, 0.8));
     padding: 1rem;
     border-radius: 8px;
-    border-left: 4px solid var(--accent);
+    border-left: 4px solid var(--accent, #4CAF50);
     flex: 1;
     transition: transform 0.3s ease;
 }
@@ -226,7 +225,7 @@ nav ul li a:hover {
 .cta-button {
     display: inline-block;
     padding: 15px 30px;
-    background: linear-gradient(45deg, var(--accent), var(--accent-light));
+    background: linear-gradient(45deg, var(--accent, #4CAF50), var(--accent-light, #66BB6A));
     color: white;
     text-decoration: none;
     border-radius: 50px;
@@ -263,9 +262,9 @@ nav ul li a:hover {
 .feature {
     text-align: center;
     padding: 2rem;
-    background: var(--card-bg);
+    background: var(--card-bg, rgba(42, 42, 42, 0.8));
     border-radius: 12px;
-    border: 1px solid var(--card-border);
+    border: 1px solid var(--card-border, rgba(76, 175, 80, 0.2));
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
@@ -318,9 +317,9 @@ nav ul li a:hover {
 
 .component {
     padding: 2rem;
-    background: var(--card-bg);
+    background: var(--card-bg, rgba(42, 42, 42, 0.8));
     border-radius: 12px;
-    border: 1px solid var(--card-border);
+    border: 1px solid var(--card-border, rgba(76, 175, 80, 0.2));
     transition: all 0.3s ease;
 }
 
@@ -755,7 +754,7 @@ footer {
 }
 
 .footer-links a {
-    color: var(--accent);
+    color: var(--accent, #4CAF50);
     text-decoration: none;
     transition: all 0.3s ease;
     padding: 0.5rem 1rem;
@@ -764,10 +763,10 @@ footer {
 }
 
 .footer-links a:hover {
-    color: var(--accent-light);
+    color: var(--accent-light, #81C784);
     transform: scale(1.05);
-    background: var(--accent-weak);
-    border-color: var(--accent);
+    background: var(--accent-weak, rgba(76, 175, 80, 0.1));
+    border-color: var(--accent, #4CAF50);
 }
 
 /* Mobile Footer */
