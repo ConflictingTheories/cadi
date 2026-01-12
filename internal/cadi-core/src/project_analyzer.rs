@@ -791,7 +791,7 @@ mod tests {
         counts.insert("toml".to_string(), 2);
 
         // Without project files, uses language counts
-        let (project_type, lang) =
+        let (_project_type, lang) =
             analyzer.detect_project_type(Path::new("/fake/path"), &counts);
         assert_eq!(lang, "rust");
     }

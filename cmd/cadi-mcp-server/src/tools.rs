@@ -1086,7 +1086,7 @@ async fn call_get_dependencies(args: Value) -> Result<Vec<Value>, Box<dyn std::e
         .unwrap_or("")
         .to_string();
     
-    let depth = args.get("depth")
+    let _depth = args.get("depth")
         .and_then(|v| v.as_u64())
         .unwrap_or(1) as usize;
 

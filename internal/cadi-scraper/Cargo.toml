@@ -13,8 +13,8 @@ license.workspace = true
 readme = "README.md"
 
 [dependencies]
-cadi-core = { version = "1.1.0", path = "../cadi-core" }
-cadi-registry = { version = "1.1.0", path = "../cadi-registry" }
+cadi-core = { version = "1.1.1", path = "../cadi-core" }
+cadi-registry = { version = "1.1.1", path = "../cadi-registry" }
 
 tokio = { version = "1.35", features = ["full"] }
 reqwest = { version = "0.11", features = ["json", "gzip"] }
