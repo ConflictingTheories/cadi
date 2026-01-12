@@ -1,6 +1,6 @@
 //! Rust-specific atomizer
 
-use crate::atomizer::{AtomizerConfig, ExtractedAtom};
+use crate::atomizer::{AtomizerConfig, ExtractedAtom, AtomKind};
 use crate::error::CadiResult;
 
 /// Rust-specific atomizer with Tree-sitter support
@@ -51,22 +51,116 @@ impl RustAtomizer {
         let mut cursor = QueryCursor::new();
         
         let matches = cursor.matches(&query, tree.root_node(), source.as_bytes());
-        
+
         for m in matches {
-            for capture in m.captures {
-                let node = capture.node;
-                let name_idx = query.capture_index_for_name("fn_name")
-                    .or(query.capture_index_for_name("struct_name"))
-                    .or(query.capture_index_for_name("enum_name"))
-                    .or(query.capture_index_for_name("trait_name"));
-                
-                if capture.index == name_idx.unwrap_or(u32::MAX) {
-                    let name = node.utf8_text(source.as_bytes()).unwrap_or("unknown");
-                    // Create atom...
-                }
+            // Build a map of capture name -> node for this match
+            let mut caps: std::collections::HashMap<String, tree_sitter::Node> = std::collections::HashMap::new();
+            for cap in m.captures.iter() {
+                let name = query.capture_names()[cap.index as usize].clone();
+                caps.insert(name.to_string(), cap.node);
+            }
+
+            // Function
+            if let (Some(fn_node), Some(name_node)) = (caps.get("function"), caps.get("fn_name")) {
+                let name = name_node.utf8_text(source.as_bytes()).unwrap_or("unknown").to_string();
+                let start = fn_node.start_byte();
+                let end = fn_node.end_byte();
+                let start_point = fn_node.start_position();
+                let end_point = fn_node.end_position();
+
+                atoms.push(ExtractedAtom {
+                    name: name.clone(),
+                    kind: AtomKind::Function,
+                    source: source[start..end].to_string(),
+                    start_byte: start,
+                    end_byte: end,
+                    start_line: start_point.row + 1,
+                    end_line: end_point.row + 1,
+                    defines: vec![name],
+                    references: Vec::new(),
+                    doc_comment: None,
+                    visibility: crate::atomizer::extractor::Visibility::Public,
+                    parent: None,
+                    decorators: Vec::new(),
+                });
+            }
+
+            // Struct
+            if let (Some(struct_node), Some(name_node)) = (caps.get("struct"), caps.get("struct_name")) {
+                let name = name_node.utf8_text(source.as_bytes()).unwrap_or("unknown").to_string();
+                let start = struct_node.start_byte();
+                let end = struct_node.end_byte();
+                let start_point = struct_node.start_position();
+                let end_point = struct_node.end_position();
+
+                atoms.push(ExtractedAtom {
+                    name: name.clone(),
+                    kind: AtomKind::Struct,
+                    source: source[start..end].to_string(),
+                    start_byte: start,
+                    end_byte: end,
+                    start_line: start_point.row + 1,
+                    end_line: end_point.row + 1,
+                    defines: vec![name],
+                    references: Vec::new(),
+                    doc_comment: None,
+                    visibility: crate::atomizer::extractor::Visibility::Public,
+                    parent: None,
+                    decorators: Vec::new(),
+                });
+            }
+
+            // Enum
+            if let (Some(enum_node), Some(name_node)) = (caps.get("enum"), caps.get("enum_name")) {
+                let name = name_node.utf8_text(source.as_bytes()).unwrap_or("unknown").to_string();
+                let start = enum_node.start_byte();
+                let end = enum_node.end_byte();
+                let start_point = enum_node.start_position();
+                let end_point = enum_node.end_position();
+
+                atoms.push(ExtractedAtom {
+                    name: name.clone(),
+                    kind: AtomKind::Enum,
+                    source: source[start..end].to_string(),
+                    start_byte: start,
+                    end_byte: end,
+                    start_line: start_point.row + 1,
+                    end_line: end_point.row + 1,
+                    defines: vec![name],
+                    references: Vec::new(),
+                    doc_comment: None,
+                    visibility: crate::atomizer::extractor::Visibility::Public,
+                    parent: None,
+                    decorators: Vec::new(),
+                });
+            }
+
+            // Trait
+            if let (Some(trait_node), Some(name_node)) = (caps.get("trait"), caps.get("trait_name")) {
+                let name = name_node.utf8_text(source.as_bytes()).unwrap_or("unknown").to_string();
+                let start = trait_node.start_byte();
+                let end = trait_node.end_byte();
+                let start_point = trait_node.start_position();
+                let end_point = trait_node.end_position();
+
+                atoms.push(ExtractedAtom {
+                    name: name.clone(),
+                    kind: AtomKind::Trait,
+                    source: source[start..end].to_string(),
+                    start_byte: start,
+                    end_byte: end,
+                    start_line: start_point.row + 1,
+                    end_line: end_point.row + 1,
+                    defines: vec![name],
+                    references: Vec::new(),
+                    doc_comment: None,
+                    visibility: crate::atomizer::extractor::Visibility::Public,
+                    parent: None,
+                    decorators: Vec::new(),
+                });
             }
         }
-        
+
         Ok(atoms)
     }
     

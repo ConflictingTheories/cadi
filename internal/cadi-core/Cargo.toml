@@ -54,6 +54,6 @@ name = "ghost_import_demo"
 path = "examples/ghost_import_demo.rs"
 
 [features]
-default = []
+default = ["ast-parsing"]
 # Enable tree-sitter parsing (adds significant compile time)
 ast-parsing = []

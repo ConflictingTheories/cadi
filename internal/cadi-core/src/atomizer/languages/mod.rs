@@ -13,6 +13,8 @@ pub mod jsx;
 pub mod tsx;
 pub mod html;
 pub mod glsl;
+pub mod wgsl;
+pub mod hlsl;
 
 pub use rust::RustAtomizer;
 pub use typescript::TypeScriptAtomizer;
@@ -24,3 +26,5 @@ pub use jsx::JSXAtomizer;
 pub use tsx::TSXAtomizer;
 pub use html::HtmlAtomizer;
 pub use glsl::GlslAtomizer;
+pub use wgsl::WgslAtomizer;
+pub use hlsl::HlslAtomizer;

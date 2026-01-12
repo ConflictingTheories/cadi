@@ -163,7 +163,7 @@ fn default_true() -> bool {
 }
 
 /// Composition information - how this chunk relates to others
-#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChunkComposition {
     /// Chunks that this chunk is composed of (dependencies)
     #[serde(default)]
@@ -177,6 +177,17 @@ pub struct ChunkComposition {
     /// If composed, the strategy used
     #[serde(skip_serializing_if = "Option::is_none")]
     pub composition_strategy: Option<String>,
+}
+
+impl Default for ChunkComposition {
+    fn default() -> Self {
+        Self {
+            composed_of: Vec::new(),
+            composed_by: Vec::new(),
+            is_atomic: true,
+            composition_strategy: None,
+        }
+    }
 }
 
 /// Quality and reusability metrics
@@ -502,6 +513,9 @@ mod tests {
         .with_alias("utils/string-helpers")
         .with_granularity(ChunkGranularity::Module)
         .with_categories(vec![ChunkCategory::Utility]);
+
+        // Ensure composition defaults to atomic
+        assert!(ChunkComposition::default().is_atomic);
 
         assert!(chunk.is_atomic());
         assert_eq!(chunk.display_name(), "utils/string-helpers");

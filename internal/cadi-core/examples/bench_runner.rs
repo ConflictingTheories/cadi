@@ -18,22 +18,22 @@ fn bench(name: &str, extractor: &AtomExtractor, src: &str, iterations: usize) {
 
 fn make_large_rust() -> String {
     let snippet = "pub fn foo() { let x = 1; println!(\"{}\", x); }\n";
-    snippet.repeat(20000) // ~1M chars
+    snippet.repeat(2000) // smaller for quick runs
 }
 
 fn make_large_jsx() -> String {
     let snippet = "export function Hello() { return <div>Hello</div>; }\n";
-    snippet.repeat(200000)
+    snippet.repeat(20000)
 }
 
 fn make_large_tsx() -> String {
     let snippet = "export function Hello(): JSX.Element { return <div>Hello</div>; }\n";
-    snippet.repeat(200000)
+    snippet.repeat(20000)
 }
 
 fn make_large_html() -> String {
     let snippet = "<div>\n  <p>Some content</p>\n</div>\n";
-    snippet.repeat(200000)
+    snippet.repeat(20000)
 }
 
 fn main() {
@@ -44,7 +44,7 @@ fn main() {
     let tsx_src = make_large_tsx();
     let html_src = make_large_html();
 
-    let iterations = 5;
+    let iterations = 3;
 
     let rust_ex = AtomExtractor::new("rust", AtomizerConfig::default());
     bench("rust::extract", &rust_ex, &rust_src, iterations);
