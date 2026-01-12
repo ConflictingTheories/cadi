@@ -22,3 +22,7 @@ num_cpus = "1.16"
 tracing.workspace = true
 tracing-subscriber.workspace = true
 dirs = "5.0"
+# HTTP transport for Docker/server mode
+axum = "0.7"
+tower-http = { version = "0.5", features = ["cors", "trace"] }
+clap = { version = "4.4", features = ["derive", "env"] }

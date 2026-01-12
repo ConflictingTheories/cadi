@@ -1,7 +1,16 @@
 //! MCP Protocol implementation
 
+use axum::{
+    extract::State,
+    http::StatusCode,
+    routing::{get, post},
+    Json, Router,
+};
 use serde::{Deserialize, Serialize};
 use std::io::{BufRead, Write};
+use std::sync::Arc;
+use tower_http::cors::{Any, CorsLayer};
+use tower_http::trace::TraceLayer;
 
 use crate::prompts::PromptDefinition;
 
@@ -21,11 +30,13 @@ impl McpServer {
         }
     }
 
-    /// Run the server, reading from stdin and writing to stdout
-    pub async fn run(&self) -> Result<(), Box<dyn std::error::Error>> {
+    /// Run the server in stdio mode (for local MCP clients like Claude Desktop)
+    pub async fn run_stdio(&self) -> Result<(), Box<dyn std::error::Error>> {
         let stdin = std::io::stdin();
         let stdout = std::io::stdout();
         let mut stdout_lock = stdout.lock();
+
+        tracing::info!("Running in stdio mode - reading from stdin");
 
         for line in stdin.lock().lines() {
             let line = line?;
@@ -52,6 +63,31 @@ impl McpServer {
             stdout_lock.flush()?;
         }
 
+        Ok(())
+    }
+
+    /// Run the server in HTTP mode (for Docker/container deployment)
+    pub async fn run_http(self, bind_address: &str) -> Result<(), Box<dyn std::error::Error>> {
+        let shared_state = Arc::new(self);
+
+        let cors = CorsLayer::new()
+            .allow_origin(Any)
+            .allow_methods(Any)
+            .allow_headers(Any);
+
+        let app = Router::new()
+            .route("/health", get(health_check))
+            .route("/", post(handle_jsonrpc))
+            .route("/mcp", post(handle_jsonrpc))
+            .route("/jsonrpc", post(handle_jsonrpc))
+            .with_state(shared_state)
+            .layer(cors)
+            .layer(TraceLayer::new_for_http());
+
+        let listener = tokio::net::TcpListener::bind(bind_address).await?;
+        tracing::info!("MCP HTTP server listening on {}", bind_address);
+
+        axum::serve(listener, app).await?;
         Ok(())
     }
 
@@ -284,4 +320,22 @@ pub struct ResourceDefinition {
     pub name: String,
     pub description: String,
     pub mime_type: String,
+}
+
+// =============================================================================
+// HTTP Handlers for Docker/container deployment
+// =============================================================================
+
+/// Health check endpoint
+async fn health_check() -> (StatusCode, &'static str) {
+    (StatusCode::OK, "OK")
+}
+
+/// JSON-RPC handler for HTTP transport
+async fn handle_jsonrpc(
+    State(server): State<Arc<McpServer>>,
+    Json(request): Json<JsonRpcRequest>,
+) -> Json<JsonRpcResponse> {
+    let response = server.handle_request(request).await;
+    Json(response)
 }

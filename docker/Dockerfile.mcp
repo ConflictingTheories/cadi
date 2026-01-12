@@ -34,6 +34,7 @@ FROM debian:bookworm-slim AS runtime
 RUN apt-get update && apt-get install -y \
     ca-certificates \
     libssl3 \
+    curl \
     && rm -rf /var/lib/apt/lists/* \
     && useradd -r -s /bin/false cadi
 
@@ -45,10 +46,15 @@ USER cadi
 
 # Environment
 ENV RUST_LOG=cadi_mcp_server=info
+ENV CADI_MCP_TRANSPORT=http
 ENV CADI_MCP_BIND_ADDRESS=0.0.0.0:9090
 
 # Expose port
 EXPOSE 9090
 
-# Run server
-ENTRYPOINT ["cadi-mcp-server"]
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+    CMD curl -f http://localhost:9090/health || exit 1
+
+# Run server in HTTP mode
+ENTRYPOINT ["cadi-mcp-server", "--transport", "http"]

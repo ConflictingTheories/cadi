@@ -46,11 +46,19 @@ services:
     environment:
       - RUST_LOG=${RUST_LOG:-cadi_mcp_server=info}
       - CADI_REGISTRY_URL=http://cadi-registry:8080
+      - CADI_MCP_TRANSPORT=http
+      - CADI_MCP_BIND_ADDRESS=0.0.0.0:9090
     depends_on:
       cadi-registry:
         condition: service_healthy
     networks:
       - cadi-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9090/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
 
   # =============================================================================
   # PostgreSQL (Optional - for persistent metadata)
