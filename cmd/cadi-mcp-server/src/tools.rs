@@ -274,6 +274,82 @@ pub fn get_tools() -> Vec<ToolDefinition> {
                 "required": ["manifest"]
             }),
         },
+        // === VIRTUAL VIEWS (Phase 2) ===
+        ToolDefinition {
+            name: "cadi_view_context".to_string(),
+            description: "🎯 VIRTUAL VIEW: Assemble atoms into a coherent code context. Returns syntactically valid code with only what you need. Includes Ghost Imports automatically.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "atoms": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "List of atom/chunk IDs to include in the view"
+                    },
+                    "expand_depth": {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "How many levels of dependencies to automatically include (Ghost Imports). 0 = no expansion."
+                    },
+                    "format": {
+                        "type": "string",
+                        "enum": ["source", "minimal", "documented", "signatures"],
+                        "default": "source",
+                        "description": "Output format: source (full), minimal (no comments), documented (with docs), signatures (types only)"
+                    },
+                    "max_tokens": {
+                        "type": "integer",
+                        "default": 8000,
+                        "description": "Maximum tokens to include (truncates if exceeded)"
+                    }
+                },
+                "required": ["atoms"]
+            }),
+        },
+        ToolDefinition {
+            name: "cadi_get_dependencies".to_string(),
+            description: "Get the dependencies of a chunk (what it imports/needs). Fast O(1) lookup.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "chunk_id": {
+                        "type": "string",
+                        "description": "The chunk ID to get dependencies for"
+                    },
+                    "depth": {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Depth of dependency traversal"
+                    },
+                    "filter": {
+                        "type": "string",
+                        "enum": ["all", "imports", "types", "calls"],
+                        "default": "all",
+                        "description": "Filter by edge type"
+                    }
+                },
+                "required": ["chunk_id"]
+            }),
+        },
+        ToolDefinition {
+            name: "cadi_get_dependents".to_string(),
+            description: "Get the dependents of a chunk (what uses it). Fast O(1) lookup.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "chunk_id": {
+                        "type": "string",
+                        "description": "The chunk ID to get dependents for"
+                    },
+                    "depth": {
+                        "type": "integer",
+                        "default": 1,
+                        "description": "Depth of dependent traversal"
+                    }
+                },
+                "required": ["chunk_id"]
+            }),
+        },
     ]
 }
 
@@ -296,6 +372,10 @@ pub async fn call_tool(
         "cadi_import" => call_import(arguments).await,
         "cadi_publish" => call_publish(arguments).await,
         "cadi_resolve_alias" => call_resolve_alias(arguments).await,
+        // Phase 2: Virtual Views
+        "cadi_view_context" => call_view_context(arguments).await,
+        "cadi_get_dependencies" => call_get_dependencies(arguments).await,
+        "cadi_get_dependents" => call_get_dependents(arguments).await,
         _ => Err(format!("Unknown tool: {}", name).into()),
     }
 }
@@ -874,5 +954,238 @@ async fn call_resolve_alias(args: Value) -> Result<Vec<Value>, Box<dyn std::erro
     }
 
     responses.push(json!({"type": "text", "text": format!("✗ Alias '{}' not found", alias)}));
+    Ok(responses)
+}
+
+// ============================================================================
+// Phase 2: Virtual View Tools
+// ============================================================================
+
+async fn call_view_context(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+    let atoms: Vec<String> = args.get("atoms")
+        .and_then(|v| v.as_array())
+        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+        .unwrap_or_default();
+    
+    let expand_depth = args.get("expand_depth")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(1) as usize;
+    
+    let format = args.get("format")
+        .and_then(|v| v.as_str())
+        .unwrap_or("source");
+    
+    let max_tokens = args.get("max_tokens")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(8000) as usize;
+
+    let mut responses = Vec::new();
+    
+    if atoms.is_empty() {
+        responses.push(json!({"type": "text", "text": "✗ No atoms provided"}));
+        return Ok(responses);
+    }
+
+    responses.push(json!({"type": "text", "text": format!(
+        "🎯 Creating virtual view for {} atom(s) with expansion depth {}",
+        atoms.len(), expand_depth
+    )}));
+
+    // Load graph store
+    let cache_dir = dirs::cache_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("dev.cadi.cadi")
+        .join("graph");
+
+    match cadi_core::graph::GraphStore::open(&cache_dir) {
+        Ok(graph) => {
+            // Collect atoms and their content
+            let mut ghost_atoms: Vec<String> = Vec::new();
+            let mut included: std::collections::HashSet<String> = std::collections::HashSet::new();
+            
+            // Add requested atoms
+            for atom_id in &atoms {
+                included.insert(atom_id.clone());
+            }
+            
+            // Expand dependencies
+            let mut frontier = atoms.clone();
+            for depth in 0..expand_depth {
+                let mut next_frontier = Vec::new();
+                
+                for atom_id in &frontier {
+                    if let Ok(deps) = graph.get_dependencies(atom_id) {
+                        for (edge_type, dep_id) in deps {
+                            if edge_type.should_auto_expand() && !included.contains(&dep_id) {
+                                included.insert(dep_id.clone());
+                                ghost_atoms.push(dep_id.clone());
+                                next_frontier.push(dep_id);
+                            }
+                        }
+                    }
+                }
+                
+                frontier = next_frontier;
+                if frontier.is_empty() {
+                    break;
+                }
+            }
+            
+            // Collect content
+            let mut assembled = String::new();
+            let mut total_tokens = 0;
+            
+            for atom_id in &included {
+                if let Ok(Some(content)) = graph.get_content_str(atom_id) {
+                    let tokens = content.len() / 4;
+                    if total_tokens + tokens > max_tokens {
+                        responses.push(json!({"type": "text", "text": format!(
+                            "⚠ Truncated at {} tokens (limit: {})",
+                            total_tokens, max_tokens
+                        )}));
+                        break;
+                    }
+                    
+                    // Add separator
+                    if let Ok(Some(node)) = graph.get_node(atom_id) {
+                        let label = node.primary_alias.as_ref().unwrap_or(atom_id);
+                        assembled.push_str(&format!("// --- {} ---\n", label));
+                    }
+                    
+                    assembled.push_str(&content);
+                    assembled.push_str("\n\n");
+                    total_tokens += tokens;
+                }
+            }
+            
+            if !ghost_atoms.is_empty() {
+                responses.push(json!({"type": "text", "text": format!(
+                    "👻 Ghost imports added: {} ({})",
+                    ghost_atoms.len(),
+                    ghost_atoms.iter().take(3).cloned().collect::<Vec<_>>().join(", ")
+                )}));
+            }
+            
+            responses.push(json!({"type": "text", "text": format!(
+                "✓ Assembled {} atoms, ~{} tokens",
+                included.len(), total_tokens
+            )}));
+            
+            // Return the assembled code
+            responses.push(json!({
+                "type": "text",
+                "text": format!("```\n{}\n```", assembled)
+            }));
+        }
+        Err(e) => {
+            responses.push(json!({"type": "text", "text": format!("✗ Failed to open graph store: {}", e)}));
+            responses.push(json!({"type": "text", "text": "💡 Tip: Run 'cadi import' on a project first to populate the graph."}));
+        }
+    }
+
+    Ok(responses)
+}
+
+async fn call_get_dependencies(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+    let chunk_id = args.get("chunk_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    
+    let depth = args.get("depth")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(1) as usize;
+
+    let mut responses = Vec::new();
+    responses.push(json!({"type": "text", "text": format!("📊 Getting dependencies for: {}", chunk_id)}));
+
+    let cache_dir = dirs::cache_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("dev.cadi.cadi")
+        .join("graph");
+
+    match cadi_core::graph::GraphStore::open(&cache_dir) {
+        Ok(graph) => {
+            match graph.get_dependencies(&chunk_id) {
+                Ok(deps) => {
+                    if deps.is_empty() {
+                        responses.push(json!({"type": "text", "text": "No dependencies found."}));
+                    } else {
+                        responses.push(json!({"type": "text", "text": format!("✓ Found {} dependencies:", deps.len())}));
+                        for (edge_type, dep_id) in deps {
+                            let alias = graph.get_node(&dep_id)
+                                .ok()
+                                .flatten()
+                                .and_then(|n| n.primary_alias)
+                                .unwrap_or_default();
+                            responses.push(json!({"type": "text", "text": format!(
+                                "  • {:?}: {} {}",
+                                edge_type,
+                                dep_id,
+                                if alias.is_empty() { String::new() } else { format!("({})", alias) }
+                            )}));
+                        }
+                    }
+                }
+                Err(e) => {
+                    responses.push(json!({"type": "text", "text": format!("✗ Error: {}", e)}));
+                }
+            }
+        }
+        Err(e) => {
+            responses.push(json!({"type": "text", "text": format!("✗ Failed to open graph store: {}", e)}));
+        }
+    }
+
+    Ok(responses)
+}
+
+async fn call_get_dependents(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+    let chunk_id = args.get("chunk_id")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+
+    let mut responses = Vec::new();
+    responses.push(json!({"type": "text", "text": format!("📊 Getting dependents for: {}", chunk_id)}));
+
+    let cache_dir = dirs::cache_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("dev.cadi.cadi")
+        .join("graph");
+
+    match cadi_core::graph::GraphStore::open(&cache_dir) {
+        Ok(graph) => {
+            match graph.get_dependents(&chunk_id) {
+                Ok(deps) => {
+                    if deps.is_empty() {
+                        responses.push(json!({"type": "text", "text": "No dependents found (nothing uses this chunk)."}));
+                    } else {
+                        responses.push(json!({"type": "text", "text": format!("✓ Found {} dependents:", deps.len())}));
+                        for (edge_type, dep_id) in deps {
+                            let alias = graph.get_node(&dep_id)
+                                .ok()
+                                .flatten()
+                                .and_then(|n| n.primary_alias)
+                                .unwrap_or_default();
+                            responses.push(json!({"type": "text", "text": format!(
+                                "  • {:?}: {} {}",
+                                edge_type,
+                                dep_id,
+                                if alias.is_empty() { String::new() } else { format!("({})", alias) }
+                            )}));
+                        }
+                    }
+                }
+                Err(e) => {
+                    responses.push(json!({"type": "text", "text": format!("✗ Error: {}", e)}));
+                }
+            }
+        }
+        Err(e) => {
+            responses.push(json!({"type": "text", "text": format!("✗ Failed to open graph store: {}", e)}));
+        }
+    }
+
     Ok(responses)
 }

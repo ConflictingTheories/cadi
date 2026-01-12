@@ -189,6 +189,31 @@ lineage:
   build_receipt: string | null         # sha256 of BuildReceipt
 ```
 
+### 2.1.1 Atomic Chunk Schema 🔧
+
+`cadi-spec/atomic-chunk.schema.json`:
+
+```yaml
+cadi_type: (atomic)                        # metadata for small reusable, composable chunks
+atomic_chunk:
+  chunk_id: "chunk:sha256:<digest>"
+  name: string
+  language: string
+  content_hash: "<sha256>"
+  size: integer
+  aliases:                                  # human-readable aliases for discovery
+    - path: string
+      namespace: string | null
+      primary: boolean
+  composition:
+    composed_of: [ { chunk_id: string, alias: string | null, required: boolean } ]
+    is_atomic: boolean
+  metrics: { loc: integer, coupling: number, reusability_score: number }
+  sources: [ { file: string, start_line: integer | null, end_line: integer | null } ]
+```
+
+This schema documents small, highly-reusable code units ("atomic chunks") that can be aliased, composed into larger artifacts, and indexed for reuse.
+
 Type-specific sections (only one per chunk depending on `cadi_type`):
 
 ### 2.2 Source CADI Schema
@@ -1985,6 +2010,7 @@ The demo suite shows CADI working across multiple languages and artifact types.
   - [ ] `llm-context.schema.json`
   - [ ] `versioning.schema.json`
   - [ ] `garbage-collection.schema.json`
+  - [ ] `atomic-chunk.schema.json`  # small, reusable chunk metadata
 - [ ] Author `cadi-spec-v1.0.md` summarizing the schemas and versioning strategy.
 - [ ] Decide implementation languages:
   - [ ] Server + CLI: Go or Rust (recommend Rust for safety + WASM story).
@@ -2061,6 +2087,9 @@ The demo suite shows CADI working across multiple languages and artifact types.
   - [ ] `GET /manifests/{id}`
   - [ ] `PUT /manifests/{id}`
   - [ ] `GET /search?q=&concept=&interface=&language=&type=`
+  - [ ] `POST /plan`
+    - Body: manifest_id, target, optional environment.
+    - Returns: list of operations (fetch/build) and estimated size/time.
   - [ ] `GET /namespaces` (federation support).
   - [ ] `POST /attestations/{chunk_id}` (upload attestation).
   - [ ] `GET /attestations/{chunk_id}` (fetch attestations).
@@ -2278,91 +2307,6 @@ The demo suite shows CADI working across multiple languages and artifact types.
 - [ ] Write transformation for bundling (TS→JS + bundler).
 - [ ] Create Source CADI and corresponding manifest nodes.
 - [ ] Generate LLM context (summaries, API surface).
-
-**Web Frontend: Styled**
-
-- [ ] Implement `web/styled/` with UI components & CSS framework.
-- [ ] Factor UI components into separate chunk (Source CADI).
-- [ ] Update manifest with `web_frontend_styled` node.
-
-**Node REST Server**
-
-- [ ] Implement `backend/node-rest/` using Express/Fastify.
-- [ ] Implement endpoints from OpenAPI, connect to Postgres.
-- [ ] Create Source CADI.
-- [ ] Create container Dockerfile and build + push to OCI registry.
-- [ ] Create Container CADI referencing OCI image digest.[8][7][6]
-- [ ] Sign all artifacts with build attestations.
-
-**Node WebSocket Server**
-
-- [ ] Implement `backend/node-ws/` for WebSockets.
-- [ ] Broadcast todo events to connected clients.
-- [ ] Optional: simple pub/sub for scaling.
-- [ ] Source CADI and optional container CADI.
-  - [ ] Index referencing chunk_ids and blob hashes.
-- [ ] Implement transformation execution:
-  - [ ] Runner abstraction for steps (exec external tools, capture logs).
-  - [ ] Derive action keys (hash of inputs, tool versions, flags, environment).
-- [ ] Implement `cadi build`:
-  - [ ] Parse manifest.
-  - [ ] Resolve nodes and target definitions.
-  - [ ] For each node:
-    - [ ] Determine required representation(s).
-    - [ ] Check local cache.
-    - [ ] If not found:
-      - [ ] Check registry.
-      - [ ] If still not found, find and execute transformation chain.
-- [ ] Implement `cadi plan`:
-  - [ ] Build dry-run plan listing:
-    - [ ] Cached items.
-    - [ ] Downloads and sizes.
-    - [ ] Builds needed and estimated times.
-- [ ] Implement `cadi run` for:
-  - [ ] Node servers: spawn Node process.
-  - [ ] C servers: exec native binary.
-  - [ ] Containers: call Docker/Podman.
-  - [ ] Web apps: dev server (for dev) or static server (for prod).
-  - [ ] WASM demos: use chosen runtime.
-
-**Transformations**
-
-- [ ] TS→JS:
-  - [ ] Use `tsc` or SWC.
-  - [ ] Support dev vs prod builds.
-- [ ] C→binary.x86_64-linux:
-  - [ ] Using clang/gcc.
-- [ ] C→intermediate.wasm:
-  - [ ] Using clang/emscripten pipeline.[6][7]
-- [ ] WASM→binary.x86_64-linux:
-  - [ ] Choose one AOT tool/runtime.
-
-**Exit criteria**
-
-- A small sample manifest builds using `cadi build`, with caching working (repeat builds are fast).
-
-### Phase 3 (6–8 weeks): Todo Suite Implementation
-
-**Goals**
-
-- Implement all demo components and describe them in CADI.
-
-**Shared DB**
-
-- [ ] Implement `schema.sql` and `docker-compose.yml`.
-- [ ] Create and publish Source CADI for `db_schema`.
-
-**OpenAPI Spec**
-
-- [ ] Define `openapi.yaml` for TodoApi.
-- [ ] Create and publish Source CADI for `todo_api_spec`.
-
-**Web Frontend: Basic**
-
-- [ ] Implement `examples/todo-suite/web/basic/` React TS app.
-- [ ] Integrate with REST backend via env config.
-- [ ] Write transformation for bundling (TS→JS + bundler).
-- [ ] Create Source CADI and corresponding manifest nodes.
 
 **Web Frontend: Styled**
 

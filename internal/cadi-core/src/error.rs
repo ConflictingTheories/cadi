@@ -52,6 +52,18 @@ pub enum CadiError {
 
     #[error("Configuration error: {0}")]
     Configuration(String),
+
+    #[error("Storage error: {0}")]
+    StorageError(String),
+
+    #[error("Graph query error: {0}")]
+    GraphQueryError(String),
+
+    #[error("Atomizer error: {0}")]
+    AtomizerError(String),
+
+    #[error("Rehydration error: {0}")]
+    RehydrationError(String),
 }
 
 impl From<serde_json::Error> for CadiError {
