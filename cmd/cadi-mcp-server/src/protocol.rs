@@ -114,13 +114,14 @@ impl McpServer {
             "capabilities": {
                 "tools": {},
                 "resources": {},
-                "prompts": {}
+                "prompts": {},
+                "streaming": {}
             },
             "serverInfo": {
                 "name": "cadi-mcp-server",
                 "version": env!("CARGO_PKG_VERSION")
             },
-            "instructions": "⚡ CADI saves tokens! Before writing code, ALWAYS: 1) cadi_search for existing solutions, 2) cadi_resolve_alias for cached code, 3) Only write new code if nothing found. Read cadi://guide for full workflow."
+            "instructions": "⚡ CADI: The Build System for the Agentic Era\n\nWORKFLOW:\n1. cadi_search - Find existing atoms (~50 tokens vs 500+ to write)\n2. cadi_view_context - Get assembled code with ghost imports\n3. Only write new code if nothing found\n4. cadi_import after writing to save for reuse\n\nGhost imports automatically include type definitions so LLMs don't hallucinate!"
         }))
     }
 

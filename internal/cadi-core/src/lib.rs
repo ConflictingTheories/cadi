@@ -46,6 +46,17 @@
 //! let engine = RehydrationEngine::new(graph);
 //! let view = engine.create_view(atom_ids, ViewConfig::default()).await?;
 //! ```
+//!
+//! ## Ghost Import Resolver
+//!
+//! The `ghost` module automatically expands atom context with dependencies:
+//!
+//! ```rust,ignore
+//! use cadi_core::ghost::{GhostResolver, ExpansionPolicy};
+//!
+//! let resolver = GhostResolver::new(graph);
+//! let result = resolver.resolve(&atom_ids).await?;
+//! ```
 
 pub mod chunk;
 pub mod manifest;
@@ -78,5 +89,8 @@ pub mod atomizer;
 
 // Phase 2: Virtual view assembly (rehydration)
 pub mod rehydration;
+
+// Phase 3: Ghost Import Resolver
+pub mod ghost;
 
 

@@ -350,6 +350,38 @@ pub fn get_tools() -> Vec<ToolDefinition> {
                 "required": ["chunk_id"]
             }),
         },
+        // Phase 3: Ghost Import Resolver
+        ToolDefinition {
+            name: "cadi_expand_context".to_string(),
+            description: "👻 GHOST IMPORTS: Analyze and expand context with automatic dependency inclusion. Prevents LLM hallucinations by including necessary types.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "atoms": {
+                        "type": "array",
+                        "items": { "type": "string" },
+                        "description": "List of atom/chunk IDs to analyze"
+                    },
+                    "policy": {
+                        "type": "string",
+                        "enum": ["conservative", "default", "aggressive"],
+                        "default": "default",
+                        "description": "Expansion policy (conservative=minimal, default=balanced, aggressive=comprehensive)"
+                    },
+                    "max_atoms": {
+                        "type": "integer",
+                        "description": "Maximum atoms to include",
+                        "default": 20
+                    },
+                    "max_tokens": {
+                        "type": "integer",
+                        "description": "Maximum tokens to include",
+                        "default": 4000
+                    }
+                },
+                "required": ["atoms"]
+            }),
+        },
     ]
 }
 
@@ -376,6 +408,8 @@ pub async fn call_tool(
         "cadi_view_context" => call_view_context(arguments).await,
         "cadi_get_dependencies" => call_get_dependencies(arguments).await,
         "cadi_get_dependents" => call_get_dependents(arguments).await,
+        // Phase 3: Ghost Import Resolver
+        "cadi_expand_context" => call_expand_context(arguments).await,
         _ => Err(format!("Unknown tool: {}", name).into()),
     }
 }
@@ -1178,6 +1212,103 @@ async fn call_get_dependents(args: Value) -> Result<Vec<Value>, Box<dyn std::err
         }
         Err(e) => {
             responses.push(json!({"type": "text", "text": format!("✗ Failed to open graph store: {}", e)}));
+        }
+    }
+
+    Ok(responses)
+}
+async fn call_expand_context(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+    let atoms: Vec<String> = args.get("atoms")
+        .and_then(|v| v.as_array())
+        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
+        .unwrap_or_default();
+
+    let policy_name = args.get("policy")
+        .and_then(|v| v.as_str())
+        .unwrap_or("default");
+
+    let max_atoms = args.get("max_atoms")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(20) as usize;
+
+    let max_tokens = args.get("max_tokens")
+        .and_then(|v| v.as_u64())
+        .unwrap_or(4000) as usize;
+
+    let mut responses = Vec::new();
+
+    if atoms.is_empty() {
+        responses.push(json!({"type": "text", "text": "✗ No atoms provided"}));
+        return Ok(responses);
+    }
+
+    responses.push(json!({"type": "text", "text": format!(
+        "👻 Analyzing context expansion for {} atom(s) with {} policy",
+        atoms.len(), policy_name
+    )}));
+
+    // Load graph store
+    let cache_dir = dirs::cache_dir()
+        .unwrap_or_else(|| std::path::PathBuf::from("."))
+        .join("dev.cadi.cadi")
+        .join("graph");
+
+    match cadi_core::graph::GraphStore::open(&cache_dir) {
+        Ok(graph) => {
+            // Create ghost resolver
+            let resolver = cadi_core::ghost::GhostResolver::new(graph);
+
+            // Create policy
+            let mut policy = match policy_name {
+                "conservative" => cadi_core::ghost::ExpansionPolicy::conservative(),
+                "aggressive" => cadi_core::ghost::ExpansionPolicy::aggressive(),
+                _ => cadi_core::ghost::ExpansionPolicy::default(),
+            };
+
+            // Override limits if specified
+            policy.max_atoms = max_atoms;
+            policy.max_tokens = max_tokens;
+
+            // Resolve ghost imports
+            match resolver.resolve_with_policy(&atoms, &policy).await {
+                Ok(result) => {
+                    responses.push(json!({"type": "text", "text": format!(
+                        "✓ Context expansion complete: {} total atoms ({} ghosts)",
+                        result.atoms.len(), result.ghost_atoms.len()
+                    )}));
+
+                    if result.truncated {
+                        responses.push(json!({"type": "text", "text": "⚠ Expansion was truncated due to limits"}));
+                    }
+
+                    responses.push(json!({"type": "text", "text": format!(
+                        "📊 Token estimate: ~{} tokens",
+                        result.total_tokens
+                    )}));
+
+                    if !result.explanation.is_empty() {
+                        responses.push(json!({"type": "text", "text": format!(
+                            "🔍 Explanation:
+{}",
+                            result.explanation
+                        )}));
+                    }
+
+                    // Return the atom list for use with cadi_view_context
+                    responses.push(json!({
+                        "type": "text",
+                        "text": format!("💡 Use these atoms with cadi_view_context: {}",
+                            result.atoms.iter().take(5).cloned().collect::<Vec<_>>().join(", "))
+                    }));
+                }
+                Err(e) => {
+                    responses.push(json!({"type": "text", "text": format!("✗ Context expansion failed: {}", e)}));
+                }
+            }
+        }
+        Err(e) => {
+            responses.push(json!({"type": "text", "text": format!("✗ Failed to open graph store: {}", e)}));
+            responses.push(json!({"type": "text", "text": "💡 Tip: Run cadi import on a project first to populate the graph."}));
         }
     }
 
