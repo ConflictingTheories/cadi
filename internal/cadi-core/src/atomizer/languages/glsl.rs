@@ -1,6 +1,11 @@
 //! GLSL-specific atomizer
 
+#[cfg(feature = "ast-parsing")]
 use crate::atomizer::{AtomizerConfig, ExtractedAtom, AtomKind};
+
+#[cfg(not(feature = "ast-parsing"))]
+use crate::atomizer::{AtomizerConfig, ExtractedAtom};
+
 use crate::error::CadiResult;
 
 /// GLSL-specific atomizer with Tree-sitter support

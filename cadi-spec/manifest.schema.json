@@ -4,7 +4,12 @@
   "title": "CADI Manifest Schema",
   "description": "Schema for application manifests - build graphs describing multi-component applications",
   "type": "object",
-  "required": ["manifest_id", "manifest_version", "application", "build_graph"],
+  "required": [
+    "manifest_id",
+    "manifest_version",
+    "application",
+    "build_graph"
+  ],
   "properties": {
     "manifest_id": {
       "type": "string",
@@ -17,7 +22,9 @@
     },
     "application": {
       "type": "object",
-      "required": ["name"],
+      "required": [
+        "name"
+      ],
       "properties": {
         "name": {
           "type": "string",
@@ -36,7 +43,9 @@
         },
         "authors": {
           "type": "array",
-          "items": {"type": "string"},
+          "items": {
+            "type": "string"
+          },
           "description": "Application authors"
         },
         "license": {
@@ -52,55 +61,88 @@
     },
     "build_graph": {
       "type": "object",
-      "required": ["nodes"],
+      "required": [
+        "nodes"
+      ],
       "properties": {
         "nodes": {
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["id"],
+            "required": [
+              "id"
+            ],
             "properties": {
               "id": {
                 "type": "string",
                 "description": "Unique node identifier within the manifest"
               },
               "source_cadi": {
-                "type": ["string", "null"],
+                "type": [
+                  "string",
+                  "null"
+                ],
                 "description": "Source CADI chunk ID"
               },
               "ir_cadi": {
-                "type": ["string", "null"],
+                "type": [
+                  "string",
+                  "null"
+                ],
                 "description": "IR CADI chunk ID"
               },
               "blob_cadi": {
-                "type": ["string", "null"],
+                "type": [
+                  "string",
+                  "null"
+                ],
                 "description": "Blob CADI chunk ID"
               },
               "container_cadi": {
-                "type": ["string", "null"],
+                "type": [
+                  "string",
+                  "null"
+                ],
                 "description": "Container CADI chunk ID"
               },
               "representations": {
                 "type": "array",
                 "items": {
                   "type": "object",
-                  "required": ["form", "chunk"],
+                  "required": [
+                    "form",
+                    "chunk"
+                  ],
                   "properties": {
                     "form": {
                       "type": "string",
-                      "enum": ["source", "intermediate", "binary", "container"],
+                      "enum": [
+                        "source",
+                        "intermediate",
+                        "binary",
+                        "container"
+                      ],
                       "description": "Representation form"
                     },
                     "language": {
-                      "type": ["string", "null"],
+                      "type": [
+                        "string",
+                        "null"
+                      ],
                       "description": "Language for source representations"
                     },
                     "format": {
-                      "type": ["string", "null"],
+                      "type": [
+                        "string",
+                        "null"
+                      ],
                       "description": "Format specification"
                     },
                     "architecture": {
-                      "type": ["string", "null"],
+                      "type": [
+                        "string",
+                        "null"
+                      ],
                       "description": "Target architecture for binary representations"
                     },
                     "chunk": {
@@ -114,6 +156,39 @@
               "selection_strategy": {
                 "type": "string",
                 "description": "Strategy for selecting representations (e.g., prefer_blob_for_prod)"
+              },
+              "materialization": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "description": "Materialization preferences for this node",
+                "properties": {
+                  "preferred": {
+                    "type": "string",
+                    "enum": [
+                      "binary",
+                      "source",
+                      "ir",
+                      "embed"
+                    ],
+                    "description": "Preferred representation form for materialization"
+                  },
+                  "fallbacks": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Ordered fallback representation forms"
+                  },
+                  "transformations": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Named transforms to apply when converting representations (e.g., decompile, compile, optimize)"
+                  }
+                }
               }
             }
           },
@@ -123,7 +198,10 @@
           "type": "array",
           "items": {
             "type": "object",
-            "required": ["from", "to"],
+            "required": [
+              "from",
+              "to"
+            ],
             "properties": {
               "from": {
                 "type": "string",
@@ -139,7 +217,12 @@
               },
               "relation": {
                 "type": "string",
-                "enum": ["depends_on", "implements", "provides", "extends"],
+                "enum": [
+                  "depends_on",
+                  "implements",
+                  "provides",
+                  "extends"
+                ],
                 "default": "depends_on",
                 "description": "Type of relationship"
               }
@@ -153,7 +236,10 @@
       "type": "array",
       "items": {
         "type": "object",
-        "required": ["name", "platform"],
+        "required": [
+          "name",
+          "platform"
+        ],
         "properties": {
           "name": {
             "type": "string",
@@ -167,20 +253,32 @@
             "type": "array",
             "items": {
               "type": "object",
-              "required": ["id"],
+              "required": [
+                "id"
+              ],
               "properties": {
                 "id": {
                   "type": "string",
                   "description": "Node ID to include"
                 },
                 "require": {
-                  "type": ["array", "null"],
-                  "items": {"type": "string"},
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Required representation forms"
                 },
                 "prefer": {
-                  "type": ["array", "null"],
-                  "items": {"type": "string"},
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "items": {
+                    "type": "string"
+                  },
                   "description": "Preferred representation forms (ordered)"
                 }
               }
@@ -191,11 +289,17 @@
             "type": "object",
             "properties": {
               "format": {
-                "type": ["string", "null"],
+                "type": [
+                  "string",
+                  "null"
+                ],
                 "description": "Bundle format"
               },
               "output": {
-                "type": ["string", "null"],
+                "type": [
+                  "string",
+                  "null"
+                ],
                 "description": "Output path"
               },
               "minify": {
@@ -209,18 +313,75 @@
             "type": "object",
             "properties": {
               "target": {
-                "type": ["string", "null"],
+                "type": [
+                  "string",
+                  "null"
+                ],
                 "description": "Deployment target"
               },
               "replicas": {
-                "type": ["integer", "null"],
+                "type": [
+                  "integer",
+                  "null"
+                ],
                 "minimum": 1,
                 "description": "Number of replicas"
               },
               "environment": {
                 "type": "object",
-                "additionalProperties": {"type": "string"},
+                "additionalProperties": {
+                  "type": "string"
+                },
                 "description": "Environment variables for deployment"
+              }
+            },
+            "trust_requirements": {
+              "type": [
+                "object",
+                "null"
+              ],
+              "description": "Optional trust policy for this build target",
+              "properties": {
+                "minimum_signatures": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "default": 1
+                },
+                "required_attestation_types": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "required_signers": {
+                  "type": [
+                    "array",
+                    "null"
+                  ],
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "max_age_days": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ],
+                  "minimum": 1
+                },
+                "transitive_policy": {
+                  "type": "object",
+                  "properties": {
+                    "inherit": {
+                      "type": "boolean",
+                      "default": true
+                    },
+                    "allow_weaker": {
+                      "type": "boolean",
+                      "default": false
+                    }
+                  }
+                }
               }
             }
           }
@@ -237,9 +398,43 @@
         },
         "resolution_strategy": {
           "type": "string",
-          "enum": ["newest", "oldest", "pinned", "manual"],
+          "enum": [
+            "newest",
+            "oldest",
+            "pinned",
+            "manual"
+          ],
           "default": "newest",
           "description": "Strategy for resolving version conflicts"
+        }
+      }
+    },
+    "trust_defaults": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Default trust requirements applied to build targets",
+      "properties": {
+        "minimum_signatures": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "required_attestation_types": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "required_signers": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "max_age_days": {
+          "type": "integer",
+          "minimum": 1
         }
       }
     }

@@ -43,6 +43,7 @@ tree-sitter-css = "0.21"
 tree-sitter-go = "0.21"
 tree-sitter-glsl = "0.1"
 tree-sitter-wgsl = "0.0.6"
+tree-sitter-html = "0.20"
 
 [dev-dependencies]
 criterion = "0.5"
@@ -54,6 +55,7 @@ name = "ghost_import_demo"
 path = "examples/ghost_import_demo.rs"
 
 [features]
-default = ["ast-parsing"]
+# Do not enable heavy AST parsing by default; opt-in when needed.
+default = []
 # Enable tree-sitter parsing (adds significant compile time)
 ast-parsing = []

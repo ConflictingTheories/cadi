@@ -12,6 +12,8 @@ pub struct Manifest {
     #[serde(default)]
     pub build_targets: Vec<BuildTarget>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub trust_defaults: Option<TrustRequirements>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub dependencies: Option<DependencyConfig>,
 }
 
@@ -55,6 +57,19 @@ pub struct GraphNode {
     pub representations: Vec<Representation>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub selection_strategy: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub materialization: Option<Materialization>,
+}
+
+/// Materialization preferences for a node
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Materialization {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preferred: Option<String>,
+    #[serde(default)]
+    pub fallbacks: Vec<String>,
+    #[serde(default)]
+    pub transformations: Vec<String>,
 }
 
 /// A representation of a node
@@ -96,6 +111,37 @@ pub struct BuildTarget {
     pub bundle: Option<BundleConfig>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub deploy: Option<DeployConfig>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub trust_requirements: Option<TrustRequirements>,
+}
+
+/// Trust requirements for a build target
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TrustRequirements {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub minimum_signatures: Option<u32>,
+    #[serde(default)]
+    pub required_attestation_types: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub required_signers: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub max_age_days: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transitive_policy: Option<TransitivePolicy>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TransitivePolicy {
+    #[serde(default)]
+    pub inherit: bool,
+    #[serde(default)]
+    pub allow_weaker: bool,
+}
+
+impl Default for TransitivePolicy {
+    fn default() -> Self {
+        Self { inherit: true, allow_weaker: false }
+    }
 }
 
 /// Node configuration within a target
@@ -163,6 +209,7 @@ impl Manifest {
             },
             build_targets: Vec::new(),
             dependencies: None,
+            trust_defaults: None,
         }
     }
 

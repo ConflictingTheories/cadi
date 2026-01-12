@@ -51,7 +51,7 @@ impl BuildPlan {
             collect_steps(
                 &manifest.build_graph,
                 node_id,
-                &target_config.platform,
+                &target_config,
                 &deps,
                 &mut visited,
                 &mut steps,
@@ -99,7 +99,7 @@ fn build_dependency_graph(build_graph: &cadi_core::BuildGraph) -> HashMap<String
 fn collect_steps(
     build_graph: &cadi_core::BuildGraph,
     node_id: &str,
-    platform: &str,
+    target: &cadi_core::BuildTarget,
     deps: &HashMap<String, Vec<String>>,
     visited: &mut HashSet<String>,
     steps: &mut Vec<BuildStep>,
@@ -111,7 +111,7 @@ fn collect_steps(
     // Process dependencies first
     if let Some(node_deps) = deps.get(node_id) {
         for dep_id in node_deps {
-            collect_steps(build_graph, dep_id, platform, deps, visited, steps)?;
+            collect_steps(build_graph, dep_id, target, deps, visited, steps)?;
         }
     }
     
@@ -122,15 +122,15 @@ fn collect_steps(
         .find(|n| n.id == node_id)
         .ok_or_else(|| CadiError::BuildFailed(format!("Node '{}' not found", node_id)))?;
     
-    // Determine the best representation for this platform
-    let repr = select_representation(node, platform);
+    // Determine the best representation for this target (considers materialization and target prefers)
+    let repr = select_representation(node, target);
     
     // Create build step
     let step = BuildStep {
         name: node_id.to_string(),
         chunk_id: repr.map(|r| r.chunk.clone()),
-        transform: determine_transform(node, platform),
-        inputs: build_inputs(node, deps),
+        transform: determine_transform(repr, node, &target.platform),
+        inputs: build_inputs(node, repr, deps),
         depends_on: deps.get(node_id).cloned()
             .unwrap_or_default(),
     };
@@ -143,44 +143,80 @@ fn collect_steps(
 /// Select the best representation for a platform
 fn select_representation<'a>(
     node: &'a cadi_core::GraphNode,
-    platform: &str,
+    target: &cadi_core::BuildTarget,
 ) -> Option<&'a cadi_core::Representation> {
-    // Try to find exact platform match
+    // 1) If node has materialization preferred form, try to match it
+    if let Some(mat) = &node.materialization {
+        if let Some(pref) = &mat.preferred {
+            let mapped = map_preferred_to_form(pref);
+            if let Some(r) = node.representations.iter().find(|r| r.form == mapped) {
+                return Some(r);
+            }
+        }
+    }
+
+    // 2) If target specifies a per-node prefer list, honor it
+    if let Some(tnode) = target.nodes.iter().find(|n| n.id == node.id) {
+        if let Some(pref_list) = &tnode.prefer {
+            for p in pref_list {
+                let mapped = map_preferred_to_form(p);
+                if let Some(r) = node.representations.iter().find(|r| r.form == mapped) {
+                    return Some(r);
+                }
+            }
+        }
+    }
+
+    // 3) Try to match architecture with target.platform
     if let Some(r) = node.representations.iter().find(|r| {
-        r.architecture.as_ref().map(|a| a == platform).unwrap_or(false)
+        r.architecture.as_ref().map(|a| a == &target.platform).unwrap_or(false)
     }) {
         return Some(r);
     }
-    
-    // Fall back to any representation
+
+    // 4) Fall back to first available representation
     node.representations.first()
 }
 
+/// Map preferred materialization keywords to representation.form values
+fn map_preferred_to_form(pref: &str) -> String {
+    match pref {
+        "binary" => "binary".to_string(),
+        "source" => "source".to_string(),
+        "ir" => "intermediate".to_string(),
+        "embed" => "intermediate".to_string(),
+        other => other.to_string(),
+    }
+}
+
 /// Determine the transformation needed for a node
-fn determine_transform(node: &cadi_core::GraphNode, platform: &str) -> super::TransformType {
-    // If we have source, need to compile
-    if node.source_cadi.is_some() {
+fn determine_transform(
+    repr: Option<&cadi_core::Representation>,
+    node: &cadi_core::GraphNode,
+    platform: &str,
+) -> super::TransformType {
+    // If selected representation is source or intermediate, compile
+    if let Some(r) = repr {
+        if r.form == "source" || r.form == "intermediate" {
+            return super::TransformType::Compile {
+                target: platform.to_string(),
+            };
+        }
+        if r.form == "binary" || r.form == "container" {
+            return super::TransformType::Custom {
+                name: "fetch".to_string(),
+                args: Default::default(),
+            };
+        }
+    }
+
+    // Fallback: inspect node hints
+    if node.source_cadi.is_some() || node.ir_cadi.is_some() {
         return super::TransformType::Compile {
             target: platform.to_string(),
         };
     }
-    
-    // If we have IR, need to compile to blob
-    if node.ir_cadi.is_some() {
-        return super::TransformType::Compile {
-            target: platform.to_string(),
-        };
-    }
-    
-    // If we have container, just fetch
-    if node.container_cadi.is_some() {
-        return super::TransformType::Custom {
-            name: "fetch".to_string(),
-            args: Default::default(),
-        };
-    }
-    
-    // Default to bundle
+
     super::TransformType::Bundle {
         format: "default".to_string(),
     }
@@ -189,12 +225,20 @@ fn determine_transform(node: &cadi_core::GraphNode, platform: &str) -> super::Tr
 /// Build input list for a node
 fn build_inputs(
     node: &cadi_core::GraphNode,
+    repr: Option<&cadi_core::Representation>,
     deps: &HashMap<String, Vec<String>>,
 ) -> Vec<super::TransformInput> {
     let mut inputs = Vec::new();
     
     // Add main input
-    if let Some(ref source_id) = node.source_cadi {
+    if let Some(r) = repr {
+        inputs.push(super::TransformInput {
+            chunk_id: r.chunk.clone(),
+            data: None,
+            role: "main".to_string(),
+            path: None,
+        });
+    } else if let Some(ref source_id) = node.source_cadi {
         inputs.push(super::TransformInput {
             chunk_id: source_id.clone(),
             data: None,

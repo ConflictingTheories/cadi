@@ -1,16 +1,21 @@
 //! TSX atomizer (TypeScript + JSX)
 
+#[cfg(feature = "ast-parsing")]
 use crate::atomizer::{AtomizerConfig, ExtractedAtom, AtomKind};
+
+#[cfg(not(feature = "ast-parsing"))]
+use crate::atomizer::{AtomizerConfig, ExtractedAtom};
+
 use crate::error::CadiResult;
 
 /// TSX atomizer (uses TypeScript extractor semantics)
 pub struct TSXAtomizer {
-    config: AtomizerConfig,
+    _config: AtomizerConfig,
 }
 
 impl TSXAtomizer {
     pub fn new(config: AtomizerConfig) -> Self {
-        Self { config }
+        Self { _config: config }
     }
 
     /// Extract atoms from TSX files using Tree-sitter when available
@@ -116,7 +121,7 @@ impl TSXAtomizer {
         // If the tree-sitter based extraction produced nothing, fall back to regex extractor
         if atoms.is_empty() {
             use crate::atomizer::AtomExtractor;
-            return AtomExtractor::new("typescript", self.config.clone()).extract(source);
+                return AtomExtractor::new("typescript", self._config.clone()).extract(source);
         }
 
         Ok(atoms)
@@ -127,7 +132,7 @@ impl TSXAtomizer {
     pub fn extract(&self, source: &str) -> CadiResult<Vec<ExtractedAtom>> {
         use crate::atomizer::AtomExtractor;
         // Use typescript extractor for TSX
-        AtomExtractor::new("typescript", self.config.clone()).extract(source)
+           AtomExtractor::new("typescript", self._config.clone()).extract(source)
     }
 }
 

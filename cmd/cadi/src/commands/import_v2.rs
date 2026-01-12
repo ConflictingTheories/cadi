@@ -358,6 +358,7 @@ fn print_chunk_summary(chunk: &AtomicChunk) {
         ChunkGranularity::Module => "M",
         ChunkGranularity::Package => "P",
         ChunkGranularity::Project => "●",
+        ChunkGranularity::Import => "I",
     };
 
     let category_icon = chunk.categories.first()

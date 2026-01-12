@@ -1,6 +1,11 @@
 //! C-specific atomizer
 
+#[cfg(feature = "ast-parsing")]
 use crate::atomizer::{AtomizerConfig, ExtractedAtom, AtomKind};
+
+#[cfg(not(feature = "ast-parsing"))]
+use crate::atomizer::{AtomizerConfig, ExtractedAtom};
+
 use crate::error::CadiResult;
 
 /// C-specific atomizer with Tree-sitter support

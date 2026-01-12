@@ -15,6 +15,8 @@ use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::path::{Path, PathBuf};
 
+use crate::atomizer::{AtomExtractor, AtomizerConfig, AtomKind};
+
 /// Configuration for smart chunking
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SmartChunkerConfig {
@@ -111,7 +113,6 @@ pub enum EntityKind {
     Constant,
     Module,
     Type,
-    Test,
     Test,
     Macro,
     Import,
@@ -386,13 +387,12 @@ impl SmartChunker {
 
     fn extract_entities(&self, content: &str, language: &str) -> Vec<CodeEntity> {
         let mut entities = Vec::new();
-        let lines: Vec<&str> = content.lines().collect();
+        let _lines: Vec<&str> = content.lines().collect();
 
         match language {
-            "rust" => self.extract_rust_entities(&lines, &mut entities),
-            "typescript" | "javascript" => self.extract_ts_entities(&lines, &mut entities),
-            "python" => self.extract_python_entities(&lines, &mut entities),
-            "go" => self.extract_go_entities(&lines, &mut entities),
+            "rust" | "python" | "go" | "c" | "cpp" | "glsl" | "csharp" | "typescript" | "javascript" | "html" | "css" => {
+                self.extract_via_atomizer(content, language, &mut entities)
+            }
             _ => {}
         }
 
@@ -466,520 +466,60 @@ impl SmartChunker {
         entities
     }
 
-    fn extract_rust_entities(&self, lines: &[&str], entities: &mut Vec<CodeEntity>) {
-        let mut current_entity: Option<(String, EntityKind, usize, Visibility, Option<String>)> =
-            None;
-        let mut brace_depth = 0;
-        let mut doc_comment = String::new();
 
-        for (i, line) in lines.iter().enumerate() {
-            let trimmed = line.trim();
 
-            // Collect doc comments
-            if trimmed.starts_with("///") || trimmed.starts_with("//!") {
-                doc_comment.push_str(trimmed.trim_start_matches('/').trim());
-                doc_comment.push('\n');
-                continue;
-            }
 
-            // Detect entity starts
-            let (is_pub, rest) = if trimmed.starts_with("pub ") {
-                (true, &trimmed[4..])
-            } else {
-                (false, trimmed)
-            };
 
-            let visibility = if is_pub {
-                Visibility::Public
-            } else {
-                Visibility::Private
-            };
+    fn extract_via_atomizer(&self, content: &str, language: &str, entities: &mut Vec<CodeEntity>) {
+        let config = AtomizerConfig::default();
+        let extractor = AtomExtractor::new(language, config);
 
-            if rest.starts_with("fn ")
-                || rest.starts_with("async fn ")
-                || rest.starts_with("const fn ")
-                || rest.starts_with("unsafe fn ")
-            {
-                let is_async = rest.starts_with("async");
-                if let Some(name) = self.extract_rust_fn_name(rest) {
-                    if current_entity.is_some() {
-                        self.close_entity(current_entity.take(), i, entities);
-                    }
-                    let kind = if is_async {
-                        EntityKind::AsyncFunction
-                    } else {
-                        EntityKind::Function
-                    };
-                    let doc = if doc_comment.is_empty() {
-                        None
-                    } else {
-                        Some(doc_comment.trim().to_string())
-                    };
-                    current_entity = Some((name, kind, i + 1, visibility, doc));
-                    brace_depth = 0;
+        if let Ok(atoms) = extractor.extract(content) {
+            for atom in atoms {
+                // Skip Header atoms
+                if atom.kind == AtomKind::Header {
+                    continue;
                 }
-            } else if rest.starts_with("struct ") {
-                if let Some(name) = self.extract_rust_type_name(rest, "struct ") {
-                    if current_entity.is_some() {
-                        self.close_entity(current_entity.take(), i, entities);
-                    }
-                    let doc = if doc_comment.is_empty() {
-                        None
-                    } else {
-                        Some(doc_comment.trim().to_string())
-                    };
-                    current_entity = Some((name, EntityKind::Struct, i + 1, visibility, doc));
-                    brace_depth = 0;
-                }
-            } else if rest.starts_with("enum ") {
-                if let Some(name) = self.extract_rust_type_name(rest, "enum ") {
-                    if current_entity.is_some() {
-                        self.close_entity(current_entity.take(), i, entities);
-                    }
-                    let doc = if doc_comment.is_empty() {
-                        None
-                    } else {
-                        Some(doc_comment.trim().to_string())
-                    };
-                    current_entity = Some((name, EntityKind::Enum, i + 1, visibility, doc));
-                    brace_depth = 0;
-                }
-            } else if rest.starts_with("trait ") {
-                if let Some(name) = self.extract_rust_type_name(rest, "trait ") {
-                    if current_entity.is_some() {
-                        self.close_entity(current_entity.take(), i, entities);
-                    }
-                    let doc = if doc_comment.is_empty() {
-                        None
-                    } else {
-                        Some(doc_comment.trim().to_string())
-                    };
-                    current_entity = Some((name, EntityKind::Trait, i + 1, visibility, doc));
-                    brace_depth = 0;
-                }
-            } else if rest.starts_with("impl ") || rest.starts_with("impl<") {
-                if let Some(name) = self.extract_impl_name(rest) {
-                    if current_entity.is_some() {
-                        self.close_entity(current_entity.take(), i, entities);
-                    }
-                    let doc = if doc_comment.is_empty() {
-                        None
-                    } else {
-                        Some(doc_comment.trim().to_string())
-                    };
-                    current_entity =
-                        Some((format!("impl_{}", name), EntityKind::Module, i + 1, visibility, doc));
-                    brace_depth = 0;
-                }
-            }
 
-            // Track braces for entity end
-            brace_depth += trimmed.matches('{').count() as i32;
-            brace_depth -= trimmed.matches('}').count() as i32;
+                let kind = match atom.kind {
+                    AtomKind::Function => EntityKind::Function,
+                    AtomKind::Method => EntityKind::Method,
+                    AtomKind::Class => EntityKind::Class,
+                    AtomKind::Struct => EntityKind::Struct,
+                    AtomKind::Interface => EntityKind::Interface,
+                    AtomKind::Enum => EntityKind::Enum,
+                    AtomKind::Module => EntityKind::Module,
+                    AtomKind::Constant => EntityKind::Constant,
+                    AtomKind::Import => EntityKind::Import,
+                    // Map others as needed
+                    _ => EntityKind::Function, 
+                };
 
-            if brace_depth <= 0 && current_entity.is_some() {
-                self.close_entity(current_entity.take(), i + 1, entities);
-            }
+                let visibility = match atom.visibility {
+                    crate::atomizer::extractor::Visibility::Public => Visibility::Public,
+                    crate::atomizer::extractor::Visibility::Private => Visibility::Private,
+                    crate::atomizer::extractor::Visibility::Protected => Visibility::Internal,
+                    crate::atomizer::extractor::Visibility::Internal => Visibility::Internal,
+                };
 
-            // Clear doc comment if not immediately followed by entity
-            if !trimmed.starts_with("///")
-                && !trimmed.starts_with("//!")
-                && !trimmed.starts_with("#[")
-                && !trimmed.is_empty()
-            {
-                doc_comment.clear();
+                entities.push(CodeEntity {
+                    name: atom.name,
+                    kind,
+                    start_line: atom.start_line,
+                    end_line: atom.end_line,
+                    visibility,
+                    doc_comment: atom.doc_comment,
+                    // Map references to "imports" so they become chunk dependencies (requires)
+                    imports: atom.references, 
+                    exports: atom.defines,
+                    calls: Vec::new(), // Could also map references here, but 'imports' drives 'requires'
+                    complexity: 1,
+                });
             }
         }
-
-        // Close any remaining entity
-        if let Some(entity) = current_entity {
-            self.close_entity(Some(entity), lines.len(), entities);
-        }
     }
 
-    fn extract_rust_fn_name(&self, line: &str) -> Option<String> {
-        let rest = line
-            .trim_start_matches("async ")
-            .trim_start_matches("const ")
-            .trim_start_matches("unsafe ")
-            .trim_start_matches("fn ");
-        let name_end = rest.find('(').or_else(|| rest.find('<'))?;
-        Some(rest[..name_end].trim().to_string())
-    }
 
-    fn extract_rust_type_name(&self, line: &str, prefix: &str) -> Option<String> {
-        let rest = line.trim_start_matches(prefix);
-        let name_end = rest
-            .find(|c: char| !c.is_alphanumeric() && c != '_')
-            .unwrap_or(rest.len());
-        if name_end > 0 {
-            Some(rest[..name_end].to_string())
-        } else {
-            None
-        }
-    }
-
-    fn extract_impl_name(&self, line: &str) -> Option<String> {
-        // Handle "impl Trait for Type" and "impl Type"
-        let rest = line.trim_start_matches("impl").trim_start_matches('<');
-        // Skip generic params
-        let rest = if let Some(idx) = rest.find('>') {
-            &rest[idx + 1..]
-        } else {
-            rest
-        };
-        let rest = rest.trim();
-        
-        if let Some(idx) = rest.find(" for ") {
-            // impl Trait for Type
-            let type_name = rest[idx + 5..].split_whitespace().next()?;
-            Some(type_name.to_string())
-        } else {
-            // impl Type
-            let type_name = rest.split_whitespace().next()?;
-            Some(type_name.to_string())
-        }
-    }
-
-    fn extract_ts_entities(&self, lines: &[&str], entities: &mut Vec<CodeEntity>) {
-        let mut current_entity: Option<(String, EntityKind, usize, Visibility, Option<String>)> =
-            None;
-        let mut brace_depth = 0;
-
-        for (i, line) in lines.iter().enumerate() {
-            let trimmed = line.trim();
-
-            // Detect entity starts
-            let is_export = trimmed.starts_with("export ");
-            let rest = if is_export {
-                &trimmed[7..]
-            } else {
-                trimmed
-            };
-
-            let visibility = if is_export {
-                Visibility::Public
-            } else {
-                Visibility::Private
-            };
-
-            if rest.starts_with("function ")
-                || rest.starts_with("async function ")
-                || (rest.starts_with("const ") && rest.contains("=>"))
-            {
-                let is_async = rest.contains("async");
-                if let Some(name) = self.extract_ts_fn_name(rest) {
-                    if current_entity.is_some() {
-                        self.close_entity(current_entity.take(), i, entities);
-                    }
-                    let kind = if is_async {
-                        EntityKind::AsyncFunction
-                    } else {
-                        EntityKind::Function
-                    };
-                    current_entity = Some((name, kind, i + 1, visibility, None));
-                    brace_depth = 0;
-                }
-            } else if rest.starts_with("class ") {
-                if let Some(name) = self.extract_ts_class_name(rest) {
-                    if current_entity.is_some() {
-                        self.close_entity(current_entity.take(), i, entities);
-                    }
-                    current_entity = Some((name, EntityKind::Class, i + 1, visibility, None));
-                    brace_depth = 0;
-                }
-            } else if rest.starts_with("interface ") {
-                if let Some(name) = self.extract_ts_interface_name(rest) {
-                    if current_entity.is_some() {
-                        self.close_entity(current_entity.take(), i, entities);
-                    }
-                    current_entity = Some((name, EntityKind::Interface, i + 1, visibility, None));
-                    brace_depth = 0;
-                }
-            } else if rest.starts_with("type ") {
-                if let Some(name) = self.extract_ts_type_name(rest) {
-                    if current_entity.is_some() {
-                        self.close_entity(current_entity.take(), i, entities);
-                    }
-                    current_entity = Some((name, EntityKind::Type, i + 1, visibility, None));
-                    brace_depth = 0;
-                }
-            } else if rest.starts_with("enum ") {
-                if let Some(name) = self.extract_ts_enum_name(rest) {
-                    if current_entity.is_some() {
-                        self.close_entity(current_entity.take(), i, entities);
-                    }
-                    current_entity = Some((name, EntityKind::Enum, i + 1, visibility, None));
-                    brace_depth = 0;
-                }
-            }
-
-            // Track braces
-            brace_depth += trimmed.matches('{').count() as i32;
-            brace_depth -= trimmed.matches('}').count() as i32;
-
-            if brace_depth <= 0 && current_entity.is_some() && trimmed.contains('}') {
-                self.close_entity(current_entity.take(), i + 1, entities);
-            }
-        }
-
-        if let Some(entity) = current_entity {
-            self.close_entity(Some(entity), lines.len(), entities);
-        }
-    }
-
-    fn extract_ts_fn_name(&self, line: &str) -> Option<String> {
-        if line.starts_with("const ") {
-            // Arrow function: const name = ...
-            let rest = line.trim_start_matches("const ");
-            let name_end = rest.find(|c: char| !c.is_alphanumeric() && c != '_')?;
-            return Some(rest[..name_end].to_string());
-        }
-        let rest = line
-            .trim_start_matches("async ")
-            .trim_start_matches("function ");
-        let name_end = rest.find('(')?;
-        Some(rest[..name_end].trim().to_string())
-    }
-
-    fn extract_ts_class_name(&self, line: &str) -> Option<String> {
-        let rest = line.trim_start_matches("class ");
-        let name_end = rest.find(|c: char| !c.is_alphanumeric() && c != '_')?;
-        Some(rest[..name_end].to_string())
-    }
-
-    fn extract_ts_interface_name(&self, line: &str) -> Option<String> {
-        let rest = line.trim_start_matches("interface ");
-        let name_end = rest.find(|c: char| !c.is_alphanumeric() && c != '_')?;
-        Some(rest[..name_end].to_string())
-    }
-
-    fn extract_ts_type_name(&self, line: &str) -> Option<String> {
-        let rest = line.trim_start_matches("type ");
-        let name_end = rest.find(|c: char| !c.is_alphanumeric() && c != '_')?;
-        Some(rest[..name_end].to_string())
-    }
-
-    fn extract_ts_enum_name(&self, line: &str) -> Option<String> {
-        let rest = line.trim_start_matches("enum ");
-        let name_end = rest.find(|c: char| !c.is_alphanumeric() && c != '_')?;
-        Some(rest[..name_end].to_string())
-    }
-
-    fn extract_python_entities(&self, lines: &[&str], entities: &mut Vec<CodeEntity>) {
-        let mut current_entity: Option<(String, EntityKind, usize, usize, Visibility)> = None;
-
-        for (i, line) in lines.iter().enumerate() {
-            let trimmed = line.trim();
-            let indent = line.len() - line.trim_start().len();
-
-            // Top-level definitions only (no indentation)
-            if indent == 0 {
-                // Close previous if exists
-                if let Some((name, kind, start, _, vis)) = current_entity.take() {
-                    entities.push(CodeEntity {
-                        name,
-                        kind,
-                        start_line: start,
-                        end_line: i,
-                        visibility: vis,
-                        doc_comment: None,
-                        imports: Vec::new(),
-                        exports: Vec::new(),
-                        calls: Vec::new(),
-                        complexity: 1,
-                    });
-                }
-
-                if trimmed.starts_with("def ") || trimmed.starts_with("async def ") {
-                    let is_async = trimmed.starts_with("async");
-                    if let Some(name) = self.extract_python_fn_name(trimmed) {
-                        let visibility = if name.starts_with('_') {
-                            Visibility::Private
-                        } else {
-                            Visibility::Public
-                        };
-                        let kind = if is_async {
-                            EntityKind::AsyncFunction
-                        } else {
-                            EntityKind::Function
-                        };
-                        current_entity = Some((name, kind, i + 1, indent, visibility));
-                    }
-                } else if trimmed.starts_with("class ") {
-                    if let Some(name) = self.extract_python_class_name(trimmed) {
-                        let visibility = if name.starts_with('_') {
-                            Visibility::Private
-                        } else {
-                            Visibility::Public
-                        };
-                        current_entity = Some((name, EntityKind::Class, i + 1, indent, visibility));
-                    }
-                }
-            }
-        }
-
-        // Close final entity
-        if let Some((name, kind, start, _, vis)) = current_entity {
-            entities.push(CodeEntity {
-                name,
-                kind,
-                start_line: start,
-                end_line: lines.len(),
-                visibility: vis,
-                doc_comment: None,
-                imports: Vec::new(),
-                exports: Vec::new(),
-                calls: Vec::new(),
-                complexity: 1,
-            });
-        }
-    }
-
-    fn extract_python_fn_name(&self, line: &str) -> Option<String> {
-        let rest = line
-            .trim_start_matches("async ")
-            .trim_start_matches("def ");
-        let name_end = rest.find('(')?;
-        Some(rest[..name_end].trim().to_string())
-    }
-
-    fn extract_python_class_name(&self, line: &str) -> Option<String> {
-        let rest = line.trim_start_matches("class ");
-        let name_end = rest.find(['(', ':'])?;
-        Some(rest[..name_end].trim().to_string())
-    }
-
-    fn extract_go_entities(&self, lines: &[&str], entities: &mut Vec<CodeEntity>) {
-        let mut current_entity: Option<(String, EntityKind, usize, Visibility)> = None;
-        let mut brace_depth = 0;
-
-        for (i, line) in lines.iter().enumerate() {
-            let trimmed = line.trim();
-
-            if trimmed.starts_with("func ") {
-                if current_entity.is_some() {
-                    self.close_entity_simple(current_entity.take(), i, entities);
-                }
-                if let Some(name) = self.extract_go_fn_name(trimmed) {
-                    let visibility = if name.chars().next().map(|c| c.is_uppercase()).unwrap_or(false)
-                    {
-                        Visibility::Public
-                    } else {
-                        Visibility::Private
-                    };
-                    current_entity = Some((name, EntityKind::Function, i + 1, visibility));
-                    brace_depth = 0;
-                }
-            } else if trimmed.starts_with("type ") && trimmed.contains("struct") {
-                if current_entity.is_some() {
-                    self.close_entity_simple(current_entity.take(), i, entities);
-                }
-                if let Some(name) = self.extract_go_type_name(trimmed) {
-                    let visibility = if name.chars().next().map(|c| c.is_uppercase()).unwrap_or(false)
-                    {
-                        Visibility::Public
-                    } else {
-                        Visibility::Private
-                    };
-                    current_entity = Some((name, EntityKind::Struct, i + 1, visibility));
-                    brace_depth = 0;
-                }
-            } else if trimmed.starts_with("type ") && trimmed.contains("interface") {
-                if current_entity.is_some() {
-                    self.close_entity_simple(current_entity.take(), i, entities);
-                }
-                if let Some(name) = self.extract_go_type_name(trimmed) {
-                    let visibility = if name.chars().next().map(|c| c.is_uppercase()).unwrap_or(false)
-                    {
-                        Visibility::Public
-                    } else {
-                        Visibility::Private
-                    };
-                    current_entity = Some((name, EntityKind::Interface, i + 1, visibility));
-                    brace_depth = 0;
-                }
-            }
-
-            brace_depth += trimmed.matches('{').count() as i32;
-            brace_depth -= trimmed.matches('}').count() as i32;
-
-            if brace_depth <= 0 && current_entity.is_some() && trimmed.contains('}') {
-                self.close_entity_simple(current_entity.take(), i + 1, entities);
-            }
-        }
-
-        if let Some(entity) = current_entity {
-            self.close_entity_simple(Some(entity), lines.len(), entities);
-        }
-    }
-
-    fn extract_go_fn_name(&self, line: &str) -> Option<String> {
-        let rest = line.trim_start_matches("func ");
-        // Handle method receivers: (r *Receiver)
-        let rest = if rest.starts_with('(') {
-            if let Some(idx) = rest.find(')') {
-                &rest[idx + 1..]
-            } else {
-                rest
-            }
-        } else {
-            rest
-        };
-        let rest = rest.trim();
-        let name_end = rest.find('(')?;
-        Some(rest[..name_end].trim().to_string())
-    }
-
-    fn extract_go_type_name(&self, line: &str) -> Option<String> {
-        let rest = line.trim_start_matches("type ");
-        let name_end = rest.find(|c: char| !c.is_alphanumeric() && c != '_')?;
-        Some(rest[..name_end].to_string())
-    }
-
-    fn close_entity(
-        &self,
-        entity: Option<(String, EntityKind, usize, Visibility, Option<String>)>,
-        end_line: usize,
-        entities: &mut Vec<CodeEntity>,
-    ) {
-        if let Some((name, kind, start, visibility, doc)) = entity {
-            entities.push(CodeEntity {
-                name,
-                kind,
-                start_line: start,
-                end_line,
-                visibility,
-                doc_comment: doc,
-                imports: Vec::new(),
-                exports: Vec::new(),
-                calls: Vec::new(),
-                complexity: 1,
-            });
-        }
-    }
-
-    fn close_entity_simple(
-        &self,
-        entity: Option<(String, EntityKind, usize, Visibility)>,
-        end_line: usize,
-        entities: &mut Vec<CodeEntity>,
-    ) {
-        if let Some((name, kind, start, visibility)) = entity {
-            entities.push(CodeEntity {
-                name,
-                kind,
-                start_line: start,
-                end_line,
-                visibility,
-                doc_comment: None,
-                imports: Vec::new(),
-                exports: Vec::new(),
-                calls: Vec::new(),
-                complexity: 1,
-            });
-        }
-    }
 
     fn extract_imports(&self, content: &str, language: &str) -> Vec<String> {
         let mut imports = Vec::new();
@@ -1368,28 +908,6 @@ mod tests {
         assert_eq!(to_kebab_case("my-file"), "my-file");
     }
 
-    #[test]
-    fn test_rust_entity_extraction() {
-        let chunker = SmartChunker::default();
-        let content = r#"
-pub fn hello_world() {
-    println!("Hello!");
-}
 
-struct MyStruct {
-    field: i32,
-}
 
-impl MyStruct {
-    fn new() -> Self {
-        Self { field: 0 }
-    }
-}
-"#;
-        let lines: Vec<&str> = content.lines().collect();
-        let mut entities = Vec::new();
-        chunker.extract_rust_entities(&lines, &mut entities);
-
-        assert!(entities.len() >= 2);
-    }
 }

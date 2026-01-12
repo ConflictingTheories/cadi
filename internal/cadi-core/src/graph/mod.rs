@@ -41,11 +41,13 @@ pub mod store;
 pub mod node;
 pub mod edge;
 pub mod query;
+pub mod importer;
 
 pub use store::GraphStore;
 pub use node::GraphNode;
 pub use edge::{Edge, EdgeType};
 pub use query::{GraphQuery, QueryNode, QueryResult, TraversalDirection};
+pub use importer::BatchImporter;
 
 /// Re-export common error types
 pub use crate::error::CadiError;

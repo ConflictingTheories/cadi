@@ -16,9 +16,12 @@ pub mod glsl;
 pub mod wgsl;
 pub mod hlsl;
 
+pub mod go;
+
 pub use rust::RustAtomizer;
 pub use typescript::TypeScriptAtomizer;
 pub use python::PythonAtomizer;
+pub use go::GoAtomizer;
 pub use c::CAtomizer;
 pub use csharp::CSharpAtomizer;
 pub use css::CssAtomizer;

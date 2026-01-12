@@ -22,6 +22,10 @@ pub struct BuildArgs {
     #[arg(long)]
     prefer: Option<String>,
 
+    /// Require published artifacts to be signed/attested before materialization
+    #[arg(long)]
+    require_signed: bool,
+
     /// Force rebuild (ignore cache)
     #[arg(long)]
     force: bool,
@@ -82,6 +86,7 @@ pub async fn execute(args: BuildArgs, config: &CadiConfig) -> Result<()> {
         use_remote_cache: true,
         fail_fast: false,
         verbose: true,
+        require_signed: args.require_signed,
     };
     
     let engine = BuildEngine::new(build_config);

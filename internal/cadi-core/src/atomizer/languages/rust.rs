@@ -1,6 +1,11 @@
 //! Rust-specific atomizer
 
+#[cfg(feature = "ast-parsing")]
 use crate::atomizer::{AtomizerConfig, ExtractedAtom, AtomKind};
+
+#[cfg(not(feature = "ast-parsing"))]
+use crate::atomizer::{AtomizerConfig, ExtractedAtom};
+
 use crate::error::CadiResult;
 
 /// Rust-specific atomizer with Tree-sitter support
@@ -52,6 +57,15 @@ impl RustAtomizer {
         
         let matches = cursor.matches(&query, tree.root_node(), source.as_bytes());
 
+        // Reference query: find identifiers that might be dependencies
+        // We look for paths (foo::bar), types, and function calls
+        let ref_query_src = r#"
+            (identifier) @ref
+            (type_identifier) @ref
+            (scoped_identifier) @ref
+        "#;
+        let ref_query = Query::new(&tree_sitter_rust::language(), ref_query_src)?;
+
         for m in matches {
             // Build a map of capture name -> node for this match
             let mut caps: std::collections::HashMap<String, tree_sitter::Node> = std::collections::HashMap::new();
@@ -68,6 +82,24 @@ impl RustAtomizer {
                 let start_point = fn_node.start_position();
                 let end_point = fn_node.end_position();
 
+                // Extract references
+                let mut references = Vec::new();
+                let mut ref_cursor = QueryCursor::new();
+                // Ensure we search within the function body/node
+                let ref_matches = ref_cursor.matches(&ref_query, *fn_node, source.as_bytes());
+                
+                for rm in ref_matches {
+                    for cap in rm.captures {
+                        let ref_name = cap.node.utf8_text(source.as_bytes()).unwrap_or("").to_string();
+                        // Filter out self and keywords
+                        if !ref_name.is_empty() && ref_name != name && ref_name != "self" && ref_name != "Self" {
+                            references.push(ref_name);
+                        }
+                    }
+                }
+                references.sort();
+                references.dedup();
+
                 atoms.push(ExtractedAtom {
                     name: name.clone(),
                     kind: AtomKind::Function,
@@ -77,7 +109,7 @@ impl RustAtomizer {
                     start_line: start_point.row + 1,
                     end_line: end_point.row + 1,
                     defines: vec![name],
-                    references: Vec::new(),
+                    references,
                     doc_comment: None,
                     visibility: crate::atomizer::extractor::Visibility::Public,
                     parent: None,
@@ -93,6 +125,22 @@ impl RustAtomizer {
                 let start_point = struct_node.start_position();
                 let end_point = struct_node.end_position();
 
+                // Extract references (types used in fields)
+                let mut references = Vec::new();
+                let mut ref_cursor = QueryCursor::new();
+                let ref_matches = ref_cursor.matches(&ref_query, *struct_node, source.as_bytes());
+                
+                for rm in ref_matches {
+                    for cap in rm.captures {
+                        let ref_name = cap.node.utf8_text(source.as_bytes()).unwrap_or("").to_string();
+                        if !ref_name.is_empty() && ref_name != name && ref_name != "pub" {
+                            references.push(ref_name);
+                        }
+                    }
+                }
+                references.sort();
+                references.dedup();
+
                 atoms.push(ExtractedAtom {
                     name: name.clone(),
                     kind: AtomKind::Struct,
@@ -102,7 +150,7 @@ impl RustAtomizer {
                     start_line: start_point.row + 1,
                     end_line: end_point.row + 1,
                     defines: vec![name],
-                    references: Vec::new(),
+                    references,
                     doc_comment: None,
                     visibility: crate::atomizer::extractor::Visibility::Public,
                     parent: None,
@@ -168,7 +216,7 @@ impl RustAtomizer {
     #[cfg(not(feature = "ast-parsing"))]
     pub fn extract(&self, source: &str) -> CadiResult<Vec<ExtractedAtom>> {
         use crate::atomizer::AtomExtractor;
-        AtomExtractor::new("rust", self.config.clone()).extract(source)
+        AtomExtractor::new("rust", self._config.clone()).extract(source)
     }
 }
 

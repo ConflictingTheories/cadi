@@ -133,6 +133,7 @@ pub enum Visibility {
 
 /// Atom extractor for a specific language
 pub struct AtomExtractor {
+    #[allow(unused)]
     config: AtomizerConfig,
     language: String,
 }
@@ -160,20 +161,38 @@ impl AtomExtractor {
                 "csharp" => return CSharpAtomizer::new(self.config.clone()).extract(source),
                 "css" => return CssAtomizer::new(self.config.clone()).extract(source),
                 "glsl" => return GlslAtomizer::new(self.config.clone()).extract(source),
+                "typescript" | "javascript" | "tsx" | "jsx" => return TypeScriptAtomizer::new(self.config.clone()).extract(source),
+                "python" => return PythonAtomizer::new(self.config.clone()).extract(source),
+                "html" => return HtmlAtomizer::new(self.config.clone()).extract(source),
+                "go" => return GoAtomizer::new(self.config.clone()).extract(source),
                 _ => {}
             }
         }
 
-        match self.language.as_str() {
-            "rust" => self.extract_rust(source),
-            "typescript" | "javascript" => self.extract_typescript(source),
-            "python" => self.extract_python(source),
-            "c" | "cpp" => self.extract_c(source),
-            "csharp" => self.extract_csharp(source),
-            "css" => self.extract_css(source),
-            "glsl" => self.extract_glsl(source),
-            _ => self.extract_fallback(source),
-            _ => self.extract_fallback(source),
+        let result: CadiResult<Vec<ExtractedAtom>> = {
+            #[cfg(feature = "ast-parsing")]
+            {
+                use crate::atomizer::languages::*;
+                match self.language.as_str() {
+                    "rust" => return RustAtomizer::new(self.config.clone()).extract(source),
+                    "c" | "cpp" => return CAtomizer::new(self.config.clone()).extract(source),
+                    "csharp" => return CSharpAtomizer::new(self.config.clone()).extract(source),
+                    "css" => return CssAtomizer::new(self.config.clone()).extract(source),
+                    "glsl" => return GlslAtomizer::new(self.config.clone()).extract(source),
+                    _ => {}
+                }
+            }
+
+            match self.language.as_str() {
+                "rust" => self.extract_rust(source),
+                "typescript" | "javascript" => self.extract_typescript(source),
+                "python" => self.extract_python(source),
+                "c" | "cpp" => self.extract_c(source),
+                "csharp" => self.extract_csharp(source),
+                "css" => self.extract_css(source),
+                "glsl" => self.extract_glsl(source),
+                _ => self.extract_fallback(source),
+            }
         };
 
         // Post-processing: Extract imports as first-class atoms
@@ -367,8 +386,8 @@ impl AtomExtractor {
             r"(?m)^(\s*)(export\s+)?interface\s+(\w+)"
         ).map_err(|e| CadiError::AtomizerError(e.to_string()))?;
 
-        let _const_regex = regex::Regex::new(
-            r"(?m)^(\s*)(export\s+)?const\s+(\w+)\s*="
+        let const_regex = regex::Regex::new(
+            r"(?m)^(\s*)(export\s+)?const\s+(\w+).*?="
         ).map_err(|e| CadiError::AtomizerError(e.to_string()))?;
 
         // Extract functions
@@ -418,6 +437,30 @@ impl AtomExtractor {
                 references: Vec::new(),
                 doc_comment: None,
                 visibility: Visibility::Public,
+                parent: None,
+                decorators: Vec::new(),
+            });
+        }
+
+        // Constants
+        for cap in const_regex.captures_iter(source) {
+            let name = cap.get(3).map(|m| m.as_str()).unwrap_or("unknown");
+            let is_export = cap.get(2).is_some();
+            let start_byte = cap.get(0).unwrap().start();
+            let end_byte = self.find_statement_end(source, start_byte);
+
+            atoms.push(ExtractedAtom {
+                name: name.to_string(),
+                kind: AtomKind::Constant,
+                source: source[start_byte..end_byte].to_string(),
+                start_byte,
+                end_byte,
+                start_line: source[..start_byte].matches('\n').count() + 1,
+                end_line: source[..end_byte].matches('\n').count() + 1,
+                defines: vec![name.to_string()],
+                references: Vec::new(),
+                doc_comment: None,
+                visibility: if is_export { Visibility::Public } else { Visibility::Private },
                 parent: None,
                 decorators: Vec::new(),
             });
@@ -492,9 +535,10 @@ impl AtomExtractor {
 
     /// Extract atoms from C source
     fn extract_c(&self, source: &str) -> CadiResult<Vec<ExtractedAtom>> {
-        // Simplified fallback: extract functions
+        // Simplified fallback: extract functions and structs
         let mut atoms = Vec::new();
-        let fn_regex = regex::Regex::new(r"(?m)^(\w+)\s+(\w+)\s*\([^)]*\)\s*\{").unwrap();
+        let fn_regex = regex::Regex::new(r"(?m)^\s*(\w+)\s+(\w+)\s*\([^)]*\)\s*\{").unwrap();
+        let struct_regex = regex::Regex::new(r"(?m)^\s*struct\s+(\w+)\s*\{").unwrap();
 
         for cap in fn_regex.captures_iter(source) {
             let name = cap.get(2).map(|m| m.as_str()).unwrap_or("unknown");
@@ -517,6 +561,29 @@ impl AtomExtractor {
                 decorators: Vec::new(),
             });
         }
+
+        for cap in struct_regex.captures_iter(source) {
+            let name = cap.get(1).map(|m| m.as_str()).unwrap_or("unknown");
+            let start_byte = cap.get(0).unwrap().start();
+            let end_byte = self.find_block_end(source, start_byte);
+
+            atoms.push(ExtractedAtom {
+                name: name.to_string(),
+                kind: AtomKind::Struct,
+                source: source[start_byte..end_byte].to_string(),
+                start_byte,
+                end_byte,
+                start_line: source[..start_byte].matches('\n').count() + 1,
+                end_line: source[..end_byte].matches('\n').count() + 1,
+                defines: vec![name.to_string()],
+                references: Vec::new(),
+                doc_comment: None,
+                visibility: Visibility::Public,
+                parent: None,
+                decorators: Vec::new(),
+            });
+        }
+
         Ok(atoms)
     }
 
@@ -524,6 +591,7 @@ impl AtomExtractor {
     fn extract_csharp(&self, source: &str) -> CadiResult<Vec<ExtractedAtom>> {
         let mut atoms = Vec::new();
         let class_regex = regex::Regex::new(r"(?m)^(\s*)(?:public|private|internal|protected)?\s+class\s+(\w+)").unwrap();
+        let method_regex = regex::Regex::new(r"(?m)^(\s*)(?:public|private|internal|protected)?\s+(?:\w+\s+)*(\w+)\s*\([^)]*\)\s*\{").unwrap();
 
         for cap in class_regex.captures_iter(source) {
             let name = cap.get(2).map(|m| m.as_str()).unwrap_or("unknown");
@@ -546,6 +614,29 @@ impl AtomExtractor {
                 decorators: Vec::new(),
             });
         }
+
+        for cap in method_regex.captures_iter(source) {
+            let name = cap.get(2).map(|m| m.as_str()).unwrap_or("unknown");
+            let start_byte = cap.get(0).unwrap().start();
+            let end_byte = self.find_block_end(source, start_byte);
+
+            atoms.push(ExtractedAtom {
+                name: name.to_string(),
+                kind: AtomKind::Function,
+                source: source[start_byte..end_byte].to_string(),
+                start_byte,
+                end_byte,
+                start_line: source[..start_byte].matches('\n').count() + 1,
+                end_line: source[..end_byte].matches('\n').count() + 1,
+                defines: vec![name.to_string()],
+                references: Vec::new(),
+                doc_comment: None,
+                visibility: Visibility::Public,
+                parent: None,
+                decorators: Vec::new(),
+            });
+        }
+
         Ok(atoms)
     }
 
@@ -638,6 +729,16 @@ impl AtomExtractor {
             prev_char = c;
         }
 
+        source.len()
+    }
+
+    /// Find the end of a statement (semicolon or newline)
+    fn find_statement_end(&self, source: &str, start: usize) -> usize {
+        for (i, c) in source[start..].char_indices() {
+            if c == ';' || c == '\n' {
+                return start + i + 1;
+            }
+        }
         source.len()
     }
 

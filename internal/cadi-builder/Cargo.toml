@@ -22,3 +22,8 @@ tokio.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 console.workspace = true
+cadi-registry = { path = "../cadi-registry" }
+chrono.workspace = true
+ed25519-dalek = "1.0"
+rand = "0.8"
+base64 = "0.21"

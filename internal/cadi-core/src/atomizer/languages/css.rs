@@ -1,6 +1,11 @@
 //! CSS-specific atomizer
 
+#[cfg(feature = "ast-parsing")]
 use crate::atomizer::{AtomizerConfig, ExtractedAtom, AtomKind};
+
+#[cfg(not(feature = "ast-parsing"))]
+use crate::atomizer::{AtomizerConfig, ExtractedAtom};
+
 use crate::error::CadiResult;
 
 /// CSS-specific atomizer with Tree-sitter support
@@ -35,6 +40,8 @@ impl CssAtomizer {
             (media_statement) @media
             
             (keyframe_block_list) @keyframes
+
+            (import_statement) @import
         "#;
         
         let query = Query::new(&tree_sitter_css::language(), query_src)?;
@@ -46,6 +53,7 @@ impl CssAtomizer {
             let mut name = "rule".to_string();
             let mut kind = AtomKind::Constant;
             let mut atom_node = None;
+            let mut references = Vec::new();
 
             for capture in m.captures {
                 let capture_name = query.capture_names()[capture.index as usize];
@@ -67,6 +75,22 @@ impl CssAtomizer {
                         kind = AtomKind::Constant;
                         atom_node = Some(capture.node);
                     }
+                    "import" => {
+                         name = "@import".to_string();
+                         kind = AtomKind::Import;
+                         atom_node = Some(capture.node);
+                         
+                         // Extract the import path
+                         let node_text = capture.node.utf8_text(source.as_bytes()).unwrap_or("");
+                         // Simple extraction from string: @import "foo.css" or @import url("foo.css")
+                         // Tree-sitter struct would be better but simple string parsing is robust enough for now
+                         if let Some(start) = node_text.find('"').or_else(|| node_text.find('\'')) {
+                             let quote = &node_text[start..start+1];
+                             if let Some(end) = node_text[start+1..].find(quote) {
+                                  references.push(node_text[start+1..start+1+end].to_string());
+                             }
+                         }
+                    }
                     _ => {}
                 }
             }
@@ -86,7 +110,7 @@ impl CssAtomizer {
                     start_line: start_point.row + 1,
                     end_line: end_point.row + 1,
                     defines: vec![],
-                    references: Vec::new(),
+                    references,
                     doc_comment: None,
                     visibility: crate::atomizer::extractor::Visibility::Public,
                     parent: None,

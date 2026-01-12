@@ -2,12 +2,17 @@
 //!
 //! Provides language-aware parsing for supported languages.
 
+#[cfg(feature = "ast-parsing")]
 use std::collections::HashMap;
 
 #[cfg(feature = "ast-parsing")]
 use tree_sitter::{Parser, Tree};
 
+#[cfg(feature = "ast-parsing")]
 use crate::error::{CadiError, CadiResult};
+
+#[cfg(not(feature = "ast-parsing"))]
+use crate::error::CadiResult;
 
 /// Multi-language AST parser
 pub struct AstParser {

@@ -1,6 +1,11 @@
 //! JSX atomizer (React / web)
 
+#[cfg(feature = "ast-parsing")]
 use crate::atomizer::{AtomizerConfig, ExtractedAtom, AtomKind};
+
+#[cfg(not(feature = "ast-parsing"))]
+use crate::atomizer::{AtomizerConfig, ExtractedAtom};
+
 use crate::error::CadiResult;
 
 /// JSX atomizer (uses JS extractor semantics)
@@ -127,7 +132,7 @@ impl JSXAtomizer {
     pub fn extract(&self, source: &str) -> CadiResult<Vec<ExtractedAtom>> {
         use crate::atomizer::AtomExtractor;
         // Use javascript extractor for JSX
-        AtomExtractor::new("javascript", self.config.clone()).extract(source)
+           AtomExtractor::new("javascript", self._config.clone()).extract(source)
     }
 }
 
