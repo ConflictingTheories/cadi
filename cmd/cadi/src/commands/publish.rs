@@ -206,8 +206,24 @@ async fn publish_chunk(
 
     // Sign if required
     if !args.no_sign {
-        if config.security.signing_key.is_some() {
-            // TODO: Sign chunk with configured key
+        if let Some(key_path) = &config.security.signing_key {
+            if key_path.exists() {
+                let key_content = std::fs::read_to_string(key_path)?;
+                let signature = sign_content(&content, &key_content)?;
+                
+                // Update metadata with signature
+                let hash = chunk_id.strip_prefix("chunk:sha256:").unwrap_or(chunk_id);
+                let metadata_path = config.cache.dir.join("chunks").join(format!("{}.json", hash));
+                if metadata_path.exists() {
+                    let mut meta_content: serde_json::Value = serde_json::from_str(&std::fs::read_to_string(&metadata_path)?)?;
+                    if let Some(signatures) = meta_content.get_mut("signatures").and_then(|s| s.as_array_mut()) {
+                        signatures.push(serde_json::Value::String(signature));
+                    } else {
+                        meta_content["signatures"] = serde_json::json!([signature]);
+                    }
+                    std::fs::write(&metadata_path, serde_json::to_string_pretty(&meta_content)?)?;
+                }
+            }
         }
     }
 
@@ -237,4 +253,13 @@ async fn publish_chunk(
             Err(anyhow!("HTTP {}: {}", status, body))
         }
     }
+}
+
+fn sign_content(content: &[u8], key_content: &str) -> Result<String> {
+    use sha2::{Sha256, Digest};
+    let mut hasher = Sha256::new();
+    hasher.update(key_content.as_bytes());
+    hasher.update(content);
+    let result = hasher.finalize();
+    Ok(format!("sig:sha256:{}", hex::encode(result)))
 }

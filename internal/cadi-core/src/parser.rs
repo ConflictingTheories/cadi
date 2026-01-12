@@ -255,12 +255,32 @@ fn from_map_abi(mut map: HashMap<String, Value>) -> AbiDef {
 }
 
 fn from_map_data_format(mut map: HashMap<String, Value>) -> DataFormatDef {
-    // Handling nested objects is tricky with just this helper. 
-    // For MVP, we'll just store strict fields if they match.
-    // Real implementation needs recursive helpers.
     DataFormatDef {
-        input: HashMap::new(), // TODO
-        output: HashMap::new(), // TODO
+        input: extract_data_format_spec_map(&mut map, "input"),
+        output: extract_data_format_spec_map(&mut map, "output"),
+    }
+}
+
+fn extract_data_format_spec_map(map: &mut HashMap<String, Value>, key: &str) -> HashMap<String, DataFormatSpec> {
+    match map.remove(key) {
+        Some(Value::Object(obj)) => obj.into_iter().map(|(k, v)| {
+            let spec = match v {
+                Value::Object(mut inner_map) => DataFormatSpec {
+                    format: extract_string(&mut inner_map, "format"),
+                    schema: extract_string(&mut inner_map, "schema"),
+                    value_range: extract_number_list(&mut inner_map, "value_range"),
+                    other: inner_map,
+                },
+                _ => DataFormatSpec {
+                    format: None,
+                    schema: None,
+                    value_range: None,
+                    other: HashMap::new(),
+                }
+            };
+            (k, spec)
+        }).collect(),
+        _ => HashMap::new(),
     }
 }
 
@@ -341,5 +361,15 @@ fn extract_map(map: &mut HashMap<String, Value>, key: &str) -> HashMap<String, V
     match map.remove(key) {
         Some(Value::Object(obj)) => obj,
         _ => HashMap::new(),
+    }
+}
+
+fn extract_number_list(map: &mut HashMap<String, Value>, key: &str) -> Option<Vec<f64>> {
+    match map.remove(key) {
+        Some(Value::Array(arr)) => Some(arr.into_iter().filter_map(|v| match v {
+            Value::Number(n) => Some(n),
+            _ => None,
+        }).collect()),
+        _ => None,
     }
 }

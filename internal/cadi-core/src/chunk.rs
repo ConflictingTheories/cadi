@@ -68,6 +68,8 @@ pub struct Chunk {
     pub licensing: ChunkLicensing,
     #[serde(default)]
     pub lineage: ChunkLineage,
+    #[serde(default)]
+    pub signatures: Vec<String>,
 }
 
 /// A file entry in source CADI
@@ -332,6 +334,7 @@ impl Chunk {
                 restrictions: Vec::new(),
             },
             lineage: ChunkLineage::default(),
+            signatures: Vec::new(),
         }
     }
 }

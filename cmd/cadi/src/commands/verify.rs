@@ -105,8 +105,36 @@ async fn verify_chunk(chunk_id: &str, args: &VerifyArgs, config: &CadiConfig) ->
         println!("  {} No metadata file found", style("⚠").yellow());
     }
 
-    // Check for signatures (would verify against signing keys if present)
-    println!("  {} Signatures: not implemented yet", style("○").dim());
+    // Check for signatures
+    if let Ok(metadata_content) = std::fs::read_to_string(&metadata_file) {
+        if let Ok(metadata) = serde_json::from_str::<serde_json::Value>(&metadata_content) {
+            if let Some(signatures) = metadata.get("signatures").and_then(|s| s.as_array()) {
+                if signatures.is_empty() {
+                    println!("  {} Signatures: none found", style("○").dim());
+                } else {
+                    println!("  {} Found {} signature(s)", style("✓").green(), signatures.len());
+                    for sig in signatures {
+                        if let Some(sig_str) = sig.as_str() {
+                            if let Some(key_path) = &config.security.signing_key {
+                                if key_path.exists() {
+                                    let key_content = std::fs::read_to_string(key_path)?;
+                                    if verify_signature(&chunk_content, sig_str, &key_content)? {
+                                        println!("    {} Verified: {}", style("✓").green(), sig_str);
+                                    } else {
+                                        println!("    {} Invalid: {}", style("✗").red(), sig_str);
+                                    }
+                                } else {
+                                    println!("    {} Signature exists but no signing key found for verification", style("⚠").yellow());
+                                }
+                            }
+                        }
+                    }
+                }
+            } else {
+                println!("  {} Signatures: field missing in metadata", style("○").dim());
+            }
+        }
+    }
 
     // Deep verification of parent chunks
     if args.deep {
@@ -122,4 +150,19 @@ async fn verify_chunk(chunk_id: &str, args: &VerifyArgs, config: &CadiConfig) ->
 
     println!();
     Ok(())
+}
+
+fn verify_signature(content: &[u8], signature: &str, key_content: &str) -> Result<bool> {
+    if !signature.starts_with("sig:sha256:") {
+        return Ok(false);
+    }
+    
+    use sha2::{Sha256, Digest};
+    let mut hasher = Sha256::new();
+    hasher.update(key_content.as_bytes());
+    hasher.update(content);
+    let result = hasher.finalize();
+    let expected = format!("sig:sha256:{}", hex::encode(result));
+    
+    Ok(signature == expected)
 }

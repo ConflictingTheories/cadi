@@ -1,0 +1,38 @@
+manifest_id: "todo-timer-manifest"
+manifest_version: "1.0"
+
+application:
+  name: "todo-timer"
+  description: "A todo application with a built-in timer"
+  version: "1.0.0"
+  license: "MIT"
+
+build_graph:
+  nodes:
+    - id: "timer-util"
+      representations:
+        - form: "source"
+          language: "rust"
+          chunk: "chunk:sha256:9f7d3a626bc11a1dcf4ed5e626297a161a590aaf9df3935fc5694cc74291eeb7"
+    - id: "todo-logic"
+      representations:
+        - form: "source"
+          language: "rust"
+          chunk: "chunk:sha256:76f05102ed99f4a1fac1057842f73d736b43f13efaa88d2eb404e9835cfeabee"
+    - id: "todo-app"
+      representations:
+        - form: "source"
+          language: "rust"
+          chunk: "chunk:sha256:6904ee4d0623cd9bb26fd9de25258495101ca5dc2e45993c6744c70ffc4e7471"
+
+build_targets:
+  - name: "default"
+    platform: "native"
+    nodes:
+      - id: "todo-app"
+    bundle:
+      format: "executable"
+      output: "dist/todo-timer"
+
+dependencies:
+  resolution_strategy: "newest"

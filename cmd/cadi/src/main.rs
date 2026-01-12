@@ -20,7 +20,7 @@ struct Cli {
     verbose: bool,
 
     /// Configuration file path
-    #[arg(short, long, global = true)]
+    #[arg(long, global = true)]
     config: Option<String>,
 
     #[command(subcommand)]
@@ -32,8 +32,12 @@ enum Commands {
     /// Initialize CADI configuration
     Init(commands::init::InitArgs),
 
-    /// Import a project and create Source CADI chunks
-    Import(commands::import::ImportArgs),
+    /// Import a project - seamlessly analyze and chunk any codebase
+    Import(commands::import_v2::ImportArgs),
+
+    /// Import a project using legacy mode (deprecated)
+    #[command(name = "import-legacy", hide = true)]
+    ImportLegacy(commands::import::ImportArgs),
 
     /// Build artifacts from a manifest
     Build(commands::build::BuildArgs),
@@ -73,6 +77,9 @@ enum Commands {
 
     /// Validate a CADL file against the specification
     Validate(commands::validate::ValidateArgs),
+
+    /// Scaffold a project from a manifest
+    Scaffold(commands::scaffold::ScaffoldArgs),
 }
 
 #[tokio::main]
@@ -92,7 +99,8 @@ async fn main() -> Result<()> {
 
     match cli.command {
         Commands::Init(args) => commands::init::execute(args, &config).await,
-        Commands::Import(args) => commands::import::execute(args, &config).await,
+        Commands::Import(args) => commands::import_v2::execute(args, &config).await,
+        Commands::ImportLegacy(args) => commands::import::execute(args, &config).await,
         Commands::Build(args) => commands::build::execute(args, &config).await,
         Commands::Publish(args) => commands::publish::execute(args, &config).await,
         Commands::Fetch(args) => commands::fetch::execute(args, &config).await,
@@ -106,5 +114,6 @@ async fn main() -> Result<()> {
         Commands::Demo(args) => commands::demo::execute(args, &config).await,
         Commands::Scrape(args) => commands::scrape::execute(args, &config).await,
         Commands::Validate(args) => commands::validate::execute(args, &config).await,
+        Commands::Scaffold(args) => commands::scaffold::execute(args, &config).await,
     }
 }

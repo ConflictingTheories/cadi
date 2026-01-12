@@ -13,9 +13,9 @@
 .DS_Store
 Thumbs.db
 
-
 # CADI Repository files
 .cadi-repo/
+seed-src/
 
 # CADI local files
 .cadi-cache/

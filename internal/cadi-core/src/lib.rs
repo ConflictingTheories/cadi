@@ -16,4 +16,13 @@ pub mod ast;
 pub mod parser;
 pub mod validator;
 
+// New atomic chunk and smart chunking system
+pub mod atomic;
+pub mod smart_chunker;
+pub mod project_analyzer;
+
+pub use atomic::*;
+pub use smart_chunker::*;
+pub use project_analyzer::*;
+
 

@@ -85,7 +85,16 @@ pub async fn execute(args: ImportArgs, config: &CadiConfig) -> Result<()> {
         // Hash file content
         let mut file_hasher = Sha256::new();
         file_hasher.update(&content);
-        let file_hash = format!("sha256:{:x}", file_hasher.finalize());
+        let hash_hex = format!("{:x}", file_hasher.finalize());
+        let file_hash = format!("sha256:{}", hash_hex);
+
+        // Save blob to store
+        let blobs_dir = config.cache.dir.join("blobs").join("sha256");
+        std::fs::create_dir_all(&blobs_dir)?;
+        let blob_path = blobs_dir.join(&hash_hex);
+        if !blob_path.exists() {
+            std::fs::write(&blob_path, &content)?;
+        }
 
         // Include in chunk content hash
         content_hasher.update(relative_path.to_string_lossy().as_bytes());

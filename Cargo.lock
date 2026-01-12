@@ -270,6 +270,7 @@ dependencies = [
  "console",
  "dialoguer",
  "directories",
+ "hex",
  "indicatif",
  "predicates",
  "reqwest",
@@ -306,12 +307,14 @@ name = "cadi-core"
 version = "1.0.0"
 dependencies = [
  "chrono",
+ "hex",
  "pest",
  "pest_derive",
  "serde",
  "serde_json",
  "sha2",
  "thiserror",
+ "tracing",
  "uuid",
 ]
 

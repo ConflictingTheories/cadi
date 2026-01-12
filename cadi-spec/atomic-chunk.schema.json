@@ -1,0 +1,266 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://cadi.dev/schemas/atomic-chunk.schema.json",
+  "title": "CADI Atomic Chunk Schema",
+  "description": "Schema for atomic chunks - intelligent, reusable code units with aliases and composition support",
+  "type": "object",
+  "required": ["chunk_id", "name", "language", "content_hash", "size"],
+  "properties": {
+    "chunk_id": {
+      "type": "string",
+      "pattern": "^chunk:sha256:[a-f0-9]{64}$",
+      "description": "Global identifier in format chunk:sha256:<digest>"
+    },
+    "aliases": {
+      "type": "array",
+      "description": "Human-readable aliases for this chunk",
+      "items": {
+        "type": "object",
+        "required": ["path"],
+        "properties": {
+          "path": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^[a-z0-9][a-z0-9-_/]*[a-z0-9]$",
+            "description": "Alias path (e.g., 'utils/string-helpers')"
+          },
+          "namespace": {
+            "type": ["string", "null"],
+            "pattern": "^[a-z0-9][a-z0-9-]*[a-z0-9]$",
+            "description": "Namespace/scope for the alias (e.g., 'my-org')"
+          },
+          "primary": {
+            "type": "boolean",
+            "default": false,
+            "description": "Whether this is the primary/canonical alias"
+          },
+          "registered_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When this alias was registered"
+          }
+        }
+      }
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 256,
+      "description": "Human-readable name of the chunk"
+    },
+    "description": {
+      "type": ["string", "null"],
+      "maxLength": 4096,
+      "description": "Description of what this chunk does"
+    },
+    "language": {
+      "type": "string",
+      "description": "Primary programming language"
+    },
+    "granularity": {
+      "type": "string",
+      "enum": ["function", "type", "module", "package", "project"],
+      "default": "module",
+      "description": "Granularity level of the chunk"
+    },
+    "categories": {
+      "type": "array",
+      "description": "Categories this chunk belongs to",
+      "items": {
+        "type": "string",
+        "enum": ["logic", "data", "utility", "api", "config", "test", "docs", "build", "ui", "backend", "database", "custom"]
+      }
+    },
+    "tags": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Tags for search and discovery"
+    },
+    "concepts": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Semantic concepts this chunk implements"
+    },
+    "provides": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Interfaces/APIs provided by this chunk"
+    },
+    "requires": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "Interfaces/APIs required by this chunk"
+    },
+    "platform": {
+      "type": "object",
+      "description": "Platform constraints",
+      "properties": {
+        "os": {
+          "type": "string",
+          "default": "any",
+          "description": "Target OS (any, linux, macos, windows)"
+        },
+        "arch": {
+          "type": "string",
+          "default": "any",
+          "description": "Target architecture (any, x86_64, aarch64, wasm32)"
+        },
+        "runtime": {
+          "type": ["string", "null"],
+          "description": "Required runtime (node, browser, native)"
+        },
+        "min_versions": {
+          "type": "object",
+          "additionalProperties": {"type": "string"},
+          "description": "Minimum version requirements"
+        }
+      }
+    },
+    "composition": {
+      "type": "object",
+      "description": "How this chunk relates to other chunks",
+      "properties": {
+        "composed_of": {
+          "type": "array",
+          "description": "Chunks that this chunk is composed of",
+          "items": {
+            "type": "object",
+            "required": ["chunk_id"],
+            "properties": {
+              "chunk_id": {
+                "type": "string",
+                "pattern": "^chunk:sha256:[a-f0-9]{64}$",
+                "description": "ID of the referenced chunk"
+              },
+              "alias": {
+                "type": ["string", "null"],
+                "description": "Optional alias for easier reference"
+              },
+              "required": {
+                "type": "boolean",
+                "default": true,
+                "description": "Whether this component is required"
+              },
+              "imports": {
+                "type": "array",
+                "items": {"type": "string"},
+                "description": "Specific items imported from this chunk"
+              }
+            }
+          }
+        },
+        "composed_by": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "Chunks that include this chunk"
+        },
+        "is_atomic": {
+          "type": "boolean",
+          "default": true,
+          "description": "Whether this chunk is atomic (not composed of other CADI chunks)"
+        },
+        "composition_strategy": {
+          "type": ["string", "null"],
+          "enum": ["aggregate", "merge", "layer", null],
+          "description": "Strategy used for composition"
+        }
+      }
+    },
+    "metrics": {
+      "type": "object",
+      "description": "Quality and reusability metrics",
+      "properties": {
+        "loc": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Lines of code"
+        },
+        "complexity": {
+          "type": ["number", "null"],
+          "description": "Cyclomatic complexity estimate"
+        },
+        "reusability_score": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Reusability score (0-1, higher = more reusable)"
+        },
+        "export_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of public exports"
+        },
+        "dependency_count": {
+          "type": "integer",
+          "minimum": 0,
+          "description": "Number of dependencies"
+        },
+        "coupling": {
+          "type": ["number", "null"],
+          "minimum": 0,
+          "maximum": 1,
+          "description": "Coupling score (0-1, lower = better)"
+        }
+      }
+    },
+    "sources": {
+      "type": "array",
+      "description": "Source locations for this chunk",
+      "items": {
+        "type": "object",
+        "required": ["file"],
+        "properties": {
+          "file": {
+            "type": "string",
+            "description": "Original file path (relative)"
+          },
+          "start_line": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "Start line (1-indexed)"
+          },
+          "end_line": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "End line (1-indexed)"
+          },
+          "start_col": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "Start column"
+          },
+          "end_col": {
+            "type": ["integer", "null"],
+            "minimum": 1,
+            "description": "End column"
+          }
+        }
+      }
+    },
+    "content_hash": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$",
+      "description": "SHA256 hash of the content"
+    },
+    "size": {
+      "type": "integer",
+      "minimum": 0,
+      "description": "Size in bytes"
+    },
+    "license": {
+      "type": "string",
+      "default": "MIT",
+      "description": "SPDX license identifier"
+    },
+    "created_at": {
+      "type": ["string", "null"],
+      "format": "date-time",
+      "description": "ISO8601 creation timestamp"
+    },
+    "version": {
+      "type": ["string", "null"],
+      "description": "Semantic version if applicable"
+    }
+  }
+}

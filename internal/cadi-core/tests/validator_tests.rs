@@ -58,7 +58,7 @@ fn test_validate_missing_contract_field() {
     let validator = Validator::new();
     let res = validator.validate(&doc);
     assert!(res.is_err());
-    assert!(res.unwrap_err()[0].message.contains("required field: codec"));
+    assert!(res.unwrap_err()[0].message.contains("Contract missing descriptive fields"));
 }
 
 #[test]
