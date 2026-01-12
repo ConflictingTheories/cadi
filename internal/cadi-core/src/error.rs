@@ -72,5 +72,19 @@ impl From<serde_json::Error> for CadiError {
     }
 }
 
+#[cfg(feature = "ast-parsing")]
+impl From<tree_sitter::LanguageError> for CadiError {
+    fn from(e: tree_sitter::LanguageError) -> Self {
+        CadiError::AtomizerError(e.to_string())
+    }
+}
+
+#[cfg(feature = "ast-parsing")]
+impl From<tree_sitter::QueryError> for CadiError {
+    fn from(e: tree_sitter::QueryError) -> Self {
+        CadiError::AtomizerError(e.to_string())
+    }
+}
+
 /// Result type for CADI operations
 pub type CadiResult<T> = Result<T, CadiError>;

@@ -138,10 +138,27 @@ impl AtomExtractor {
     /// When the `ast-parsing` feature is enabled, this uses Tree-sitter.
     /// Otherwise, falls back to regex-based extraction.
     pub fn extract(&self, source: &str) -> CadiResult<Vec<ExtractedAtom>> {
+        #[cfg(feature = "ast-parsing")]
+        {
+            use crate::atomizer::languages::*;
+            match self.language.as_str() {
+                "rust" => return RustAtomizer::new(self.config.clone()).extract(source),
+                "c" | "cpp" => return CAtomizer::new(self.config.clone()).extract(source),
+                "csharp" => return CSharpAtomizer::new(self.config.clone()).extract(source),
+                "css" => return CssAtomizer::new(self.config.clone()).extract(source),
+                "glsl" => return GlslAtomizer::new(self.config.clone()).extract(source),
+                _ => {}
+            }
+        }
+
         match self.language.as_str() {
             "rust" => self.extract_rust(source),
             "typescript" | "javascript" => self.extract_typescript(source),
             "python" => self.extract_python(source),
+            "c" | "cpp" => self.extract_c(source),
+            "csharp" => self.extract_csharp(source),
+            "css" => self.extract_css(source),
+            "glsl" => self.extract_glsl(source),
             _ => self.extract_fallback(source),
         }
     }
@@ -373,6 +390,99 @@ impl AtomExtractor {
         }
 
         Ok(atoms)
+    }
+
+    /// Extract atoms from C source
+    fn extract_c(&self, source: &str) -> CadiResult<Vec<ExtractedAtom>> {
+        // Simplified fallback: extract functions
+        let mut atoms = Vec::new();
+        let fn_regex = regex::Regex::new(r"(?m)^(\w+)\s+(\w+)\s*\([^)]*\)\s*\{").unwrap();
+
+        for cap in fn_regex.captures_iter(source) {
+            let name = cap.get(2).map(|m| m.as_str()).unwrap_or("unknown");
+            let start_byte = cap.get(0).unwrap().start();
+            let end_byte = self.find_block_end(source, start_byte);
+
+            atoms.push(ExtractedAtom {
+                name: name.to_string(),
+                kind: AtomKind::Function,
+                source: source[start_byte..end_byte].to_string(),
+                start_byte,
+                end_byte,
+                start_line: source[..start_byte].matches('\n').count() + 1,
+                end_line: source[..end_byte].matches('\n').count() + 1,
+                defines: vec![name.to_string()],
+                references: Vec::new(),
+                doc_comment: None,
+                visibility: Visibility::Public,
+                parent: None,
+                decorators: Vec::new(),
+            });
+        }
+        Ok(atoms)
+    }
+
+    /// Extract atoms from C# source
+    fn extract_csharp(&self, source: &str) -> CadiResult<Vec<ExtractedAtom>> {
+        let mut atoms = Vec::new();
+        let class_regex = regex::Regex::new(r"(?m)^(\s*)(?:public|private|internal|protected)?\s+class\s+(\w+)").unwrap();
+
+        for cap in class_regex.captures_iter(source) {
+            let name = cap.get(2).map(|m| m.as_str()).unwrap_or("unknown");
+            let start_byte = cap.get(0).unwrap().start();
+            let end_byte = self.find_block_end(source, start_byte);
+
+            atoms.push(ExtractedAtom {
+                name: name.to_string(),
+                kind: AtomKind::Class,
+                source: source[start_byte..end_byte].to_string(),
+                start_byte,
+                end_byte,
+                start_line: source[..start_byte].matches('\n').count() + 1,
+                end_line: source[..end_byte].matches('\n').count() + 1,
+                defines: vec![name.to_string()],
+                references: Vec::new(),
+                doc_comment: None,
+                visibility: Visibility::Public,
+                parent: None,
+                decorators: Vec::new(),
+            });
+        }
+        Ok(atoms)
+    }
+
+    /// Extract atoms from CSS source
+    fn extract_css(&self, source: &str) -> CadiResult<Vec<ExtractedAtom>> {
+        let mut atoms = Vec::new();
+        let rule_regex = regex::Regex::new(r"(?m)^([^{]+)\{").unwrap();
+
+        for cap in rule_regex.captures_iter(source) {
+            let name = cap.get(1).map(|m| m.as_str().trim()).unwrap_or("rule");
+            let start_byte = cap.get(0).unwrap().start();
+            let end_byte = self.find_block_end(source, start_byte);
+
+            atoms.push(ExtractedAtom {
+                name: name.to_string(),
+                kind: AtomKind::Constant, // CSS rules are roughly constants/styles
+                source: source[start_byte..end_byte].to_string(),
+                start_byte,
+                end_byte,
+                start_line: source[..start_byte].matches('\n').count() + 1,
+                end_line: source[..end_byte].matches('\n').count() + 1,
+                defines: Vec::new(),
+                references: Vec::new(),
+                doc_comment: None,
+                visibility: Visibility::Public,
+                parent: None,
+                decorators: Vec::new(),
+            });
+        }
+        Ok(atoms)
+    }
+
+    /// Extract atoms from GLSL source
+    fn extract_glsl(&self, source: &str) -> CadiResult<Vec<ExtractedAtom>> {
+        self.extract_c(source)
     }
 
     /// Fallback extraction for unsupported languages

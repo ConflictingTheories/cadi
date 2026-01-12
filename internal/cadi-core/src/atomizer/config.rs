@@ -47,6 +47,18 @@ fn default_true() -> bool { true }
 
 impl Default for AtomizerConfig {
     fn default() -> Self {
+        let mut languages = HashMap::new();
+        // Common web & systems languages enabled by default
+        languages.insert("tsx".to_string(), LanguageConfig { extensions: vec!["tsx".to_string()], enabled: true, ..Default::default() });
+        languages.insert("jsx".to_string(), LanguageConfig { extensions: vec!["jsx".to_string()], enabled: true, ..Default::default() });
+        languages.insert("html".to_string(), LanguageConfig { extensions: vec!["html".to_string(), "htm".to_string()], enabled: true, ..Default::default() });
+        languages.insert("css".to_string(), LanguageConfig { extensions: vec!["css".to_string()], enabled: true, ..Default::default() });
+        languages.insert("c".to_string(), LanguageConfig { extensions: vec!["c".to_string()], enabled: true, ..Default::default() });
+        languages.insert("cpp".to_string(), LanguageConfig { extensions: vec!["cpp".to_string(), "cc".to_string(), "cxx".to_string()], enabled: true, ..Default::default() });
+        languages.insert("csharp".to_string(), LanguageConfig { extensions: vec!["cs".to_string()], enabled: true, ..Default::default() });
+        languages.insert("glsl".to_string(), LanguageConfig { extensions: vec!["glsl".to_string()], enabled: true, ..Default::default() });
+        languages.insert("wgsl".to_string(), LanguageConfig { extensions: vec!["wgsl".to_string()], enabled: true, ..Default::default() });
+
         Self {
             min_function_lines: default_min_function_lines(),
             min_file_lines_to_split: default_min_file_lines(),
@@ -54,7 +66,7 @@ impl Default for AtomizerConfig {
             include_doc_comments: true,
             include_type_context: true,
             resolution_depth: default_resolution_depth(),
-            languages: HashMap::new(),
+            languages,
             namespace: None,
         }
     }
@@ -156,6 +168,78 @@ impl LanguageConfig {
             ],
             always_include: vec![],
             ignore_patterns: vec!["__pycache__".to_string()],
+        }
+    }
+
+    pub fn tsx() -> Self {
+        Self {
+            extensions: vec!["tsx".to_string()],
+            enabled: true,
+            ..Default::default()
+        }
+    }
+
+    pub fn jsx() -> Self {
+        Self {
+            extensions: vec!["jsx".to_string()],
+            enabled: true,
+            ..Default::default()
+        }
+    }
+
+    pub fn html() -> Self {
+        Self {
+            extensions: vec!["html".to_string(), "htm".to_string()],
+            enabled: true,
+            ..Default::default()
+        }
+    }
+
+    pub fn css() -> Self {
+        Self {
+            extensions: vec!["css".to_string()],
+            enabled: true,
+            ..Default::default()
+        }
+    }
+
+    pub fn c() -> Self {
+        Self {
+            extensions: vec!["c".to_string()],
+            enabled: true,
+            ..Default::default()
+        }
+    }
+
+    pub fn cpp() -> Self {
+        Self {
+            extensions: vec!["cpp".to_string(), "cc".to_string(), "cxx".to_string()],
+            enabled: true,
+            ..Default::default()
+        }
+    }
+
+    pub fn csharp() -> Self {
+        Self {
+            extensions: vec!["cs".to_string()],
+            enabled: true,
+            ..Default::default()
+        }
+    }
+
+    pub fn glsl() -> Self {
+        Self {
+            extensions: vec!["glsl".to_string()],
+            enabled: true,
+            ..Default::default()
+        }
+    }
+
+    pub fn wgsl() -> Self {
+        Self {
+            extensions: vec!["wgsl".to_string()],
+            enabled: true,
+            ..Default::default()
         }
     }
 }

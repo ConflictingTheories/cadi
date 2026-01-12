@@ -111,6 +111,10 @@ impl SymbolResolver {
             "rust" => self.extract_rust_imports(source),
             "typescript" | "javascript" => self.extract_ts_imports(source),
             "python" => self.extract_python_imports(source),
+            "c" | "cpp" => self.extract_c_imports(source),
+            "csharp" => self.extract_csharp_imports(source),
+            "css" => self.extract_css_imports(source),
+            "glsl" => self.extract_glsl_imports(source),
             _ => Vec::new(),
         }
     }
@@ -413,6 +417,68 @@ impl SymbolResolver {
         imports
     }
 
+    fn extract_c_imports(&self, source: &str) -> Vec<RawImport> {
+        let mut imports = Vec::new();
+        let include_regex = regex::Regex::new(r#"#include\s+["<]([^">]+)[">]"#).unwrap();
+
+        for (line_idx, line) in source.lines().enumerate() {
+            if let Some(cap) = include_regex.captures(line) {
+                let path = cap.get(1).map(|m| m.as_str()).unwrap_or("");
+                imports.push(RawImport {
+                    source: path.to_string(),
+                    symbols: Vec::new(), // C includes don't have explicit symbols
+                    is_default: false,
+                    is_namespace: true,
+                    line: line_idx + 1,
+                });
+            }
+        }
+        imports
+    }
+
+    fn extract_csharp_imports(&self, source: &str) -> Vec<RawImport> {
+        let mut imports = Vec::new();
+        let using_regex = regex::Regex::new(r#"using\s+([\w.]+);"#).unwrap();
+
+        for (line_idx, line) in source.lines().enumerate() {
+            if let Some(cap) = using_regex.captures(line) {
+                let path = cap.get(1).map(|m| m.as_str()).unwrap_or("");
+                imports.push(RawImport {
+                    source: path.to_string(),
+                    symbols: Vec::new(),
+                    is_default: false,
+                    is_namespace: true,
+                    line: line_idx + 1,
+                });
+            }
+        }
+        imports
+    }
+
+    fn extract_css_imports(&self, source: &str) -> Vec<RawImport> {
+        let mut imports = Vec::new();
+        let import_regex = regex::Regex::new(r#"@import\s+['"]([^'"]+)['"]"#).unwrap();
+
+        for (line_idx, line) in source.lines().enumerate() {
+            if let Some(cap) = import_regex.captures(line) {
+                let path = cap.get(1).map(|m| m.as_str()).unwrap_or("");
+                imports.push(RawImport {
+                    source: path.to_string(),
+                    symbols: Vec::new(),
+                    is_default: false,
+                    is_namespace: true,
+                    line: line_idx + 1,
+                });
+            }
+        }
+        imports
+    }
+
+    fn extract_glsl_imports(&self, source: &str) -> Vec<RawImport> {
+        // GLSL often uses #include if extended, or we can look for vendor-specific includes
+        self.extract_c_imports(source)
+    }
+
     // ========================================================================
     // Path resolution
     // ========================================================================
@@ -422,6 +488,9 @@ impl SymbolResolver {
             "rust" => self.resolve_rust_path(current_file, import_path),
             "typescript" | "javascript" => self.resolve_ts_path(current_file, import_path),
             "python" => self.resolve_python_path(current_file, import_path),
+            "c" | "cpp" | "glsl" => self.resolve_c_path(current_file, import_path),
+            "csharp" => self.resolve_csharp_path(current_file, import_path),
+            "css" => self.resolve_css_path(current_file, import_path),
             _ => Ok(PathBuf::from(import_path)),
         }
     }
@@ -490,6 +559,34 @@ impl SymbolResolver {
             Ok(self.project_root.join(import_path.replace('.', "/")).with_extension("py"))
         }
     }
+
+    fn resolve_c_path(&self, current_file: &Path, import_path: &str) -> CadiResult<PathBuf> {
+        let parent = current_file.parent().unwrap_or(&self.project_root);
+        let resolved = parent.join(import_path);
+        
+        if resolved.exists() {
+            Ok(resolved)
+        } else {
+            // Check common include directories if not found relatively
+            for dir in &["include", "src"] {
+                let candidate = self.project_root.join(dir).join(import_path);
+                if candidate.exists() {
+                    return Ok(candidate);
+                }
+            }
+            Ok(resolved)
+        }
+    }
+
+    fn resolve_csharp_path(&self, _current_file: &Path, import_path: &str) -> CadiResult<PathBuf> {
+        // C# namespaces don't map directly to paths always, but we'll try
+        Ok(self.project_root.join(import_path.replace('.', "/")).with_extension("cs"))
+    }
+
+    fn resolve_css_path(&self, current_file: &Path, import_path: &str) -> CadiResult<PathBuf> {
+        let parent = current_file.parent().unwrap_or(&self.project_root);
+        Ok(parent.join(import_path))
+    }
 }
 
 /// Extract hash from chunk ID
@@ -551,5 +648,44 @@ from .utils import helper
         let imports = resolver.extract_imports(source);
 
         assert_eq!(imports.len(), 4); // from os, import json, import yaml, from .utils
+    }
+
+    #[test]
+    fn test_c_import_extraction() {
+        let source = r#"
+#include <stdio.h>
+#include "my_header.h"
+"#;
+        let resolver = SymbolResolver::new("/project", "c");
+        let imports = resolver.extract_imports(source);
+        assert_eq!(imports.len(), 2);
+        assert_eq!(imports[0].source, "stdio.h");
+        assert_eq!(imports[1].source, "my_header.h");
+    }
+
+    #[test]
+    fn test_csharp_import_extraction() {
+        let source = r#"
+using System;
+using System.Collections.Generic;
+"#;
+        let resolver = SymbolResolver::new("/project", "csharp");
+        let imports = resolver.extract_imports(source);
+        assert_eq!(imports.len(), 2);
+        assert_eq!(imports[0].source, "System");
+        assert_eq!(imports[1].source, "System.Collections.Generic");
+    }
+
+    #[test]
+    fn test_css_import_extraction() {
+        let source = r#"
+@import "base.css";
+@import 'themes/dark.css';
+"#;
+        let resolver = SymbolResolver::new("/project", "css");
+        let imports = resolver.extract_imports(source);
+        assert_eq!(imports.len(), 2);
+        assert_eq!(imports[0].source, "base.css");
+        assert_eq!(imports[1].source, "themes/dark.css");
     }
 }
