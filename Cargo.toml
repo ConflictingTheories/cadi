@@ -22,7 +22,7 @@ authors = ["ConflictingTheories", "kderbyma"]
 repository = "https://github.com/ConflictingTheories/cadi"
 homepage = "https://github.com/ConflictingTheories/cadi"
 documentation = "https://docs.rs/cadi-core"
-keywords = ["cadi", "build-system", "content-addressed", "wasm", "mcp", "llm"]
+keywords = ["cadi", "build-system", "content-addressed", "wasm", "mcp"]
 categories = ["development-tools::build-utils", "command-line-utilities"]
 
 [workspace.dependencies]
