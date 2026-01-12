@@ -268,7 +268,7 @@ checksum = "b35204fbdc0b3f4446b89fc1ac2cf84a8a68971995d0bf2e925ec7cd960f9cb3"
 
 [[package]]
 name = "cadi"
-version = "1.1.1"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "assert_cmd",
@@ -301,7 +301,7 @@ dependencies = [
 
 [[package]]
 name = "cadi-builder"
-version = "1.1.1"
+version = "2.0.0"
 dependencies = [
  "cadi-core",
  "console",
@@ -316,7 +316,7 @@ dependencies = [
 
 [[package]]
 name = "cadi-core"
-version = "1.1.1"
+version = "2.0.0"
 dependencies = [
  "chrono",
  "criterion",
@@ -349,7 +349,7 @@ dependencies = [
 
 [[package]]
 name = "cadi-llm"
-version = "1.1.1"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -363,7 +363,7 @@ dependencies = [
 
 [[package]]
 name = "cadi-mcp-server"
-version = "1.1.1"
+version = "2.0.0"
 dependencies = [
  "axum",
  "cadi-builder",
@@ -384,7 +384,7 @@ dependencies = [
 
 [[package]]
 name = "cadi-registry"
-version = "1.1.1"
+version = "2.0.0"
 dependencies = [
  "cadi-core",
  "reqwest",
@@ -397,7 +397,7 @@ dependencies = [
 
 [[package]]
 name = "cadi-scraper"
-version = "1.1.1"
+version = "2.0.0"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -432,7 +432,7 @@ dependencies = [
 
 [[package]]
 name = "cadi-server"
-version = "1.1.1"
+version = "2.0.0"
 dependencies = [
  "axum",
  "cadi-core",

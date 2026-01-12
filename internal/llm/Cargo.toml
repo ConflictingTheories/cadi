@@ -6,7 +6,7 @@ license.workspace = true
 description = "CADI LLM integration and embedding utilities"
 
 [dependencies]
-cadi-core = { version = "1.1.1", path = "../cadi-core" }
+cadi-core = { version = "2.0.0", path = "../cadi-core" }
 tokio.workspace = true
 serde.workspace = true
 serde_json.workspace = true

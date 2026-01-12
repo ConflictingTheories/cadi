@@ -13,7 +13,7 @@ description = "CADI registry client for chunk storage, retrieval and distributio
 readme = "README.md"
 
 [dependencies]
-cadi-core = { version = "1.1.1", path = "../cadi-core" }
+cadi-core = { version = "2.0.0", path = "../cadi-core" }
 serde.workspace = true
 serde_json.workspace = true
 reqwest.workspace = true

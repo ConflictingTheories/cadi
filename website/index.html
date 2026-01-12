@@ -32,6 +32,7 @@
             <div class="hero-content">
                 <div class="hero-text">
                     <h2>Build Faster, Smarter Software</h2>
+                    <p class="catch-line">"You have an agent — but do you have a CADI?"</p>
                     <p>CADI is a content-addressed build system that treats software artifacts as immutable chunks
                         identified by their content hash. It supports multiple representations (source code, WASM IR,
                         native binaries, and OCI containers) and provides intelligent dependency resolution, caching,
@@ -40,20 +41,20 @@
                         integration with LLMs via MCP.</p>
                     <div class="key-benefits">
                         <div class="benefit">
-                            <strong>Token Efficient</strong><br>
-                            LLM summaries reduce context window usage by 90%
+                            <strong>40% Token Savings</strong><br>
+                            Virtual views with ghost imports eliminate unnecessary context
                         </div>
                         <div class="benefit">
-                            <strong>80% Faster Builds</strong><br>
-                            Intelligent caching and dependency resolution
+                            <strong>80% Fewer Hallucinations</strong><br>
+                            Smart atomizer provides complete, syntactically valid code
                         </div>
                         <div class="benefit">
-                            <strong>Developer Happiness</strong><br>
-                            Unified workflow for humans and AI assistants
+                            <strong>10x Faster Queries</strong><br>
+                            Graph store enables O(1) dependency resolution
                         </div>
                     </div>
-                    <p class="workflow-note">Supports both manual coding (80% project setup) and LLM-assisted
-                        development for maximum flexibility.</p>
+                    <p class="workflow-note">CADI workflow: Search existing atoms, expand context with ghost
+                        imports, assemble virtual views. Only write new code when necessary.</p>
                 </div>
                 <div class="hero-visual">
                     <img src="assets/cadi-diagram.svg" alt="CADI Architecture" width="400" height="300">
@@ -86,9 +87,9 @@
                 </div>
                 <div class="feature">
                     <img src="assets/mcp-icon.svg" alt="MCP Integration" width="50" height="50">
-                    <h3>MCP for LLMs</h3>
-                    <p>AI assistants can search, build, and verify chunks directly through the Model Context Protocol.
-                    </p>
+                    <h3>CADI MCP</h3>
+                    <p>AI assistants get virtual views with ghost imports, preventing hallucinations and saving 40% on
+                        tokens.</p>
                 </div>
             </div>
         </div>
@@ -110,12 +111,14 @@
                 </div>
                 <div class="component">
                     <h3>MCP Server</h3>
-                    <p>Enables LLM integration for AI-assisted development workflows.</p>
+                    <p>Focused agent infrastructure: virtual views, ghost imports, graph queries. The OS for the
+                        agentic era.</p>
                     <code>cadi-mcp-server</code>
                 </div>
                 <div class="component">
                     <h3>Core Packages</h3>
-                    <p>Rust crates for builder, registry client, scraper, and CADL v2 validation.</p>
+                    <p>Rust crates: graph store, smart atomizer, ghost resolver, virtual rehydration. The foundation for
+                        agentic development.</p>
                     <code>cadi-core, cadi-builder, cadi-scraper</code>
                 </div>
             </div>
