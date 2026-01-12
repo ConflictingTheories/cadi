@@ -58,7 +58,7 @@ impl CAtomizer {
             let mut atom_node = None;
 
             for capture in m.captures {
-                let capture_name = query.capture_names()[capture.index as usize].as_ref();
+                let capture_name = query.capture_names()[capture.index as usize];
                 match capture_name {
                     "fn_name" | "struct_name" | "enum_name" | "typedef_name" => {
                         name = capture.node.utf8_text(source.as_bytes()).unwrap_or("unknown").to_string();

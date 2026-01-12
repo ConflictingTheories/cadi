@@ -77,7 +77,7 @@ impl MetadataExtractor {
         while let Some(line) = lines.next() {
             if line.starts_with("# ") {
                 // Skip the heading, get next non-empty line
-                while let Some(desc) = lines.next() {
+                for desc in lines.by_ref() {
                     if !desc.trim().is_empty() && !desc.starts_with("#") {
                         return Some(desc.trim().to_string());
                     }

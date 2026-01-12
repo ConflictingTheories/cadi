@@ -64,7 +64,7 @@ impl CSharpAtomizer {
             let mut atom_node = None;
 
             for capture in m.captures {
-                let capture_name = query.capture_names()[capture.index as usize].as_ref();
+                let capture_name = query.capture_names()[capture.index as usize];
                 match capture_name {
                     "method_name" | "class_name" | "interface_name" | "struct_name" | "enum_name" | "namespace_name" => {
                         name = capture.node.utf8_text(source.as_bytes()).unwrap_or("unknown").to_string();

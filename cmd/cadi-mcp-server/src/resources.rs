@@ -334,7 +334,7 @@ async fn read_chunk(chunk_id: &str) -> Result<Vec<Value>, Box<dyn std::error::Er
     if let Ok(metadata_content) = std::fs::read_to_string(cadi_repo.join("metadata.json")) {
         if let Ok(metadata) = serde_json::from_str::<serde_json::Map<String, Value>>(&metadata_content) {
             if let Some(chunk_meta) = metadata.get(chunk_id) {
-                let safe_name = chunk_id.replace(':', "_").replace('/', "_");
+                let safe_name = chunk_id.replace([':', '/'], "_");
                 let chunk_path = cadi_repo.join(format!("chunk_sha256_{}.chunk", safe_name));
                 
                 if let Ok(chunk_content) = std::fs::read_to_string(&chunk_path) {

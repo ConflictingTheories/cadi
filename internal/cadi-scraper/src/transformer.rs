@@ -46,13 +46,12 @@ impl Transformer {
 
     fn transform_rust(ast: &CodeAst, result: &mut TransformResult) -> Result<()> {
         // Check for common patterns and suggest optimizations
-        if !ast.functions.is_empty() {
-            if ast.functions.iter().any(|f| f.contains("_async")) {
+        if !ast.functions.is_empty()
+            && ast.functions.iter().any(|f| f.contains("_async")) {
                 result.optimizations.push(
                     "Consider using tokio runtime for async code optimization".to_string(),
                 );
             }
-        }
 
         if ast.traits.len() > 5 {
             result.optimizations.push(

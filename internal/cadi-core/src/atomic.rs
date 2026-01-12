@@ -13,12 +13,14 @@ use std::collections::HashMap;
 /// Granularity level of an atomic chunk
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum ChunkGranularity {
     /// Single function, method, or small utility
     Function,
     /// A class, struct, trait, or interface
     Type,
     /// A complete module or file
+    #[default]
     Module,
     /// A package or crate (multiple modules)
     Package,
@@ -26,17 +28,14 @@ pub enum ChunkGranularity {
     Project,
 }
 
-impl Default for ChunkGranularity {
-    fn default() -> Self {
-        ChunkGranularity::Module
-    }
-}
 
 /// Category of code chunk
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[derive(Default)]
 pub enum ChunkCategory {
     /// Core logic and business rules
+    #[default]
     Logic,
     /// Data types and structures
     Data,
@@ -62,11 +61,6 @@ pub enum ChunkCategory {
     Custom(String),
 }
 
-impl Default for ChunkCategory {
-    fn default() -> Self {
-        ChunkCategory::Logic
-    }
-}
 
 /// Platform constraint for a chunk
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -443,7 +437,7 @@ impl AliasRegistry {
         self.aliases.insert(alias.clone(), chunk_id.clone());
         self.chunks
             .entry(chunk_id)
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(alias);
 
         true

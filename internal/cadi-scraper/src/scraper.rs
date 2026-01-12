@@ -272,10 +272,7 @@ impl Scraper {
 
         for chunk in chunks {
             let deps: Vec<String> = chunk
-                .dependencies
-                .iter()
-                .map(|d| d.clone())
-                .collect();
+                .dependencies.to_vec();
 
             graph.insert(chunk.chunk_id.clone(), deps);
         }

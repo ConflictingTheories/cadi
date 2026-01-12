@@ -48,7 +48,7 @@ impl CssAtomizer {
             let mut atom_node = None;
 
             for capture in m.captures {
-                let capture_name = query.capture_names()[capture.index as usize].as_ref();
+                let capture_name = query.capture_names()[capture.index as usize];
                 match capture_name {
                     "selector" => {
                         name = capture.node.utf8_text(source.as_bytes()).unwrap_or("rule").trim().to_string();

@@ -32,10 +32,12 @@ fn default_true() -> bool {
 /// Trust level for a registry
 #[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "lowercase")]
+#[derive(Default)]
 pub enum TrustLevel {
     /// Fully trusted - accept all chunks
     Full,
     /// Verified - require signatures
+    #[default]
     Verified,
     /// Limited - only fetch, don't execute
     Limited,
@@ -43,11 +45,6 @@ pub enum TrustLevel {
     Untrusted,
 }
 
-impl Default for TrustLevel {
-    fn default() -> Self {
-        Self::Verified
-    }
-}
 
 /// Capabilities of a registry
 #[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]

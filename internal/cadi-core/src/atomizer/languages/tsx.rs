@@ -47,7 +47,7 @@ impl TSXAtomizer {
             let mut atom_node: Option<tree_sitter::Node> = None;
 
             for capture in m.captures {
-                let capture_name = query.capture_names()[capture.index as usize].as_ref();
+                let capture_name = query.capture_names()[capture.index as usize];
                 match capture_name {
                     "function" => {
                         atom_node = Some(capture.node);
@@ -78,7 +78,7 @@ impl TSXAtomizer {
                 // derive name by scanning descendants for an identifier
                 // BFS search descendants for identifier/type_identifier
                 let mut queue = std::collections::VecDeque::new();
-                queue.push_back(node.clone());
+                queue.push_back(node);
                 while let Some(curr) = queue.pop_front() {
                     for child in curr.children(&mut curr.walk()) {
                         if child.kind() == "identifier" || child.kind() == "type_identifier" {
@@ -97,7 +97,7 @@ impl TSXAtomizer {
 
                 atoms.push(ExtractedAtom {
                     name: name.clone(),
-                    kind: kind.clone(),
+                    kind,
                     source: source[start..end].to_string(),
                     start_byte: start,
                     end_byte: end,

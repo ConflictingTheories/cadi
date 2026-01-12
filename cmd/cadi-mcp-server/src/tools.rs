@@ -762,12 +762,9 @@ async fn call_import(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Erro
 
                         for chunk in &all_chunks {
                             // Check if exists
-                            match client.chunk_exists(&chunk.chunk_id).await {
-                                Ok(true) => {
-                                    skipped += 1;
-                                    continue;
-                                }
-                                _ => {}
+                            if let Ok(true) = client.chunk_exists(&chunk.chunk_id).await {
+                                skipped += 1;
+                                continue;
                             }
 
                             // Publish
@@ -886,12 +883,9 @@ async fn call_publish(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Err
     for chunk_id in &chunks_to_publish {
         // Check if exists
         if skip_existing {
-            match client.chunk_exists(chunk_id).await {
-                Ok(true) => {
-                    skipped += 1;
-                    continue;
-                }
-                _ => {}
+            if let Ok(true) = client.chunk_exists(chunk_id).await {
+                skipped += 1;
+                continue;
             }
         }
 

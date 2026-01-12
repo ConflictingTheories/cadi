@@ -50,7 +50,7 @@ impl ContentParser {
         let encoding = detect_encoding(content);
         let text = String::from_utf8_lossy(content).to_string();
 
-        let language = file_path.and_then(|p| detect_language(p));
+        let language = file_path.and_then(detect_language);
 
         // Try to parse as JSON
         if language.as_deref() == Some("json") {

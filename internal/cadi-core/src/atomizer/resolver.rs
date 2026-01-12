@@ -593,7 +593,7 @@ impl SymbolResolver {
 fn extract_hash(chunk_id: &str) -> String {
     chunk_id
         .split(':')
-        .last()
+        .next_back()
         .unwrap_or("")
         .to_string()
 }

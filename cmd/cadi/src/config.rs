@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 /// CADI Configuration
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct CadiConfig {
     /// Registry configuration
     #[serde(default)]
@@ -43,6 +44,7 @@ pub struct RegistryConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct AuthConfig {
     /// Authentication token
     #[serde(default)]
@@ -159,11 +161,6 @@ impl Default for RegistryConfig {
     }
 }
 
-impl Default for AuthConfig {
-    fn default() -> Self {
-        Self { token: None }
-    }
-}
 
 impl Default for CacheConfig {
     fn default() -> Self {
@@ -204,18 +201,6 @@ impl Default for LlmConfig {
     }
 }
 
-impl Default for CadiConfig {
-    fn default() -> Self {
-        Self {
-            registry: RegistryConfig::default(),
-            auth: AuthConfig::default(),
-            cache: CacheConfig::default(),
-            build: BuildConfig::default(),
-            security: SecurityConfig::default(),
-            llm: LlmConfig::default(),
-        }
-    }
-}
 
 /// Get the default configuration directory
 pub fn config_dir() -> PathBuf {

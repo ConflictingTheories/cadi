@@ -69,7 +69,7 @@ pub async fn execute(args: StatsArgs, config: &CadiConfig) -> Result<()> {
 
     // LLM efficiency
     println!("{}", style("LLM Efficiency").bold());
-    println!("  Chunks with summaries: {}", "100%");
+    println!("  Chunks with summaries: 100%");
     println!("  Avg summary tokens:    {}", 245);
     println!("  Avg source tokens:     {}", 2450);
     println!("  Compression ratio:     {} ", style("10x").green());

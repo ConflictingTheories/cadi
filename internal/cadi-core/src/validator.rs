@@ -11,6 +11,12 @@ pub struct Validator {
     errors: Vec<ValidationError>,
 }
 
+impl Default for Validator {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Validator {
     pub fn new() -> Self {
         Self { errors: Vec::new() }

@@ -56,7 +56,7 @@ impl JSXAtomizer {
             let mut atom_node = None;
 
             for capture in m.captures {
-                let capture_name = query.capture_names()[capture.index as usize].as_ref();
+                let capture_name = query.capture_names()[capture.index as usize];
                 match capture_name {
                     "fn_name" | "var_name" | "exported_fn_name" | "class_name" => {
                         name = capture.node.utf8_text(source.as_bytes()).unwrap_or("unknown").to_string();
@@ -103,7 +103,7 @@ impl JSXAtomizer {
 
                 atoms.push(ExtractedAtom {
                     name: name.clone(),
-                    kind: kind.clone(),
+                    kind,
                     source: source[start..end].to_string(),
                     start_byte: start,
                     end_byte: end,

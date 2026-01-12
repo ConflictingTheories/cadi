@@ -94,10 +94,7 @@ impl ChunkStore {
 
     pub async fn get(&self, chunk_id: &str) -> Option<Vec<u8>> {
         let chunk_path = self.chunk_path(chunk_id);
-        match fs::read(&chunk_path) {
-            Ok(data) => Some(data),
-            Err(_) => None,
-        }
+        fs::read(&chunk_path).ok()
     }
 
     pub async fn get_meta(&self, chunk_id: &str) -> Option<ChunkMetadata> {

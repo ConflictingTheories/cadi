@@ -777,7 +777,7 @@ impl SmartChunker {
 
     fn extract_python_class_name(&self, line: &str) -> Option<String> {
         let rest = line.trim_start_matches("class ");
-        let name_end = rest.find(|c: char| c == '(' || c == ':')?;
+        let name_end = rest.find(['(', ':'])?;
         Some(rest[..name_end].trim().to_string())
     }
 
@@ -1258,8 +1258,7 @@ fn to_kebab_case(s: &str) -> String {
         result.push(c.to_ascii_lowercase());
     }
     result
-        .replace('_', "-")
-        .replace(' ', "-")
+        .replace(['_', ' '], "-")
         .replace("--", "-")
 }
 

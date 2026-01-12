@@ -72,8 +72,10 @@ pub struct LanguageConfig {
 
 /// Chunking strategy
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Default)]
 pub enum ChunkingStrategy {
     /// Chunk by individual file
+    #[default]
     ByFile,
 
     /// Chunk by semantic boundaries (functions, classes)
@@ -89,11 +91,6 @@ pub enum ChunkingStrategy {
     ByLineCount,
 }
 
-impl Default for ChunkingStrategy {
-    fn default() -> Self {
-        ChunkingStrategy::ByFile
-    }
-}
 
 impl Default for ScraperConfig {
     fn default() -> Self {

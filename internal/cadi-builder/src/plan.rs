@@ -131,8 +131,7 @@ fn collect_steps(
         chunk_id: repr.map(|r| r.chunk.clone()),
         transform: determine_transform(node, platform),
         inputs: build_inputs(node, deps),
-        depends_on: deps.get(node_id)
-            .map(|d| d.clone())
+        depends_on: deps.get(node_id).cloned()
             .unwrap_or_default(),
     };
     
