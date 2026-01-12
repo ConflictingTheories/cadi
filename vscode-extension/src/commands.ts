@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import * as fs from 'fs';
+import { spawn } from 'child_process';
 import { CadiRegistryProvider } from './registryProvider';
 import { CadiMcpClient } from './mcpClient';
 import { CadiStatusBar } from './statusBar';
@@ -303,21 +304,48 @@ mcp:
         const config = vscode.workspace.getConfiguration('cadi');
         const cadiPath = config.get('cli.path', 'cadi');
 
-        const terminal = vscode.window.createTerminal('CADI');
-        const command = `${cadiPath} ${args.join(' ')}`;
-
         return new Promise((resolve) => {
-            // This is a simplified implementation
-            // In a real extension, you'd use child_process or VS Code tasks
-            vscode.window.showInformationMessage(`Running: ${command}`);
+            const workingDir = cwd || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
 
-            // Mock success for now
-            setTimeout(() => {
+            vscode.window.showInformationMessage(`Running: ${cadiPath} ${args.join(' ')}`);
+
+            const child = spawn(cadiPath, args, {
+                cwd: workingDir,
+                stdio: ['pipe', 'pipe', 'pipe']
+            });
+
+            let stdout = '';
+            let stderr = '';
+
+            child.stdout?.on('data', (data: Buffer) => {
+                stdout += data.toString();
+            });
+
+            child.stderr?.on('data', (data: Buffer) => {
+                stderr += data.toString();
+            });
+
+            child.on('close', (code: number) => {
+                if (code === 0) {
+                    resolve({
+                        success: true,
+                        output: stdout
+                    });
+                } else {
+                    resolve({
+                        success: false,
+                        output: stdout,
+                        error: stderr || `Command failed with exit code ${code}`
+                    });
+                }
+            });
+
+            child.on('error', (error: Error) => {
                 resolve({
-                    success: true,
-                    output: 'Build completed successfully. 40% token savings achieved.'
+                    success: false,
+                    error: error.message
                 });
-            }, 2000);
+            });
         });
     }
 

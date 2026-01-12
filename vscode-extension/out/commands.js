@@ -27,6 +27,7 @@ exports.CadiCommands = void 0;
 const vscode = __importStar(require("vscode"));
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
+const child_process_1 = require("child_process");
 class CadiCommands {
     constructor(context, registryProvider, mcpClient, statusBar) {
         this.context = context;
@@ -274,19 +275,42 @@ mcp:
     async runCadiCommand(args, cwd) {
         const config = vscode.workspace.getConfiguration('cadi');
         const cadiPath = config.get('cli.path', 'cadi');
-        const terminal = vscode.window.createTerminal('CADI');
-        const command = `${cadiPath} ${args.join(' ')}`;
         return new Promise((resolve) => {
-            // This is a simplified implementation
-            // In a real extension, you'd use child_process or VS Code tasks
-            vscode.window.showInformationMessage(`Running: ${command}`);
-            // Mock success for now
-            setTimeout(() => {
+            const workingDir = cwd || vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
+            vscode.window.showInformationMessage(`Running: ${cadiPath} ${args.join(' ')}`);
+            const child = (0, child_process_1.spawn)(cadiPath, args, {
+                cwd: workingDir,
+                stdio: ['pipe', 'pipe', 'pipe']
+            });
+            let stdout = '';
+            let stderr = '';
+            child.stdout?.on('data', (data) => {
+                stdout += data.toString();
+            });
+            child.stderr?.on('data', (data) => {
+                stderr += data.toString();
+            });
+            child.on('close', (code) => {
+                if (code === 0) {
+                    resolve({
+                        success: true,
+                        output: stdout
+                    });
+                }
+                else {
+                    resolve({
+                        success: false,
+                        output: stdout,
+                        error: stderr || `Command failed with exit code ${code}`
+                    });
+                }
+            });
+            child.on('error', (error) => {
                 resolve({
-                    success: true,
-                    output: 'Build completed successfully. 40% token savings achieved.'
+                    success: false,
+                    error: error.message
                 });
-            }, 2000);
+            });
         });
     }
     extractTokenSavings(output) {
