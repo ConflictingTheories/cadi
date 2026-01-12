@@ -1,0 +1,171 @@
+{
+    "name": "cadi",
+    "displayName": "CADI - Content-Addressed Development Interface",
+    "description": "VS Code integration for CADI - the agentic development platform",
+    "version": "2.0.0",
+    "engines": {
+        "vscode": "^1.74.0"
+    },
+    "categories": [
+        "Other"
+    ],
+    "activationEvents": [
+        "onCommand:cadi.searchChunks",
+        "onCommand:cadi.buildProject",
+        "onCommand:cadi.importCode",
+        "onCommand:cadi.viewRegistry",
+        "workspaceContains:cadi.yaml",
+        "workspaceContains:Cargo.toml"
+    ],
+    "main": "./out/extension.js",
+    "contributes": {
+        "commands": [
+            {
+                "command": "cadi.searchChunks",
+                "title": "CADI: Search Chunks",
+                "category": "CADI"
+            },
+            {
+                "command": "cadi.buildProject",
+                "title": "CADI: Build Project",
+                "category": "CADI"
+            },
+            {
+                "command": "cadi.importCode",
+                "title": "CADI: Import Code",
+                "category": "CADI"
+            },
+            {
+                "command": "cadi.viewRegistry",
+                "title": "CADI: View Registry",
+                "category": "CADI"
+            },
+            {
+                "command": "cadi.createManifest",
+                "title": "CADI: Create Manifest",
+                "category": "CADI"
+            },
+            {
+                "command": "cadi.installExtension",
+                "title": "CADI: Install Extension",
+                "category": "CADI"
+            }
+        ],
+        "menus": {
+            "explorer/context": [
+                {
+                    "command": "cadi.importCode",
+                    "when": "resourceExtname =~ /\\.(rs|ts|js|py|java|go)$/ || explorerResourceIsFolder",
+                    "group": "7_modification"
+                },
+                {
+                    "command": "cadi.createManifest",
+                    "when": "!workspaceFolder || !filesExplorerFocus",
+                    "group": "7_modification"
+                }
+            ],
+            "commandPalette": [
+                {
+                    "command": "cadi.searchChunks"
+                },
+                {
+                    "command": "cadi.buildProject"
+                },
+                {
+                    "command": "cadi.importCode"
+                },
+                {
+                    "command": "cadi.viewRegistry"
+                },
+                {
+                    "command": "cadi.createManifest"
+                },
+                {
+                    "command": "cadi.installExtension"
+                }
+            ]
+        },
+        "configuration": {
+            "title": "CADI",
+            "properties": {
+                "cadi.cli.path": {
+                    "type": "string",
+                    "default": "cadi",
+                    "description": "Path to the CADI CLI executable"
+                },
+                "cadi.registry.url": {
+                    "type": "string",
+                    "default": "https://registry.cadi.dev",
+                    "description": "URL of the CADI registry"
+                },
+                "cadi.enableMcp": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Enable MCP (Model Context Protocol) integration"
+                },
+                "cadi.autoImport": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Automatically import code changes to CADI"
+                },
+                "cadi.showTokenSavings": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Show token savings notifications"
+                }
+            }
+        },
+        "views": {
+            "explorer": [
+                {
+                    "id": "cadiRegistry",
+                    "name": "CADI Registry",
+                    "icon": "$(package)",
+                    "contextualTitle": "CADI Registry"
+                }
+            ]
+        },
+        "viewsWelcome": [
+            {
+                "view": "cadiRegistry",
+                "contents": "No CADI registry configured.\n[Configure Registry](command:cadi.configureRegistry)\n[Search Chunks](command:cadi.searchChunks)"
+            }
+        ]
+    },
+    "scripts": {
+        "vscode:prepublish": "npm run compile",
+        "compile": "tsc -p ./",
+        "watch": "tsc -watch -p ./",
+        "pretest": "npm run compile && npm run lint",
+        "lint": "eslint src --ext ts",
+        "test": "node ./out/test/runTest.js"
+    },
+    "devDependencies": {
+        "@types/vscode": "^1.74.0",
+        "@types/node": "16.x",
+        "eslint": "^8.28.0",
+        "@typescript-eslint/eslint-plugin": "^5.42.0",
+        "@typescript-eslint/parser": "^5.42.0",
+        "typescript": "^4.9.3",
+        "@vscode/test-electron": "^2.2.0"
+    },
+    "dependencies": {
+        "axios": "^1.3.4",
+        "vscode-languageclient": "^8.1.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/ConflictingTheories/cadi"
+    },
+    "homepage": "https://cadi.dev",
+    "bugs": {
+        "url": "https://github.com/ConflictingTheories/cadi/issues"
+    },
+    "license": "MIT",
+    "publisher": "cadi-project",
+    "icon": "assets/cadi-icon.png",
+    "galleryBanner": {
+        "color": "#0a0a0a",
+        "theme": "dark"
+    }
+}
