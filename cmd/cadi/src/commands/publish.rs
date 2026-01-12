@@ -72,8 +72,8 @@ pub async fn execute(args: PublishArgs, config: &CadiConfig) -> Result<()> {
             for entry in std::fs::read_dir(&chunks_dir)? {
                 let entry = entry?;
                 let path = entry.path();
-                // Check for .chunk (data) files
-                if path.extension().map(|e| e == "chunk").unwrap_or(false) {
+                // Check for .chunk (data) or .json (metadata) files
+                if path.extension().map(|e| e == "chunk" || e == "json").unwrap_or(false) {
                     let chunk_id = path
                         .file_stem()
                         .and_then(|s| s.to_str())
