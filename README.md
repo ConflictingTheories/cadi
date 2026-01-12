@@ -8,12 +8,31 @@ CADI is a universal build and distribution system for software artifacts, treati
 ## Features
 
 - **Content-Addressed Artifacts**: All chunks are immutable and identified by their content hash
+- **CADL v2 Interface Contracts**: Advanced semantic contracts for behavior, effects, ABI, and safety
 - **Multi-Representation Support**: Source, IR (WASM), native binaries, and OCI containers
 - **Build Graph Resolution**: Intelligent dependency resolution and caching
 - **Provenance & Verification**: SLSA-compliant build receipts and attestations
 - **LLM Optimization**: Token-efficient summaries and semantic search for AI-assisted development
 - **MCP Integration**: Model Context Protocol server for LLM tool access
 - **Cross-Platform**: Support for Linux (x86_64, ARM64), macOS (Intel, Apple Silicon), and WASM
+
+## CADL - CADI Definition Language
+
+CADI uses CADL v2 to define interfaces with comprehensive semantic contracts, addressing common integration blindspots:
+
+- `@contract`: Semantic behavior and complexity guarantees
+- `@effects`: Concurrency, IO, and side-effect contracts
+- `@abi`: Binary encoding and calling convention stability
+- `@protocol`: Lifecycle and state machine constraints
+- `@security`: Sandbox and capability permissions
+
+```cadl
+interface VideoCodec {
+    @contract(codec: "h264", profile: "high")
+    @effects(concurrency: "thread_safe", blocking: "none")
+    fn encode(frame: Image) -> Bitstream;
+}
+```
 
 ## MCP Integration
 
@@ -50,27 +69,28 @@ CADI includes a Model Context Protocol (MCP) server that enables AI assistants a
 
 The MCP server exposes these CADI tools to AI assistants:
 
-- **`cadi_search`**: Search for chunks by concept, language, or keyword
-- **`cadi_get_chunk`**: Retrieve chunk content and metadata
-- **`cadi_build`**: Build CADI manifests for specific targets
-- **`cadi_plan`**: Show build plans without execution
-- **`cadi_verify`**: Verify chunk integrity and provenance
-- **`cadi_explain`**: Explain chunk purpose and dependencies
-- **`cadi_suggest`**: Suggest relevant chunks for tasks
+- **`cadi_search`**: Search for CADI chunks by concept, language, or keyword
+- **`cadi_get_chunk`**: Retrieve a CADI chunk by its ID (includes metadata and source)
+- **`cadi_build`**: Build a CADI manifest for a specific target
+- **`cadi_plan`**: Show the build plan for a manifest without executing it
+- **`cadi_verify`**: Verify a chunk's integrity and provenance
+- **`cadi_explain`**: Explain a chunk's purpose, dependencies, and lineage
+- **`cadi_suggest`**: Suggest chunks that might be useful for a task
 
 ### Available Resources
 
-- **`cadi://config`**: Current CADI configuration
+- **`cadi://config`**: Current CADI configuration settings
 - **`cadi://cache/stats`**: Local cache usage statistics
-- **`cadi://registries`**: Configured registry endpoints
-- **`cadi://trust/policy`**: Trust policy configuration
+- **`cadi://registries`**: Configured registry endpoints and federation status
+- **`cadi://trust/policy`**: Current trust policy configuration
+- **`cadi://chunk/{id}`**: Direct access to specific chunk details
 
 ### Testing MCP Integration
 
 Run the MCP test script to verify everything works:
 
 ```bash
-./test-mcp.sh
+./scripts/test-mcp-integration.sh
 ```
 
 This will test the MCP protocol communication and list all available tools and resources.
@@ -79,24 +99,26 @@ This will test the MCP protocol communication and list all available tools and r
 
 ```
 cadi/
-├── cmd/                    # CLI and server binaries
-│   ├── cadi/              # Main CLI
-│   ├── cadi-server/       # Registry server
-│   └── cadi-mcp-server/   # MCP server for LLM integration
-├── cadi-spec/             # CADI specification schemas
-├── internal/              # Internal packages
-│   ├── builder/           # Build system
-│   ├── registry/          # Registry client/server
-│   ├── resolver/          # Dependency resolution
-│   ├── transform/         # Transformation engine
-│   ├── llm/               # LLM optimization layer
-│   └── security/          # Signing and verification
-├── examples/              # Demo projects
-│   └── todo-suite/        # Full-stack todo application
-└── docs/                  # Documentation
+├── cmd/                    # Execution binaries
+│   ├── cadi/              # Principal CLI
+│   ├── cadi-server/       # Federated Registry server
+│   └── cadi-mcp-server/   # MCP bridge for LLMs
+├── internal/              # Core implementations
+│   ├── cadi-core/         # AST, Parser, Validator, and CADL v2 logic
+│   ├── cadi-builder/      # Cross-platform build engine
+│   ├── cadi-registry/     # Registry client and federation logic
+│   ├── cadi-scraper/      # Semantic chunking and metadata extraction
+│   └── llm/               # Embedding and optimization layer
+├── cadi-spec/             # Formal CADI and CADL specifications
+├── examples/              # Sample projects and demo suites
+└── website/               # Project landing page and documentation
 ```
 
 ## Core Concepts
+
+### CADL v2 (CADI Definition Language)
+
+Advanced interface definitions that go beyond types, capturing behavior, performance, and side-effects.
 
 ### Chunks
 
@@ -104,12 +126,12 @@ Immutable content-addressed units identified by `chunk:sha256:<digest>`. Each ch
 - Metadata (name, description, version, tags)
 - Representations (source, IR, binary, container)
 - Lineage (parent chunks, build receipts)
-- Licensing information
+- Contracts (expressed in CADL)
 
 ### Representations
 
 A specific form of a chunk:
-- `source.*` - Source code (TypeScript, JavaScript, C, etc.)
+- `source.*` - Source code (TypeScript, JavaScript, Rust, C, etc.)
 - `intermediate.*` - Portable representations (WASM)
 - `binary.*` - Architecture-specific binaries (x86_64-linux, arm64-darwin, etc.)
 - `container.oci` - OCI container images

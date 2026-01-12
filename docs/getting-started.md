@@ -42,9 +42,12 @@ This creates a `cadi.yaml` manifest file and basic project structure.
 cadi import ./src --language rust --name my-library
 ```
 
-### 3. Build for a Target
+### 3. Build & Validate
 
 ```bash
+# Validate your CADL interface definitions
+cadi validate my-interface.cadl
+
 # Build for the default target
 cadi build
 
@@ -61,7 +64,7 @@ cadi plan --target web
 # Publish all chunks to the registry
 cadi publish
 
-# Publish with signing
+# Publish with signing (if configured)
 cadi publish --sign
 ```
 
@@ -77,21 +80,23 @@ cadi fetch --manifest cadi.yaml
 
 ## Key Concepts
 
+### CADL v2 (CADI Definition Language)
+
+CADI uses CADL v2 to define interfaces with comprehensive semantic contracts. You can use the `cadi validate` command to ensure your definitions are compliant with the specification.
+
 ### Chunks
 
-A chunk is a content-addressed piece of software. The chunk ID is derived from
-its content hash, ensuring immutability and verifiability.
+A chunk is a content-addressed piece of software. The chunk ID is derived from its content hash, ensuring immutability and verifiability.
 
-Types of chunks:
-- **source-cadi**: Source code files
-- **ir-cadi**: Intermediate representations (WASM, LLVM IR)
-- **blob-cadi**: Binary artifacts
-- **container-cadi**: Container images
+Types of chunks (serialized as lowercase):
+- **source**: Source code files and project structure
+- **intermediate**: Portable representations (WASM)
+- **blob**: Native binary artifacts for specific architectures
+- **container**: OCI-compatible container images
 
 ### Manifests
 
-A manifest describes an application as a graph of chunks with build targets.
-It specifies:
+A manifest describes an application as a graph of chunks with build targets. It specifies:
 - Which chunks make up the application
 - How chunks depend on each other
 - What representations are available for each chunk
@@ -109,34 +114,40 @@ A build target specifies:
 The registry stores and serves CADI chunks. Features:
 - Content-addressed storage
 - Federated architecture
-- Tiered storage (hot/warm/cold)
 - Cryptographic verification
+- SLSA provenance support
 
 ## Configuration
 
-CADI configuration is stored in `~/.config/cadi/config.yaml`:
+CADI configuration is stored in `~/.cadi/config.yaml`:
 
 ```yaml
 registry:
-  primary: https://registry.cadi.dev
-  fallback:
-    - https://mirror.cadi.dev
+  url: https://registry.cadi.dev
+  namespace: github.com/myorg
 
 auth:
   token: ${CADI_TOKEN}
 
 cache:
-  directory: ~/.cache/cadi
+  dir: ~/.cadi/store
   max_size_gb: 10
 
 build:
-  parallel_jobs: auto
-  prefer_cached: true
+  parallelism: auto
+  prefer_representation: 
+    - binary
+    - wasm
+    - source
 
 security:
-  verify_signatures: true
-  trusted_publishers:
-    - publisher:abc123
+  trust_policy: standard
+  verify_on_fetch: true
+  sandbox_untrusted: true
+
+llm:
+  embedding_model: text-embedding-3-large
+  summary_max_tokens: 500
 ```
 
 ## Next Steps
@@ -144,4 +155,4 @@ security:
 - Read the [Architecture Guide](./architecture.md)
 - Explore the [CLI Reference](./cli-reference.md)
 - Check out [Example Projects](../examples/)
-- Learn about [Trust & Security](./security.md)
+- Learn about [MCP Integration](../MCP-INTEGRATION.md)

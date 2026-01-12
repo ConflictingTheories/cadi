@@ -5,9 +5,8 @@ Complete reference for all CADI command-line interface commands.
 ## Global Options
 
 ```
---config <path>     Path to config file (default: ~/.config/cadi/config.yaml)
+--config <path>     Path to config file (default: ~/.cadi/config.yaml)
 --verbose, -v       Enable verbose output
---quiet, -q         Suppress non-error output
 --help, -h          Show help
 --version           Show version
 ```
@@ -38,7 +37,7 @@ cadi init my-project --template library
 
 ### `cadi import`
 
-Import source files as a CADI chunk.
+Import a project and create Source CADI chunks.
 
 ```bash
 cadi import <path> [options]
@@ -61,7 +60,7 @@ cadi import ./src --language rust --name my-library
 
 ### `cadi build`
 
-Build the manifest for a target platform.
+Build artifacts from a manifest.
 
 ```bash
 cadi build [options]
@@ -89,8 +88,9 @@ cadi publish [options]
 
 **Options:**
 - `--chunks <ids>` - Specific chunk IDs to publish (comma-separated)
-- `--sign` - Sign chunks with your key
+- `--no-sign` - Disable signing (signing is enabled by default if key is configured)
 - `--registry <url>` - Target registry URL
+- `--dry-run` - Perform a trial run without uploading
 
 **Example:**
 ```bash
@@ -99,9 +99,32 @@ cadi publish --sign
 
 ---
 
+### `cadi query`
+
+Query the registry for chunks matching a pattern or criteria.
+
+```bash
+cadi query <pattern> [options]
+```
+
+**Arguments:**
+- `pattern` - Search pattern or chunk ID
+
+**Options:**
+- `--language <lang>` - Filter by language
+- `--limit <num>` - Limit results (default: 10)
+- `--json` - Output in JSON format
+
+**Example:**
+```bash
+cadi query "auth middleware" --language rust
+```
+
+---
+
 ### `cadi fetch`
 
-Fetch chunks from a registry.
+Fetch chunks from a registry to local cache.
 
 ```bash
 cadi fetch <chunk_or_manifest> [options]
@@ -111,8 +134,8 @@ cadi fetch <chunk_or_manifest> [options]
 - `chunk_or_manifest` - Chunk ID or manifest path
 
 **Options:**
-- `--tier <tier>` - Storage tier preference (hot, warm, cold)
 - `--verify` - Verify hash after fetching
+- `--output <dir>` - Output directory (default: local cache)
 
 **Example:**
 ```bash
@@ -123,7 +146,7 @@ cadi fetch chunk:sha256:abc123... --verify
 
 ### `cadi run`
 
-Run a built application.
+Run a built application or specific chunk.
 
 ```bash
 cadi run [options]
@@ -132,13 +155,57 @@ cadi run [options]
 **Options:**
 - `--manifest <path>` - Path to manifest file
 - `--target <name>` - Target to run
-- `--port <port>` - Port for server applications
-- `--detach` - Run in background
+- `--chunk <id>` - Run a specific chunk ID directly
 - `--sandbox` - Run in sandboxed environment
+- `--env <key=val>` - Set environment variable
 
 **Example:**
 ```bash
-cadi run --target server --port 8080
+cadi run --target server --env PORT=8080
+```
+
+---
+
+### `cadi validate`
+
+Validate a CADL file against the specification.
+
+```bash
+cadi validate <path> [options]
+```
+
+**Arguments:**
+- `path` - Path to .cadl file
+
+**Options:**
+- `--json` - Output validation report in JSON
+- `--strict` - Enable strict validation mode
+
+**Example:**
+```bash
+cadi validate my-interface.cadl
+```
+
+---
+
+### `cadi scrape`
+
+Scrape and chunk repositories or files.
+
+```bash
+cadi scrape <url_or_path> [options]
+```
+
+**Arguments:**
+- `url_or_path` - URL of a repository or local file path
+
+**Options:**
+- `--strategy <name>` - Chunking strategy (file, semantic, fixed)
+- `--output-dir <dir>` - Where to save generated chunks
+
+**Example:**
+```bash
+cadi scrape https://github.com/my/repo --strategy semantic
 ```
 
 ---
@@ -194,32 +261,14 @@ cadi trust <subcommand>
 ```
 
 **Subcommands:**
+- `add` - Add a trusted publisher
+- `remove` - Remove a trusted publisher
+- `list` - List trusted publishers
+- `policy` - Show or set trust policy
 
-#### `cadi trust add`
-Add a trusted publisher.
+**Example:**
 ```bash
-cadi trust add <publisher_id> [options]
---level <level>   Trust level (full, verified, limited)
-```
-
-#### `cadi trust remove`
-Remove a trusted publisher.
-```bash
-cadi trust remove <publisher_id>
-```
-
-#### `cadi trust list`
-List trusted publishers.
-```bash
-cadi trust list
-```
-
-#### `cadi trust policy`
-Show or set trust policy.
-```bash
-cadi trust policy [options]
---show            Show current policy
---set <key=value> Set policy value
+cadi trust add publisher:abc123 --level full
 ```
 
 ---
@@ -236,8 +285,6 @@ cadi gc [options]
 - `--status` - Show cache status only
 - `--dry-run` - Show what would be removed
 - `--aggressive` - More aggressive cleanup
-- `--pin <id>` - Pin a chunk (prevent GC)
-- `--unpin <id>` - Unpin a chunk
 
 **Example:**
 ```bash
@@ -248,20 +295,19 @@ cadi gc --dry-run
 
 ### `cadi stats`
 
-Show usage statistics.
+Show usage and efficiency statistics.
 
 ```bash
 cadi stats [options]
 ```
 
 **Options:**
-- `--period <period>` - Time period (day, week, month, all)
 - `--detailed` - Show detailed breakdown
-- `--export <format>` - Export format (json, csv)
+- `--json` - Output in JSON format
 
 **Example:**
 ```bash
-cadi stats --period week --detailed
+cadi stats --detailed
 ```
 
 ---
@@ -275,11 +321,10 @@ cadi demo <name> [options]
 ```
 
 **Arguments:**
-- `name` - Demo name (todo-suite, hello-world, etc.)
+- `name` - Demo name (todo-suite)
 
 **Options:**
 - `--target <target>` - Specific target to demo
-- `--no-build` - Skip building, use cached
 - `--clean` - Clean before building
 
 **Example:**
@@ -291,11 +336,11 @@ cadi demo todo-suite --target web
 
 | Variable | Description | Default |
 |----------|-------------|---------|
-| `CADI_CONFIG` | Config file path | `~/.config/cadi/config.yaml` |
-| `CADI_CACHE` | Cache directory | `~/.cache/cadi` |
+| `CADI_CONFIG` | Config file path | `~/.cadi/config.yaml` |
+| `CADI_CACHE` | Cache directory | `~/.cadi/store` |
 | `CADI_REGISTRY` | Default registry URL | `https://registry.cadi.dev` |
 | `CADI_TOKEN` | Authentication token | - |
-| `CADI_LOG` | Log level | `info` |
+| `CADI_LOG` | Log level (tracing) | `cadi=info` |
 
 ## Exit Codes
 

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,6 +8,7 @@
     <link rel="stylesheet" href="css/style.css">
     <link rel="icon" href="assets/cadi-icon.svg" type="image/svg+xml">
 </head>
+
 <body>
     <header>
         <div class="container">
@@ -24,13 +26,17 @@
         </div>
     </header>
 
-        <section id="home" class="hero">
+    <section id="home" class="hero">
         <div class="container">
             <div class="hero-content">
                 <div class="hero-text">
                     <h2>Build Faster, Smarter Software</h2>
-                    <p>CADI is a content-addressed build system that treats software artifacts as immutable chunks identified by their content hash. It supports multiple representations (source code, WASM IR, native binaries, and OCI containers) and provides intelligent dependency resolution, caching, and verification.</p>
-                    <p>Save development time with automatic build graph resolution, cross-platform support, and seamless integration with LLMs via MCP.</p>
+                    <p>CADI is a content-addressed build system that treats software artifacts as immutable chunks
+                        identified by their content hash. It supports multiple representations (source code, WASM IR,
+                        native binaries, and OCI containers) and provides intelligent dependency resolution, caching,
+                        and verification.</p>
+                    <p>Save development time with automatic build graph resolution, cross-platform support, and seamless
+                        integration with LLMs via MCP.</p>
                     <div class="key-benefits">
                         <div class="benefit">
                             <strong>Token Efficient</strong><br>
@@ -45,7 +51,8 @@
                             Unified workflow for humans and AI assistants
                         </div>
                     </div>
-                    <p class="workflow-note">Supports both manual coding (80% project setup) and LLM-assisted development for maximum flexibility.</p>
+                    <p class="workflow-note">Supports both manual coding (80% project setup) and LLM-assisted
+                        development for maximum flexibility.</p>
                 </div>
                 <div class="hero-visual">
                     <img src="assets/cadi-diagram.svg" alt="CADI Architecture" width="400" height="300">
@@ -62,12 +69,14 @@
                 <div class="feature">
                     <img src="assets/chunk-icon.svg" alt="Content-Addressed" width="50" height="50">
                     <h3>Content-Addressed Chunks</h3>
-                    <p>Every artifact is an immutable chunk identified by its SHA-256 hash, ensuring integrity and deduplication.</p>
+                    <p>Every artifact is an immutable chunk identified by its SHA-256 hash, ensuring integrity and
+                        deduplication.</p>
                 </div>
                 <div class="feature">
                     <img src="assets/multi-rep-icon.svg" alt="Multi-Representation" width="50" height="50">
                     <h3>Multiple Representations</h3>
-                    <p>Store source code, WASM IR, native binaries, and OCI containers - all linked to the same chunk.</p>
+                    <p>Store source code, WASM IR, native binaries, and OCI containers - all linked to the same chunk.
+                    </p>
                 </div>
                 <div class="feature">
                     <img src="assets/graph-icon.svg" alt="Build Graph" width="50" height="50">
@@ -77,7 +86,8 @@
                 <div class="feature">
                     <img src="assets/mcp-icon.svg" alt="MCP Integration" width="50" height="50">
                     <h3>MCP for LLMs</h3>
-                    <p>AI assistants can search, build, and verify chunks directly through the Model Context Protocol.</p>
+                    <p>AI assistants can search, build, and verify chunks directly through the Model Context Protocol.
+                    </p>
                 </div>
             </div>
         </div>
@@ -95,7 +105,7 @@
                 <div class="component">
                     <h3>Registry Server</h3>
                     <p>Distributed registry for storing and sharing chunks with federation support.</p>
-                    <code>cadi-server --port 8080</code>
+                    <code>CADI_BIND=0.0.0.0:8080 cadi-server</code>
                 </div>
                 <div class="component">
                     <h3>MCP Server</h3>
@@ -104,8 +114,8 @@
                 </div>
                 <div class="component">
                     <h3>Core Packages</h3>
-                    <p>Rust crates for builder, registry client, dependency resolver, and security.</p>
-                    <code>cadi-core, cadi-builder, cadi-registry</code>
+                    <p>Rust crates for builder, registry client, scraper, and CADL v2 validation.</p>
+                    <code>cadi-core, cadi-builder, cadi-scraper</code>
                 </div>
             </div>
         </div>
@@ -114,7 +124,8 @@
     <section class="repository">
         <div class="container">
             <h2>CADI Public Repository</h2>
-            <p>Like Crates.io for Rust or NPM for JavaScript, CADI will host a public repository for open source software artifacts. Developers can publish, discover, and reuse chunks across projects.</p>
+            <p>Like Crates.io for Rust or NPM for JavaScript, CADI will host a public repository for open source
+                software artifacts. Developers can publish, discover, and reuse chunks across projects.</p>
             <div class="repo-preview">
                 <div class="repo-stats">
                     <div class="stat">
@@ -146,7 +157,7 @@
         </div>
     </section>
 
-        <section class="workflows">
+    <section class="workflows">
         <div class="container">
             <h2>Development Workflows</h2>
             <div class="workflow-tabs">
@@ -159,7 +170,8 @@
                 <div class="tab-content">
                     <div class="tab-pane active" id="mcp">
                         <h3>MCP Server Workflow</h3>
-                        <p>AI assistants integrate directly with CADI via Model Context Protocol for seamless development.</p>
+                        <p>AI assistants integrate directly with CADI via Model Context Protocol for seamless
+                            development.</p>
                         <div class="workflow-steps">
                             <div class="step">
                                 <strong>1. Natural Language Query</strong><br>
@@ -177,7 +189,8 @@
                     </div>
                     <div class="tab-pane" id="individual">
                         <h3>Manual Development Workflow</h3>
-                        <p>Traditional developers can use CADI to bootstrap projects quickly, assembling 80% of the codebase from reusable chunks and manually coding the remaining unique logic.</p>
+                        <p>Traditional developers can use CADI to bootstrap projects quickly, assembling 80% of the
+                            codebase from reusable chunks and manually coding the remaining unique logic.</p>
                         <div class="workflow-steps">
                             <div class="step">
                                 <strong>1. Define Project Structure</strong><br>
@@ -185,35 +198,43 @@
                             </div>
                             <div class="step">
                                 <strong>2. Search & Select Chunks</strong><br>
-                                <code>cadi search "web-framework authentication"</code> - Browse registry for suitable components
+                                <code>cadi query "web-framework authentication"</code> - Browse registry for suitable
+                                components
                             </div>
                             <div class="step">
-                                <strong>3. Assemble Scaffolding</strong><br>
-                                <code>cadi scaffold --manifest cadi.yaml</code> - Generate 80% of the project structure and boilerplate
+                                <strong>3. Import Local Code</strong><br>
+                                <code>cadi import ./src</code> - Convert your unique logic into manageable CADI chunks
                             </div>
                             <div class="step">
-                                <strong>4. Manual Coding</strong><br>
-                                Write custom business logic, integrate components, and add unique features
+                                <strong>4. Build & Verify</strong><br>
+                                <code>cadi build --target linux-x86_64</code> - Compile and verify the complete
+                                application
                             </div>
                             <div class="step">
-                                <strong>5. Build & Test</strong><br>
-                                <code>cadi build --target linux-x86_64</code> - Compile and verify the complete application
+                                <strong>5. Coming Soon: Scaffold</strong><br>
+                                <code>cadi scaffold</code> will automatically generate project boilerplate from
+                                manifests
                             </div>
                         </div>
                         <div class="manual-coding-note">
                             <h4>Benefits for Manual Developers</h4>
                             <ul>
-                                <li><strong>80% Time Savings:</strong> Reusable chunks handle common patterns (auth, databases, APIs)</li>
-                                <li><strong>Focus on Business Logic:</strong> Skip boilerplate and concentrate on unique features</li>
+                                <li><strong>80% Time Savings:</strong> Reusable chunks handle common patterns (auth,
+                                    databases, APIs)</li>
+                                <li><strong>Focus on Business Logic:</strong> Skip boilerplate and concentrate on unique
+                                    features</li>
                                 <li><strong>Proven Components:</strong> Use battle-tested, security-audited chunks</li>
-                                <li><strong>Easy Integration:</strong> Consistent interfaces make assembly straightforward</li>
+                                <li><strong>Easy Integration:</strong> Consistent interfaces make assembly
+                                    straightforward</li>
                             </ul>
-                            <p>Even without LLMs, CADI transforms development from writing everything from scratch to composing proven components and coding only what makes your project unique.</p>
+                            <p>Even without LLMs, CADI transforms development from writing everything from scratch to
+                                composing proven components and coding only what makes your project unique.</p>
                         </div>
                     </div>
                     <div class="tab-pane" id="llm-assisted">
                         <h3>LLM-Assisted Development</h3>
-                        <p>Humans and AI collaborate using CADI's token-efficient summaries and MCP integration. When components don't exist, LLMs generate production-ready code.</p>
+                        <p>Humans and AI collaborate using CADI's token-efficient summaries and MCP integration. When
+                            components don't exist, LLMs generate production-ready code.</p>
                         <div class="workflow-steps">
                             <div class="step">
                                 <strong>1. Human: Define Requirements</strong><br>
@@ -263,35 +284,52 @@ export class RateLimiter {
                             <div class="case-study">
                                 <h4>FinTech Startup: Payment Gateway</h4>
                                 <p>A 3-person team building a secure payment processing system.</p>
-                                <strong>Scenario:</strong> Needed PCI-compliant encryption, webhook handling, and fraud detection.<br>
-                                <strong>CADI Workflow:</strong> Found existing crypto-lib and webhook-framework chunks. LLM generated custom fraud detection logic when no suitable chunk existed.<br>
-                                <strong>Result:</strong> 70% faster development, 50% fewer security vulnerabilities, seamless human-AI collaboration.
+                                <strong>Scenario:</strong> Needed PCI-compliant encryption, webhook handling, and fraud
+                                detection.<br>
+                                <strong>CADI Workflow:</strong> Found existing crypto-lib and webhook-framework chunks.
+                                LLM generated custom fraud detection logic when no suitable chunk existed.<br>
+                                <strong>Result:</strong> 70% faster development, 50% fewer security vulnerabilities,
+                                seamless human-AI collaboration.
                             </div>
                             <div class="case-study">
                                 <h4>E-commerce Platform: Inventory Microservice</h4>
                                 <p>Distributed team of 8 developers scaling an online retail system.</p>
-                                <strong>Scenario:</strong> Required real-time inventory tracking with Redis caching and REST API.<br>
-                                <strong>CADI Workflow:</strong> Assembled from existing db-orm, redis-client, and api-framework chunks. LLM created custom business logic for stock allocation algorithms.<br>
-                                <strong>Result:</strong> Reduced integration time from 2 weeks to 3 days, consistent APIs across services.
+                                <strong>Scenario:</strong> Required real-time inventory tracking with Redis caching and
+                                REST API.<br>
+                                <strong>CADI Workflow:</strong> Assembled from existing db-orm, redis-client, and
+                                api-framework chunks. LLM created custom business logic for stock allocation
+                                algorithms.<br>
+                                <strong>Result:</strong> Reduced integration time from 2 weeks to 3 days, consistent
+                                APIs across services.
                             </div>
                             <div class="case-study">
                                 <h4>IoT Company: Device Management Dashboard</h4>
                                 <p>Engineering team of 5 building a web dashboard for IoT device monitoring.</p>
-                                <strong>Scenario:</strong> Needed real-time charts, device authentication, and alert system.<br>
-                                <strong>CADI Workflow:</strong> Combined charting-lib, auth-middleware, and websocket chunks. When no suitable alert-engine existed, LLM generated TypeScript code for custom notification logic.<br>
-                                <strong>Result:</strong> 90% token savings on LLM calls, faster iteration cycles, and maintainable codebase.
+                                <strong>Scenario:</strong> Needed real-time charts, device authentication, and alert
+                                system.<br>
+                                <strong>CADI Workflow:</strong> Combined charting-lib, auth-middleware, and websocket
+                                chunks. When no suitable alert-engine existed, LLM generated TypeScript code for custom
+                                notification logic.<br>
+                                <strong>Result:</strong> 90% token savings on LLM calls, faster iteration cycles, and
+                                maintainable codebase.
                             </div>
                             <div class="case-study">
                                 <h4>Open Source Contributor: CLI Tool</h4>
                                 <p>Individual developer publishing a command-line utility for data processing.</p>
-                                <strong>Scenario:</strong> Needed argument parsing, file I/O, and data transformation features.<br>
-                                <strong>CADI Workflow:</strong> Used arg-parser and file-utils chunks. LLM assisted in generating custom data transformation functions not available in repos.<br>
-                                <strong>Result:</strong> Published to CADI registry in 1 day, gained 500+ downloads in first week.
+                                <strong>Scenario:</strong> Needed argument parsing, file I/O, and data transformation
+                                features.<br>
+                                <strong>CADI Workflow:</strong> Used arg-parser and file-utils chunks. LLM assisted in
+                                generating custom data transformation functions not available in repos.<br>
+                                <strong>Result:</strong> Published to CADI registry in 1 day, gained 500+ downloads in
+                                first week.
                             </div>
                         </div>
                         <div class="llm-generation-note">
                             <h4>LLM Code Generation for Missing Components</h4>
-                            <p>When CADI cannot find a suitable chunk in the registry, it seamlessly integrates with LLMs to generate the required code. The system provides context about existing dependencies and generates production-ready code that fits the project's architecture.</p>
+                            <p>When CADI cannot find a suitable chunk in the registry, it seamlessly integrates with
+                                LLMs to generate the required code. The system provides context about existing
+                                dependencies and generates production-ready code that fits the project's architecture.
+                            </p>
                             <div class="code-snippet">
                                 <pre><code>// CADI detects missing component
 "Error: No chunk found for 'custom-validation-middleware'
@@ -320,4 +358,5 @@ export function validateUserInput(data: any): ValidationResult {
 
     <script src="js/script.js"></script>
 </body>
+
 </html>
