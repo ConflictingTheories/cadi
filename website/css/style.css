@@ -1,3 +1,40 @@
+/* Theme variables */
+:root {
+    --bg: #0a0a0a;
+    --bg-2: #1a1a1a;
+    --bg-gradient: linear-gradient(135deg, var(--bg) 0%, var(--bg-2) 50%, var(--bg) 100%);
+    --text: #e0e0e0;
+    --muted: #b0b0b0;
+    --accent: #4CAF50;
+    --accent-weak: rgba(76, 175, 80, 0.3);
+    --accent-light: #81C784;
+    --card-bg: rgba(42, 42, 42, 0.8);
+    --card-border: rgba(76, 175, 80, 0.2);
+    --focus-ring: rgba(129, 199, 132, 0.18);
+}
+
+/* Light theme overrides */
+.light-theme {
+    --bg: #f6f7f8;
+    --bg-2: #eef1f0;
+    --bg-gradient: linear-gradient(135deg, var(--bg) 0%, var(--bg-2) 50%, var(--bg) 100%);
+    --text: #202225;
+    --muted: #4a4a4a;
+    --accent: #0f8b2f;
+    --accent-weak: rgba(15, 139, 47, 0.12);
+    --accent-light: #2e9e48;
+    --card-bg: rgba(255, 255, 255, 0.9);
+    --card-border: rgba(15, 139, 47, 0.12);
+    --focus-ring: rgba(15, 139, 47, 0.18);
+}
+
+/* Respect user system preference on first load */
+@media (prefers-color-scheme: light) {
+    :root:not(.light-theme) {
+        /* If user hasn't chosen explicitly, set defaults to light */
+    }
+}
+
 /* Reset and base styles */
 * {
     margin: 0;
@@ -8,8 +45,8 @@
 body {
     font-family: 'Fira Code', 'Monaco', 'Consolas', monospace;
     line-height: 1.6;
-    color: #e0e0e0;
-    background: linear-gradient(135deg, #0a0a0a 0%, #1a1a1a 50%, #0a0a0a 100%);
+    color: var(--text);
+    background: var(--bg-gradient);
     background-attachment: fixed;
 }
 
@@ -82,7 +119,7 @@ header {
 
 .logo h1 {
     margin-left: 10px;
-    color: #4CAF50;
+    color: var(--accent);
     text-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
 }
 
@@ -97,7 +134,7 @@ nav ul li {
 }
 
 nav ul li a {
-    color: #e0e0e0;
+    color: var(--text);
     text-decoration: none;
     transition: all 0.3s ease;
     position: relative;
@@ -119,7 +156,7 @@ nav ul li a:hover::after {
 }
 
 nav ul li a:hover {
-    color: #4CAF50;
+    color: var(--accent);
     transform: translateY(-2px);
 }
 
@@ -141,7 +178,7 @@ nav ul li a:hover {
 .hero-text h2 {
     font-size: 3rem;
     margin-bottom: 1rem;
-    color: #4CAF50;
+    color: var(--accent);
     background: linear-gradient(45deg, #4CAF50, #81C784);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -162,10 +199,10 @@ nav ul li a:hover {
 }
 
 .benefit {
-    background: rgba(42, 42, 42, 0.8);
+    background: var(--card-bg);
     padding: 1rem;
     border-radius: 8px;
-    border-left: 4px solid #4CAF50;
+    border-left: 4px solid var(--accent);
     flex: 1;
     transition: transform 0.3s ease;
 }
@@ -189,7 +226,7 @@ nav ul li a:hover {
 .cta-button {
     display: inline-block;
     padding: 15px 30px;
-    background: linear-gradient(45deg, #4CAF50, #66BB6A);
+    background: linear-gradient(45deg, var(--accent), var(--accent-light));
     color: white;
     text-decoration: none;
     border-radius: 50px;
@@ -226,9 +263,9 @@ nav ul li a:hover {
 .feature {
     text-align: center;
     padding: 2rem;
-    background: rgba(42, 42, 42, 0.8);
+    background: var(--card-bg);
     border-radius: 12px;
-    border: 1px solid rgba(76, 175, 80, 0.2);
+    border: 1px solid var(--card-border);
     transition: all 0.3s ease;
     position: relative;
     overflow: hidden;
@@ -281,9 +318,9 @@ nav ul li a:hover {
 
 .component {
     padding: 2rem;
-    background: rgba(42, 42, 42, 0.8);
+    background: var(--card-bg);
     border-radius: 12px;
-    border: 1px solid rgba(76, 175, 80, 0.2);
+    border: 1px solid var(--card-border);
     transition: all 0.3s ease;
 }
 
@@ -718,7 +755,7 @@ footer {
 }
 
 .footer-links a {
-    color: #4CAF50;
+    color: var(--accent);
     text-decoration: none;
     transition: all 0.3s ease;
     padding: 0.5rem 1rem;
@@ -727,10 +764,10 @@ footer {
 }
 
 .footer-links a:hover {
-    color: #81C784;
-    transform: scale(1.1);
-    background: rgba(76, 175, 80, 0.1);
-    border-color: #4CAF50;
+    color: var(--accent-light);
+    transform: scale(1.05);
+    background: var(--accent-weak);
+    border-color: var(--accent);
 }
 
 /* Mobile Footer */
