@@ -86,4 +86,8 @@ echo "Smoke test completed successfully"
 echo "Running atomizer -> virtual view integration test"
 cargo test -p cadi-core -- --test-threads=1 integration_atomizer_virtual_view
 
+# Run end-to-end view test (uses admin API to create nodes/edges)
+echo "Running end-to-end view test (HTTP)"
+bash ./test-env/integration/view_test.sh || { echo "View test failed"; exit 1; }
+
 exit 0

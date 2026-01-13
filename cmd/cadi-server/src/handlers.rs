@@ -289,6 +289,105 @@ pub async fn create_view_handler(
     }
 }
 
+/// Admin: create a graph node at runtime (for tests and ingestion)
+pub async fn admin_create_node(
+    State(state): State<AppState>,
+    Json(payload): Json<serde_json::Value>,
+) -> Result<StatusCode, StatusCode> {
+    // Allow only when anonymous writes are enabled (dev mode)
+    if !state.config.anonymous_write {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    // Extract content
+    let content = payload.get("content").and_then(|v| v.as_str()).ok_or(StatusCode::BAD_REQUEST)?;
+
+    // Determine chunk id
+    let chunk_id = if let Some(val) = payload.get("chunk_id").and_then(|v| v.as_str()) {
+        val.to_string()
+    } else {
+        cadi_core::hash::chunk_id_from_content(content.as_bytes())
+    };
+
+    // Verify provided chunk id matches content if present
+    if let Some(provided) = payload.get("chunk_id").and_then(|v| v.as_str()) {
+        if !cadi_core::hash::verify_chunk_content(provided, content.as_bytes()) {
+            return Err(StatusCode::BAD_REQUEST);
+        }
+    }
+
+    let content_hash = cadi_core::hash::parse_chunk_id(&chunk_id).ok_or(StatusCode::BAD_REQUEST)?;
+
+    // Build node
+    let mut node = cadi_core::graph::GraphNode::new(chunk_id.clone(), content_hash)
+        .with_language(payload.get("language").and_then(|v| v.as_str()).unwrap_or("unknown"))
+        .with_size(content.as_bytes().len());
+
+    // Defines
+    if let Some(defs) = payload.get("defines").and_then(|v| v.as_array()) {
+        let defs_str: Vec<String> = defs.iter().filter_map(|d| d.as_str().map(|s| s.to_string())).collect();
+        node = node.with_defines(defs_str);
+    }
+
+    // References
+    if let Some(refs) = payload.get("references").and_then(|v| v.as_array()) {
+        let refs_str: Vec<String> = refs.iter().filter_map(|d| d.as_str().map(|s| s.to_string())).collect();
+        node = node.with_references(refs_str);
+    }
+
+    // Primary alias
+    if let Some(alias) = payload.get("alias").and_then(|v| v.as_str()) {
+        node = node.with_alias(alias);
+    }
+
+    // Store content
+    if let Err(_) = state.graph.store_content(&chunk_id, content.as_bytes()) {
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    // Insert node
+    if let Err(_) = state.graph.insert_node(&node) {
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    Ok(StatusCode::CREATED)
+}
+
+/// Admin: add an edge between two nodes
+pub async fn admin_add_edge(
+    State(state): State<AppState>,
+    Json(payload): Json<serde_json::Value>,
+) -> Result<StatusCode, StatusCode> {
+    if !state.config.anonymous_write {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    let source = payload.get("source").and_then(|v| v.as_str()).ok_or(StatusCode::BAD_REQUEST)?;
+    let target = payload.get("target").and_then(|v| v.as_str()).ok_or(StatusCode::BAD_REQUEST)?;
+    let edge_type = payload.get("edge_type").and_then(|v| v.as_str()).unwrap_or("imports");
+
+    let et = match edge_type {
+        "imports" => cadi_core::graph::EdgeType::Imports,
+        "type_ref" | "type-ref" => cadi_core::graph::EdgeType::TypeRef,
+        "calls" => cadi_core::graph::EdgeType::Calls,
+        "composed_of" => cadi_core::graph::EdgeType::ComposedOf,
+        "implements" => cadi_core::graph::EdgeType::Implements,
+        "extends" => cadi_core::graph::EdgeType::Extends,
+        "exports" => cadi_core::graph::EdgeType::Exports,
+        "generic_ref" => cadi_core::graph::EdgeType::GenericRef,
+        "macro_use" => cadi_core::graph::EdgeType::MacroUse,
+        "tests" => cadi_core::graph::EdgeType::Tests,
+        "doc_ref" => cadi_core::graph::EdgeType::DocRef,
+        _ => cadi_core::graph::EdgeType::Imports,
+    };
+
+    if let Err(_) = state.graph.add_dependency(source, target, et) {
+        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    }
+
+    Ok(StatusCode::CREATED)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -348,9 +447,8 @@ mod tests {
             "defines": ["helper"]
         });
 
-        // Call admin_create_node without header (allowed in dev)
-        let headers = HeaderMap::new();
-        let res = admin_create_node(AxState(state.clone()), axum::Json(new_node), headers).await;
+        // Call admin_create_node (dev allows anonymous writes in this test)
+        let res = admin_create_node(AxState(state.clone()), axum::Json(new_node)).await;
         assert!(res.is_ok());
 
         // Prepare node B referencing helper
@@ -362,12 +460,12 @@ mod tests {
             "language": "rust",
             "references": ["helper"]
         });
-        let resb = admin_create_node(AxState(state.clone()), axum::Json(new_node_b), HeaderMap::new()).await;
+        let resb = admin_create_node(AxState(state.clone()), axum::Json(new_node_b)).await;
         assert!(resb.is_ok());
 
         // Add edge B -> A
         let edge_body = serde_json::json!({ "source": id_b, "target": id_a, "edge_type": "imports" });
-        let edge_res = admin_add_edge(AxState(state.clone()), axum::Json(edge_body), HeaderMap::new()).await;
+        let edge_res = admin_add_edge(AxState(state.clone()), axum::Json(edge_body)).await;
         assert!(edge_res.is_ok());
 
         // Now create a view for B and ensure A appears as ghost import

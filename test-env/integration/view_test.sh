@@ -16,7 +16,7 @@ cleanup() {
 }
 trap cleanup EXIT
 
-# Prepare two snippets and insert them into the graph DB (before starting server)
+# Prepare two snippets
 A_FILE="$SCRIPT_DIR/a.rs"
 B_FILE="$SCRIPT_DIR/b.rs"
 cat > "$A_FILE" <<'EOF'
@@ -32,12 +32,58 @@ HASH_B=$(shasum -a 256 "$B_FILE" | awk '{print $1}')
 CHUNK_A="chunk:sha256:${HASH_A}"
 CHUNK_B="chunk:sha256:${HASH_B}"
 
-# Use a small Rust example to insert nodes into the graph DB before server starts
-cargo run -p cadi-core --example insert_nodes --quiet -- "$STORAGE_DIR" "$A_FILE" "$B_FILE"
-
-# Start server now that graph DB has nodes
-CADI_BIND="127.0.0.1:${PORT}" CADI_STORAGE="$STORAGE_DIR" RUST_LOG=info cargo run -p cadi-server --quiet >"$SERVER_LOG" 2>&1 &
+# Start server (allow anonymous write for tests)
+CADI_BIND="127.0.0.1:${PORT}" CADI_STORAGE="$STORAGE_DIR" CADI_ANON_WRITE=true RUST_LOG=info cargo run -p cadi-server --quiet >"$SERVER_LOG" 2>&1 &
 SERVER_PID=$!
+
+# Wait for health
+for i in {1..60}; do
+  if curl -sSf "http://127.0.0.1:${PORT}/health" >/dev/null 2>&1; then
+    echo "Server healthy"
+    break
+  fi
+  sleep 0.5
+  if [ $i -eq 60 ]; then
+    echo "Server failed to become healthy. Log output:" >&2
+    tail -n +1 "$SERVER_LOG" >&2
+    exit 1
+  fi
+done
+
+# Insert nodes via admin API
+BODY_A=$(python3 - <<PY
+import json
+print(json.dumps({"chunk_id": "$CHUNK_A", "content": open("$A_FILE").read(), "language":"rust", "defines":["helper"]}))
+PY
+)
+HTTP_A=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" --data "$BODY_A" "http://127.0.0.1:${PORT}/v1/admin/nodes")
+if [ "$HTTP_A" -ne 201 ]; then
+  echo "Failed to insert node A, status $HTTP_A" >&2
+  exit 1
+fi
+
+BODY_B=$(python3 - <<PY
+import json
+print(json.dumps({"chunk_id": "$CHUNK_B", "content": open("$B_FILE").read(), "language":"rust", "references":["helper"]}))
+PY
+)
+HTTP_B=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" --data "$BODY_B" "http://127.0.0.1:${PORT}/v1/admin/nodes")
+if [ "$HTTP_B" -ne 201 ]; then
+  echo "Failed to insert node B, status $HTTP_B" >&2
+  exit 1
+fi
+
+# Add edge B -> A
+EDGE_BODY=$(python3 - <<PY
+import json
+print(json.dumps({"source": "$CHUNK_B", "target": "$CHUNK_A", "edge_type": "imports"}))
+PY
+)
+EDGE_HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" --data "$EDGE_BODY" "http://127.0.0.1:${PORT}/v1/admin/edges")
+if [ "$EDGE_HTTP" -ne 201 ]; then
+  echo "Failed to add edge, status $EDGE_HTTP" >&2
+  exit 1
+fi
 
 # Wait for health
 for i in {1..60}; do
