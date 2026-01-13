@@ -32,7 +32,9 @@ pub fn api_routes() -> Router<AppState> {
 
         // Admin endpoints (add nodes/edges at runtime)
         .route("/v1/admin/nodes", post(handlers::admin_create_node))
+        .route("/v1/admin/nodes/batch", post(handlers::admin_create_nodes_batch))
         .route("/v1/admin/edges", post(handlers::admin_add_edge))
+        .route("/v1/admin/edges/batch", post(handlers::admin_add_edges_batch))
 
         // Stats
         .route("/v1/stats", get(handlers::stats))

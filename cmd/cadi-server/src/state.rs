@@ -20,6 +20,8 @@ pub struct ServerConfig {
     pub anonymous_read: bool,
     /// Enable anonymous writes
     pub anonymous_write: bool,
+    /// Optional admin token for authenticated admin operations
+    pub admin_token: Option<String>,
 }
 
 impl ServerConfig {
@@ -40,6 +42,7 @@ impl ServerConfig {
             anonymous_write: std::env::var("CADI_ANON_WRITE")
                 .map(|s| s == "true" || s == "1")
                 .unwrap_or(false),
+            admin_token: std::env::var("CADI_ADMIN_TOKEN").ok(),
         }
     }
 }
@@ -52,6 +55,7 @@ impl Default for ServerConfig {
             max_chunk_size: 100 * 1024 * 1024,
             anonymous_read: true,
             anonymous_write: false,
+            admin_token: None,
         }
     }
 }

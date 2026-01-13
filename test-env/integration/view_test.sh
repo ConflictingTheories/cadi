@@ -32,8 +32,9 @@ HASH_B=$(shasum -a 256 "$B_FILE" | awk '{print $1}')
 CHUNK_A="chunk:sha256:${HASH_A}"
 CHUNK_B="chunk:sha256:${HASH_B}"
 
-# Start server (allow anonymous write for tests)
-CADI_BIND="127.0.0.1:${PORT}" CADI_STORAGE="$STORAGE_DIR" CADI_ANON_WRITE=true RUST_LOG=info cargo run -p cadi-server --quiet >"$SERVER_LOG" 2>&1 &
+# Start server (use admin token for tests)
+TOKEN="devtoken"
+CADI_BIND="127.0.0.1:${PORT}" CADI_STORAGE="$STORAGE_DIR" CADI_ADMIN_TOKEN="$TOKEN" RUST_LOG=info cargo run -p cadi-server --quiet >"$SERVER_LOG" 2>&1 &
 SERVER_PID=$!
 
 # Wait for health
@@ -50,13 +51,13 @@ for i in {1..60}; do
   fi
 done
 
-# Insert nodes via admin API
+# Insert nodes via admin API (use Authorization header)
 BODY_A=$(python3 - <<PY
 import json
 print(json.dumps({"chunk_id": "$CHUNK_A", "content": open("$A_FILE").read(), "language":"rust", "defines":["helper"]}))
 PY
 )
-HTTP_A=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" --data "$BODY_A" "http://127.0.0.1:${PORT}/v1/admin/nodes")
+HTTP_A=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" --data "$BODY_A" "http://127.0.0.1:${PORT}/v1/admin/nodes")
 if [ "$HTTP_A" -ne 201 ]; then
   echo "Failed to insert node A, status $HTTP_A" >&2
   exit 1
@@ -67,7 +68,7 @@ import json
 print(json.dumps({"chunk_id": "$CHUNK_B", "content": open("$B_FILE").read(), "language":"rust", "references":["helper"]}))
 PY
 )
-HTTP_B=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" --data "$BODY_B" "http://127.0.0.1:${PORT}/v1/admin/nodes")
+HTTP_B=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" --data "$BODY_B" "http://127.0.0.1:${PORT}/v1/admin/nodes")
 if [ "$HTTP_B" -ne 201 ]; then
   echo "Failed to insert node B, status $HTTP_B" >&2
   exit 1
@@ -79,7 +80,7 @@ import json
 print(json.dumps({"source": "$CHUNK_B", "target": "$CHUNK_A", "edge_type": "imports"}))
 PY
 )
-EDGE_HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" --data "$EDGE_BODY" "http://127.0.0.1:${PORT}/v1/admin/edges")
+EDGE_HTTP=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Content-Type: application/json" -H "Authorization: Bearer $TOKEN" --data "$EDGE_BODY" "http://127.0.0.1:${PORT}/v1/admin/edges")
 if [ "$EDGE_HTTP" -ne 201 ]; then
   echo "Failed to add edge, status $EDGE_HTTP" >&2
   exit 1

@@ -2,7 +2,8 @@
 
 use axum::{
     extract::{Path, State},
-    http::{HeaderMap, StatusCode},
+    http::{HeaderMap, StatusCode, Request},
+    body::Bytes,
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -289,27 +290,43 @@ pub async fn create_view_handler(
     }
 }
 
-/// Admin: create a graph node at runtime (for tests and ingestion)
-pub async fn admin_create_node(
-    State(state): State<AppState>,
-    Json(payload): Json<serde_json::Value>,
-) -> Result<StatusCode, StatusCode> {
-    // Allow only when anonymous writes are enabled (dev mode)
-    if !state.config.anonymous_write {
-        return Err(StatusCode::FORBIDDEN);
+/// Internal: check whether a request is authorized for admin operations
+fn is_authorized(state: &AppState, headers: &HeaderMap) -> bool {
+    // Allow if anonymous writes are enabled (dev/test convenience)
+    if state.config.anonymous_write {
+        return true;
     }
 
-    // Extract content
+    // If admin token is configured, accept either Authorization: Bearer <token>
+    // or X-Admin-Token: <token>
+    if let Some(ref token) = state.config.admin_token {
+        if let Some(hv) = headers.get("authorization") {
+            if let Ok(s) = hv.to_str() {
+                if let Some(rest) = s.strip_prefix("Bearer ") {
+                    return rest == token;
+                }
+            }
+        }
+        if let Some(hv) = headers.get("x-admin-token") {
+            if let Ok(s) = hv.to_str() {
+                return s == token;
+            }
+        }
+    }
+
+    false
+}
+
+/// Helper: create a node from JSON payload
+fn create_node_from_payload(state: &AppState, payload: &serde_json::Value) -> Result<String, StatusCode> {
     let content = payload.get("content").and_then(|v| v.as_str()).ok_or(StatusCode::BAD_REQUEST)?;
 
-    // Determine chunk id
     let chunk_id = if let Some(val) = payload.get("chunk_id").and_then(|v| v.as_str()) {
         val.to_string()
     } else {
         cadi_core::hash::chunk_id_from_content(content.as_bytes())
     };
 
-    // Verify provided chunk id matches content if present
     if let Some(provided) = payload.get("chunk_id").and_then(|v| v.as_str()) {
         if !cadi_core::hash::verify_chunk_content(provided, content.as_bytes()) {
             return Err(StatusCode::BAD_REQUEST);
@@ -318,50 +335,68 @@ pub async fn admin_create_node(
 
     let content_hash = cadi_core::hash::parse_chunk_id(&chunk_id).ok_or(StatusCode::BAD_REQUEST)?;
 
-    // Build node
     let mut node = cadi_core::graph::GraphNode::new(chunk_id.clone(), content_hash)
         .with_language(payload.get("language").and_then(|v| v.as_str()).unwrap_or("unknown"))
         .with_size(content.as_bytes().len());
 
-    // Defines
     if let Some(defs) = payload.get("defines").and_then(|v| v.as_array()) {
         let defs_str: Vec<String> = defs.iter().filter_map(|d| d.as_str().map(|s| s.to_string())).collect();
         node = node.with_defines(defs_str);
     }
 
-    // References
     if let Some(refs) = payload.get("references").and_then(|v| v.as_array()) {
         let refs_str: Vec<String> = refs.iter().filter_map(|d| d.as_str().map(|s| s.to_string())).collect();
         node = node.with_references(refs_str);
     }
 
-    // Primary alias
     if let Some(alias) = payload.get("alias").and_then(|v| v.as_str()) {
         node = node.with_alias(alias);
     }
 
-    // Store content
-    if let Err(_) = state.graph.store_content(&chunk_id, content.as_bytes()) {
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    state.graph.store_content(&chunk_id, content.as_bytes()).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    state.graph.insert_node(&node).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    Ok(chunk_id)
+}
+
+/// Admin: create a graph node at runtime (for tests and ingestion)
+pub async fn admin_create_node(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(payload): Json<serde_json::Value>,
+) -> Result<StatusCode, StatusCode> {
+    if !is_authorized(&state, &headers) {
+        return Err(StatusCode::FORBIDDEN);
     }
 
-    // Insert node
-    if let Err(_) = state.graph.insert_node(&node) {
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
-    }
+    let _ = create_node_from_payload(&state, &payload)?;
 
     Ok(StatusCode::CREATED)
 }
 
-/// Admin: add an edge between two nodes
-pub async fn admin_add_edge(
+/// Admin: create multiple nodes in a batch
+pub async fn admin_create_nodes_batch(
     State(state): State<AppState>,
-    Json(payload): Json<serde_json::Value>,
-) -> Result<StatusCode, StatusCode> {
-    if !state.config.anonymous_write {
+    headers: HeaderMap,
+    Json(payload): Json<Vec<serde_json::Value>>,
+) -> Result<Json<Vec<serde_json::Value>>, StatusCode> {
+    if !is_authorized(&state, &headers) {
         return Err(StatusCode::FORBIDDEN);
     }
 
+    let mut results: Vec<serde_json::Value> = Vec::new();
+    for item in payload.iter() {
+        match create_node_from_payload(&state, item) {
+            Ok(id) => results.push(serde_json::json!({"chunk_id": id, "status": 201})),
+            Err(code) => results.push(serde_json::json!({"status": code.as_u16()})),
+        }
+    }
+
+    Ok(Json(results))
+}
+
+/// Helper: add an edge from payload
+fn add_edge_from_payload(state: &AppState, payload: &serde_json::Value) -> Result<(), StatusCode> {
     let source = payload.get("source").and_then(|v| v.as_str()).ok_or(StatusCode::BAD_REQUEST)?;
     let target = payload.get("target").and_then(|v| v.as_str()).ok_or(StatusCode::BAD_REQUEST)?;
     let edge_type = payload.get("edge_type").and_then(|v| v.as_str()).unwrap_or("imports");
@@ -381,11 +416,43 @@ pub async fn admin_add_edge(
         _ => cadi_core::graph::EdgeType::Imports,
     };
 
-    if let Err(_) = state.graph.add_dependency(source, target, et) {
-        return Err(StatusCode::INTERNAL_SERVER_ERROR);
+    state.graph.add_dependency(source, target, et).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+/// Admin: add an edge between two nodes
+pub async fn admin_add_edge(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(payload): Json<serde_json::Value>,
+) -> Result<StatusCode, StatusCode> {
+    if !is_authorized(&state, &headers) {
+        return Err(StatusCode::FORBIDDEN);
     }
 
+    add_edge_from_payload(&state, &payload)?;
+
     Ok(StatusCode::CREATED)
+}
+
+/// Admin: add multiple edges in a batch
+pub async fn admin_add_edges_batch(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Json(payload): Json<Vec<serde_json::Value>>,
+) -> Result<Json<Vec<serde_json::Value>>, StatusCode> {
+    if !is_authorized(&state, &headers) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    let mut results: Vec<serde_json::Value> = Vec::new();
+    for item in payload.iter() {
+        match add_edge_from_payload(&state, item) {
+            Ok(_) => results.push(serde_json::json!({"status": 201})),
+            Err(code) => results.push(serde_json::json!({"status": code.as_u16()})),
+        }
+    }
+
+    Ok(Json(results))
 }
 
 #[cfg(test)]
@@ -405,6 +472,7 @@ mod tests {
             max_chunk_size: 1024 * 1024,
             anonymous_read: true,
             anonymous_write: true,
+            admin_token: None,
         };
 
         let state = AppState::new(config.clone());
@@ -433,6 +501,7 @@ mod tests {
             max_chunk_size: 1024 * 1024,
             anonymous_read: true,
             anonymous_write: true,
+            admin_token: None,
         };
 
         let state = AppState::new(config.clone());
@@ -448,7 +517,10 @@ mod tests {
         });
 
         // Call admin_create_node (dev allows anonymous writes in this test)
-        let res = admin_create_node(AxState(state.clone()), axum::Json(new_node)).await;
+        let payload = serde_json::to_vec(&new_node).unwrap();
+        let mut headers = HeaderMap::new();
+        headers.insert("authorization", HeaderValue::from_str("Bearer dev").unwrap());
+        let res = admin_create_node(AxState(state.clone()), headers, axum::Json(new_node.clone())).await;
         assert!(res.is_ok());
 
         // Prepare node B referencing helper
@@ -460,12 +532,18 @@ mod tests {
             "language": "rust",
             "references": ["helper"]
         });
-        let resb = admin_create_node(AxState(state.clone()), axum::Json(new_node_b)).await;
+        let payload_b = serde_json::to_vec(&new_node_b).unwrap();
+        let mut headers_b = HeaderMap::new();
+        headers_b.insert("authorization", HeaderValue::from_str("Bearer dev").unwrap());
+        let resb = admin_create_node(AxState(state.clone()), headers_b, axum::Json(new_node_b)).await;
         assert!(resb.is_ok());
 
         // Add edge B -> A
         let edge_body = serde_json::json!({ "source": id_b, "target": id_a, "edge_type": "imports" });
-        let edge_res = admin_add_edge(AxState(state.clone()), axum::Json(edge_body)).await;
+        let edge_payload = serde_json::to_vec(&edge_body).unwrap();
+        let mut headers_e = HeaderMap::new();
+        headers_e.insert("authorization", HeaderValue::from_str("Bearer dev").unwrap());
+        let edge_res = admin_add_edge(AxState(state.clone()), headers_e, axum::Json(edge_body)).await;
         assert!(edge_res.is_ok());
 
         // Now create a view for B and ensure A appears as ghost import
@@ -474,6 +552,38 @@ mod tests {
         let json = view.0;
         assert!(json.atoms.contains(&id_a));
         assert!(json.ghost_atoms.contains(&id_a));
+    }
+
+    #[tokio::test]
+    async fn test_admin_auth_required() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mut config = ServerConfig::default();
+        config.storage_path = tmp.path().to_str().unwrap().to_string();
+        config.anonymous_read = true;
+        config.anonymous_write = false;
+        config.admin_token = Some("secret-token".to_string());
+
+        let state = AppState::new(config.clone());
+
+        // Attempt to call admin endpoint without header
+        let a_content = "pub fn helper() -> i32 { 42 }".to_string();
+        let id_a = cadi_core::hash::chunk_id_from_content(a_content.as_bytes());
+        let new_node = serde_json::json!({
+            "chunk_id": id_a,
+            "content": a_content,
+            "language": "rust",
+            "defines": ["helper"]
+        });
+
+        let mut headers_none = HeaderMap::new();
+        let res = admin_create_node(AxState(state.clone()), headers_none, axum::Json(new_node.clone())).await;
+        assert!(res.is_err());
+
+        // Call with Authorization header
+        let mut headers = HeaderMap::new();
+        headers.insert("authorization", HeaderValue::from_str("Bearer secret-token").unwrap());
+        let res_ok = admin_create_node(AxState(state.clone()), headers, axum::Json(new_node)).await;
+        assert!(res_ok.is_ok());
     }
 }
 
