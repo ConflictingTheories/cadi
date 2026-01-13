@@ -22,3 +22,10 @@ Notes:
 - The script requires `shasum` (available on macOS and most Linux runners) and `curl`.
 - The test builds the `cadi-server` and `cadi` binaries locally (so the first run may take a little time).
 - A GitHub Actions workflow runs this script on PRs: `.github/workflows/integration_smoke.yml`.
+Additional integration tests
+
+- Atomizer + Virtual View test: `tests/integration_atomizer_view.rs` validates that the atomizer extracts function atoms, the graph store indexes symbols, and the `RehydrationEngine` can assemble virtual views with ghost imports.
+
+Run the atomizer view test locally:
+
+  cargo test -p cadi-core -- --test-threads=1 integration_atomizer_virtual_view

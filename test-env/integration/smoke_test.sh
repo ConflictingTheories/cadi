@@ -81,4 +81,9 @@ echo "Running cadi verify"
 cargo run -p cadi -- --config "$CONFIG_FILE" verify "$CHUNK_ID"
 
 echo "Smoke test completed successfully"
+
+# Run atomizer + virtual view integration test (fast, in-process)
+echo "Running atomizer -> virtual view integration test"
+cargo test -p cadi-core -- --test-threads=1 integration_atomizer_virtual_view
+
 exit 0
