@@ -2,7 +2,7 @@
 
 use axum::{
     extract::{Path, State},
-    http::StatusCode,
+    http::{HeaderMap, StatusCode},
     Json,
 };
 use serde::{Deserialize, Serialize};
@@ -294,6 +294,7 @@ mod tests {
     use super::*;
     use crate::state::ServerConfig;
     use axum::extract::State as AxState;
+    use axum::http::HeaderValue;
 
     #[tokio::test]
     async fn test_semantic_search_handler() {
@@ -307,7 +308,7 @@ mod tests {
             anonymous_write: true,
         };
 
-        let state = AppState::new(config);
+        let state = AppState::new(config.clone());
 
         // Store a chunk
         let chunk_id = "chunk:sha256:testchunk".to_string();
@@ -322,6 +323,59 @@ mod tests {
         let res = semantic_search(AxState(state.clone()), axum::Json(req)).await;
         assert!(!res.0.is_empty(), "Expected at least one search hit");
         assert_eq!(res.0[0].chunk_id, chunk_id);
+    }
+
+    #[tokio::test]
+    async fn test_admin_create_node_and_edge_handler() {
+        let tmp = tempfile::tempdir().unwrap();
+        let config = ServerConfig {
+            bind_address: "127.0.0.1:0".to_string(),
+            storage_path: tmp.path().to_str().unwrap().to_string(),
+            max_chunk_size: 1024 * 1024,
+            anonymous_read: true,
+            anonymous_write: true,
+        };
+
+        let state = AppState::new(config.clone());
+
+        // Prepare node A
+        let a_content = "pub fn helper() -> i32 { 42 }".to_string();
+        let id_a = cadi_core::hash::chunk_id_from_content(a_content.as_bytes());
+        let new_node = serde_json::json!({
+            "chunk_id": id_a,
+            "content": a_content,
+            "language": "rust",
+            "defines": ["helper"]
+        });
+
+        // Call admin_create_node without header (allowed in dev)
+        let headers = HeaderMap::new();
+        let res = admin_create_node(AxState(state.clone()), axum::Json(new_node), headers).await;
+        assert!(res.is_ok());
+
+        // Prepare node B referencing helper
+        let b_content = "pub fn use_helper() -> i32 { helper() }".to_string();
+        let id_b = cadi_core::hash::chunk_id_from_content(b_content.as_bytes());
+        let new_node_b = serde_json::json!({
+            "chunk_id": id_b,
+            "content": b_content,
+            "language": "rust",
+            "references": ["helper"]
+        });
+        let resb = admin_create_node(AxState(state.clone()), axum::Json(new_node_b), HeaderMap::new()).await;
+        assert!(resb.is_ok());
+
+        // Add edge B -> A
+        let edge_body = serde_json::json!({ "source": id_b, "target": id_a, "edge_type": "imports" });
+        let edge_res = admin_add_edge(AxState(state.clone()), axum::Json(edge_body), HeaderMap::new()).await;
+        assert!(edge_res.is_ok());
+
+        // Now create a view for B and ensure A appears as ghost import
+        let view_req = ViewRequest { atoms: vec![id_b.clone()], expansion_depth: Some(1), max_tokens: Some(1024) };
+        let view = create_view_handler(AxState(state.clone()), axum::Json(view_req)).await.expect("view failed");
+        let json = view.0;
+        assert!(json.atoms.contains(&id_a));
+        assert!(json.ghost_atoms.contains(&id_a));
     }
 }
 

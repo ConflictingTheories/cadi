@@ -30,6 +30,10 @@ pub fn api_routes() -> Router<AppState> {
         // Views (virtual view assembly)
         .route("/v1/views", post(handlers::create_view_handler))
 
+        // Admin endpoints (add nodes/edges at runtime)
+        .route("/v1/admin/nodes", post(handlers::admin_create_node))
+        .route("/v1/admin/edges", post(handlers::admin_add_edge))
+
         // Stats
         .route("/v1/stats", get(handlers::stats))
 }
