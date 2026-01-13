@@ -240,6 +240,55 @@ pub async fn semantic_search(
     }
 }
 
+/// Request for creating a virtual view
+#[derive(Deserialize)]
+pub struct ViewRequest {
+    pub atoms: Vec<String>,
+    #[serde(default)]
+    pub expansion_depth: Option<usize>,
+    #[serde(default)]
+    pub max_tokens: Option<usize>,
+}
+
+/// Response for virtual view
+#[derive(Serialize)]
+pub struct ViewResponse {
+    pub source: String,
+    pub atoms: Vec<String>,
+    pub ghost_atoms: Vec<String>,
+    pub language: String,
+    pub token_estimate: usize,
+    pub explanation: String,
+    pub truncated: bool,
+}
+
+/// Handler: create a virtual view from a list of atom/chunk IDs
+pub async fn create_view_handler(
+    State(state): State<AppState>,
+    Json(req): Json<ViewRequest>,
+) -> Result<Json<ViewResponse>, StatusCode> {
+    let engine = cadi_core::rehydration::RehydrationEngine::new_arc(state.graph.clone());
+
+    let view_res = if let Some(depth) = req.expansion_depth {
+        engine.create_expanded_view(req.atoms.clone(), depth, req.max_tokens.unwrap_or(1024)).await
+    } else {
+        engine.create_view(req.atoms.clone(), cadi_core::rehydration::config::ViewConfig::default()).await
+    };
+
+    match view_res {
+        Ok(v) => Ok(Json(ViewResponse {
+            source: v.source,
+            atoms: v.atoms,
+            ghost_atoms: v.ghost_atoms,
+            language: v.language,
+            token_estimate: v.token_estimate,
+            explanation: v.explanation,
+            truncated: v.truncated,
+        })),
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

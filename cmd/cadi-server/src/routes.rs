@@ -27,6 +27,9 @@ pub fn api_routes() -> Router<AppState> {
         // Semantic search
         .route("/v1/semantic_search", post(handlers::semantic_search))
         
+        // Views (virtual view assembly)
+        .route("/v1/views", post(handlers::create_view_handler))
+
         // Stats
         .route("/v1/stats", get(handlers::stats))
 }

@@ -197,6 +197,8 @@ pub struct AppState {
     pub store: Arc<RwLock<ChunkStore>>,
     /// Embedding manager for semantic search
     pub embedding_manager: std::sync::Arc<tokio::sync::Mutex<cadi_llm::embeddings::EmbeddingManager>>,
+    /// Graph store for atoms & views
+    pub graph: std::sync::Arc<cadi_core::graph::GraphStore>,
 }
 
 impl AppState {
@@ -209,10 +211,15 @@ impl AppState {
         let provider: Box<dyn cadi_llm::embeddings::EmbeddingProvider> = Box::new(cadi_llm::embeddings::MockProvider::default());
         let emb_manager = cadi_llm::embeddings::EmbeddingManager::new(provider, Some(emb_store_path));
 
+        // Initialize graph store using storage path under a "graph" directory
+        let graph_path = std::path::PathBuf::from(config.storage_path.clone()).join("graph-db");
+        let graph = cadi_core::graph::GraphStore::open(graph_path).expect("Failed to initialize graph store");
+
         Self {
             config,
             store: Arc::new(RwLock::new(store)),
             embedding_manager: std::sync::Arc::new(tokio::sync::Mutex::new(emb_manager)),
+            graph: std::sync::Arc::new(graph),
         }
     }
 }

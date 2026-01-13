@@ -10,14 +10,21 @@ use super::view::VirtualView;
 use crate::error::{CadiError, CadiResult};
 use crate::graph::GraphStore;
 
+use std::sync::Arc;
+
 /// The rehydration engine
 pub struct RehydrationEngine {
-    graph: GraphStore,
+    graph: Arc<GraphStore>,
 }
 
 impl RehydrationEngine {
-    /// Create a new rehydration engine
+    /// Create a new rehydration engine from an owned GraphStore
     pub fn new(graph: GraphStore) -> Self {
+        Self { graph: Arc::new(graph) }
+    }
+
+    /// Create a new rehydration engine from a shared Arc<GraphStore>
+    pub fn new_arc(graph: Arc<GraphStore>) -> Self {
         Self { graph }
     }
 
