@@ -29,10 +29,12 @@ const commands_1 = require("./commands");
 const registryProvider_1 = require("./registryProvider");
 const mcpClient_1 = require("./mcpClient");
 const statusBar_1 = require("./statusBar");
+const adminPanel_1 = require("./adminPanel");
 let cadiCommands;
 let registryProvider;
 let mcpClient;
 let statusBar;
+let adminPanelProvider;
 function activate(context) {
     console.log('CADI extension is now active!');
     // Initialize components
@@ -40,10 +42,13 @@ function activate(context) {
     registryProvider = new registryProvider_1.CadiRegistryProvider(context);
     mcpClient = new mcpClient_1.CadiMcpClient(context);
     cadiCommands = new commands_1.CadiCommands(context, registryProvider, mcpClient, statusBar);
+    adminPanelProvider = new adminPanel_1.CadiAdminPanelProvider(context);
     // Register commands
-    context.subscriptions.push(vscode.commands.registerCommand('cadi.searchChunks', cadiCommands.searchChunks.bind(cadiCommands)), vscode.commands.registerCommand('cadi.buildProject', cadiCommands.buildProject.bind(cadiCommands)), vscode.commands.registerCommand('cadi.importCode', cadiCommands.importCode.bind(cadiCommands)), vscode.commands.registerCommand('cadi.viewRegistry', cadiCommands.viewRegistry.bind(cadiCommands)), vscode.commands.registerCommand('cadi.createManifest', cadiCommands.createManifest.bind(cadiCommands)), vscode.commands.registerCommand('cadi.installExtension', cadiCommands.installExtension.bind(cadiCommands)), vscode.commands.registerCommand('cadi.importChunk', cadiCommands.importChunk.bind(cadiCommands)));
+    context.subscriptions.push(vscode.commands.registerCommand('cadi.searchChunks', cadiCommands.searchChunks.bind(cadiCommands)), vscode.commands.registerCommand('cadi.buildProject', cadiCommands.buildProject.bind(cadiCommands)), vscode.commands.registerCommand('cadi.importCode', cadiCommands.importCode.bind(cadiCommands)), vscode.commands.registerCommand('cadi.viewRegistry', cadiCommands.viewRegistry.bind(cadiCommands)), vscode.commands.registerCommand('cadi.createManifest', cadiCommands.createManifest.bind(cadiCommands)), vscode.commands.registerCommand('cadi.installExtension', cadiCommands.installExtension.bind(cadiCommands)), vscode.commands.registerCommand('cadi.importChunk', cadiCommands.importChunk.bind(cadiCommands)), vscode.commands.registerCommand('cadi.admin.createView', cadiCommands.adminCreateView.bind(cadiCommands)), vscode.commands.registerCommand('cadi.admin.debugDb', cadiCommands.adminDebugDb.bind(cadiCommands)), vscode.commands.registerCommand('cadi.admin.checkStatus', cadiCommands.adminCheckStatus.bind(cadiCommands)));
     // Register tree data provider for registry view
     vscode.window.registerTreeDataProvider('cadiRegistry', registryProvider);
+    // Register tree data provider for admin panel
+    vscode.window.registerTreeDataProvider('cadiAdminPanel', adminPanelProvider);
     // Register file system watcher for auto-import
     if (vscode.workspace.workspaceFolders) {
         const watcher = vscode.workspace.createFileSystemWatcher('**/*.{rs,ts,js,py,java,go}', false, // ignoreCreateEvents

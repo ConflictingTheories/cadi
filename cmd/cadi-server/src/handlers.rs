@@ -359,6 +359,56 @@ fn create_node_from_payload(state: &AppState, payload: &serde_json::Value) -> Re
     Ok(chunk_id)
 }
 
+/// Admin: list all graph nodes
+pub async fn admin_list_nodes(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<serde_json::Value>>, StatusCode> {
+    if !is_authorized(&state, &headers) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    match state.graph.list_nodes() {
+        Ok(nodes) => {
+            let node_json: Vec<serde_json::Value> = nodes.into_iter().map(|node| {
+                serde_json::json!({
+                    "chunk_id": node.chunk_id,
+                    "language": node.language,
+                    "size": node.byte_size,
+                    "defines": node.symbols_defined,
+                    "references": node.symbols_referenced
+                })
+            }).collect();
+            Ok(Json(node_json))
+        }
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
+/// Admin: list all graph edges
+pub async fn admin_list_edges(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+) -> Result<Json<Vec<serde_json::Value>>, StatusCode> {
+    if !is_authorized(&state, &headers) {
+        return Err(StatusCode::FORBIDDEN);
+    }
+
+    match state.graph.list_edges() {
+        Ok(edges) => {
+            let edge_json: Vec<serde_json::Value> = edges.into_iter().map(|(from, to, edge_type)| {
+                serde_json::json!({
+                    "from": from,
+                    "to": to,
+                    "edge_type": edge_type
+                })
+            }).collect();
+            Ok(Json(edge_json))
+        }
+        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+    }
+}
+
 /// Admin: create a graph node at runtime (for tests and ingestion)
 pub async fn admin_create_node(
     State(state): State<AppState>,

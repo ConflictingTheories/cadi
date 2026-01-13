@@ -3,11 +3,13 @@ import { CadiCommands } from './commands';
 import { CadiRegistryProvider } from './registryProvider';
 import { CadiMcpClient } from './mcpClient';
 import { CadiStatusBar } from './statusBar';
+import { CadiAdminPanelProvider } from './adminPanel';
 
 let cadiCommands: CadiCommands;
 let registryProvider: CadiRegistryProvider;
 let mcpClient: CadiMcpClient;
 let statusBar: CadiStatusBar;
+let adminPanelProvider: CadiAdminPanelProvider;
 
 export function activate(context: vscode.ExtensionContext) {
     console.log('CADI extension is now active!');
@@ -17,6 +19,7 @@ export function activate(context: vscode.ExtensionContext) {
     registryProvider = new CadiRegistryProvider(context);
     mcpClient = new CadiMcpClient(context);
     cadiCommands = new CadiCommands(context, registryProvider, mcpClient, statusBar);
+    adminPanelProvider = new CadiAdminPanelProvider(context);
 
     // Register commands
     context.subscriptions.push(
@@ -26,11 +29,17 @@ export function activate(context: vscode.ExtensionContext) {
         vscode.commands.registerCommand('cadi.viewRegistry', cadiCommands.viewRegistry.bind(cadiCommands)),
         vscode.commands.registerCommand('cadi.createManifest', cadiCommands.createManifest.bind(cadiCommands)),
         vscode.commands.registerCommand('cadi.installExtension', cadiCommands.installExtension.bind(cadiCommands)),
-        vscode.commands.registerCommand('cadi.importChunk', cadiCommands.importChunk.bind(cadiCommands))
+        vscode.commands.registerCommand('cadi.importChunk', cadiCommands.importChunk.bind(cadiCommands)),
+        vscode.commands.registerCommand('cadi.admin.createView', cadiCommands.adminCreateView.bind(cadiCommands)),
+        vscode.commands.registerCommand('cadi.admin.debugDb', cadiCommands.adminDebugDb.bind(cadiCommands)),
+        vscode.commands.registerCommand('cadi.admin.checkStatus', cadiCommands.adminCheckStatus.bind(cadiCommands))
     );
 
     // Register tree data provider for registry view
     vscode.window.registerTreeDataProvider('cadiRegistry', registryProvider);
+
+    // Register tree data provider for admin panel
+    vscode.window.registerTreeDataProvider('cadiAdminPanel', adminPanelProvider);
 
     // Register file system watcher for auto-import
     if (vscode.workspace.workspaceFolders) {

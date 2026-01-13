@@ -22,12 +22,16 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CadiCommands = void 0;
 const vscode = __importStar(require("vscode"));
 const path = __importStar(require("path"));
 const fs = __importStar(require("fs"));
 const child_process_1 = require("child_process");
+const axios_1 = __importDefault(require("axios"));
 class CadiCommands {
     constructor(context, registryProvider, mcpClient, statusBar) {
         this.context = context;
@@ -229,6 +233,336 @@ mcp:
         finally {
             this.statusBar.hideProgress();
         }
+    }
+    async adminCreateView() {
+        // Check if admin token is configured
+        const config = vscode.workspace.getConfiguration('cadi');
+        const adminToken = config.get('adminToken');
+        if (!adminToken) {
+            vscode.window.showErrorMessage('Admin token not configured. Set cadi.adminToken in settings.');
+            return;
+        }
+        const atomsInput = await vscode.window.showInputBox({
+            prompt: 'Enter atom/chunk IDs (comma-separated)',
+            placeHolder: 'chunk:sha256:abc123, chunk:sha256:def456'
+        });
+        if (!atomsInput) {
+            return;
+        }
+        const atoms = atomsInput.split(',').map(id => id.trim()).filter(id => id.length > 0);
+        if (atoms.length === 0) {
+            vscode.window.showErrorMessage('No valid atom IDs provided');
+            return;
+        }
+        const expansionDepth = await vscode.window.showInputBox({
+            prompt: 'Expansion depth (optional)',
+            placeHolder: '1'
+        });
+        const maxTokens = await vscode.window.showInputBox({
+            prompt: 'Max tokens (optional)',
+            placeHolder: '1024'
+        });
+        this.statusBar.showProgress('Creating virtual view...');
+        try {
+            const serverUrl = config.get('server.url', 'http://localhost:3000');
+            const requestBody = {
+                atoms,
+                expansion_depth: expansionDepth ? parseInt(expansionDepth) : undefined,
+                max_tokens: maxTokens ? parseInt(maxTokens) : undefined
+            };
+            const response = await axios_1.default.post(`${serverUrl}/v1/views`, requestBody, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${adminToken}`
+                }
+            });
+            const viewData = response.data;
+            // Create webview to display the view
+            this.showViewWebview(viewData);
+        }
+        catch (error) {
+            vscode.window.showErrorMessage(`Failed to create view: ${error}`);
+        }
+        finally {
+            this.statusBar.hideProgress();
+        }
+    }
+    async adminDebugDb() {
+        // Check if admin token is configured
+        const config = vscode.workspace.getConfiguration('cadi');
+        const adminToken = config.get('adminToken');
+        if (!adminToken) {
+            vscode.window.showErrorMessage('Admin token not configured. Set cadi.adminToken in settings.');
+            return;
+        }
+        this.statusBar.showProgress('Loading database info...');
+        try {
+            const serverUrl = config.get('server.url', 'http://localhost:3000');
+            // Get stats
+            const statsResponse = await axios_1.default.get(`${serverUrl}/v1/stats`, {
+                headers: {
+                    'Authorization': `Bearer ${adminToken}`
+                }
+            });
+            const stats = statsResponse.data;
+            // Create webview to display DB debug info
+            this.showDbDebugWebview(stats, serverUrl, adminToken);
+        }
+        catch (error) {
+            vscode.window.showErrorMessage(`Failed to load DB info: ${error}`);
+        }
+        finally {
+            this.statusBar.hideProgress();
+        }
+    }
+    async adminCheckStatus() {
+        const config = vscode.workspace.getConfiguration('cadi');
+        const serverUrl = config.get('server.url', 'http://localhost:3000');
+        const adminToken = config.get('adminToken');
+        this.statusBar.showProgress('Checking server status...');
+        try {
+            // Try to connect to the server
+            const response = await axios_1.default.get(`${serverUrl}/health`, {
+                timeout: 5000,
+                headers: adminToken ? { 'Authorization': `Bearer ${adminToken}` } : {}
+            });
+            if (response.status === 200) {
+                const message = adminToken
+                    ? `✅ CADI server is running at ${serverUrl} (authenticated)`
+                    : `✅ CADI server is running at ${serverUrl} (unauthenticated)`;
+                vscode.window.showInformationMessage(message);
+            }
+            else {
+                vscode.window.showWarningMessage(`⚠️ CADI server responded with status ${response.status}`);
+            }
+        }
+        catch (error) {
+            const err = error;
+            if (err.code === 'ECONNREFUSED') {
+                vscode.window.showErrorMessage(`❌ Cannot connect to CADI server at ${serverUrl}. Is the server running?`);
+            }
+            else if (err.code === 'ENOTFOUND') {
+                vscode.window.showErrorMessage(`❌ Cannot resolve host for ${serverUrl}. Check your server URL configuration.`);
+            }
+            else {
+                vscode.window.showErrorMessage(`❌ Server check failed: ${err.message || error}`);
+            }
+        }
+        finally {
+            this.statusBar.hideProgress();
+        }
+    }
+    showViewWebview(viewData) {
+        const panel = vscode.window.createWebviewPanel('cadiView', 'CADI Virtual View', vscode.ViewColumn.One, {
+            enableScripts: true,
+            localResourceRoots: []
+        });
+        panel.webview.html = this.getViewHtml(viewData);
+    }
+    showDbDebugWebview(stats, serverUrl, adminToken) {
+        const panel = vscode.window.createWebviewPanel('cadiDbDebug', 'CADI Database Debug', vscode.ViewColumn.One, {
+            enableScripts: true,
+            localResourceRoots: []
+        });
+        panel.webview.html = this.getDbDebugHtml(stats, serverUrl, adminToken);
+        // Handle messages from webview
+        panel.webview.onDidReceiveMessage(async (message) => {
+            switch (message.type) {
+                case 'getNodes':
+                    try {
+                        const response = await axios_1.default.get(`${serverUrl}/v1/admin/nodes`, {
+                            headers: {
+                                'Authorization': `Bearer ${adminToken}`
+                            }
+                        });
+                        panel.webview.postMessage({ type: 'nodes', data: response.data });
+                    }
+                    catch (error) {
+                        panel.webview.postMessage({ type: 'error', message: error.message || error.toString() });
+                    }
+                    break;
+                case 'getEdges':
+                    try {
+                        const response = await axios_1.default.get(`${serverUrl}/v1/admin/edges`, {
+                            headers: {
+                                'Authorization': `Bearer ${adminToken}`
+                            }
+                        });
+                        panel.webview.postMessage({ type: 'edges', data: response.data });
+                    }
+                    catch (error) {
+                        panel.webview.postMessage({ type: 'error', message: error.message || error.toString() });
+                    }
+                    break;
+            }
+        });
+    }
+    getViewHtml(viewData) {
+        return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CADI Virtual View</title>
+    <style>
+        body { font-family: var(--vscode-font-family); margin: 20px; }
+        .header { margin-bottom: 20px; }
+        .metadata { background: var(--vscode-textBlockQuote-background); padding: 10px; margin: 10px 0; border-left: 4px solid var(--vscode-textBlockQuote-border); }
+        .atoms { margin: 10px 0; }
+        .atom { display: inline-block; background: var(--vscode-badge-background); color: var(--vscode-badge-foreground); padding: 2px 6px; margin: 2px; border-radius: 3px; }
+        .ghost { opacity: 0.7; }
+        .source { background: var(--vscode-textCodeBlock-background); border: 1px solid var(--vscode-textBlockQuote-border); padding: 10px; margin: 10px 0; font-family: monospace; white-space: pre-wrap; }
+        .fragments { margin: 10px 0; }
+        .fragment { border: 1px solid var(--vscode-list-inactiveSelectionBackground); padding: 5px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Virtual View</h1>
+        <div class="metadata">
+            <strong>Language:</strong> ${viewData.language}<br>
+            <strong>Token Estimate:</strong> ${viewData.token_estimate}<br>
+            <strong>Truncated:</strong> ${viewData.truncated}<br>
+            <strong>Explanation:</strong> ${viewData.explanation}
+        </div>
+    </div>
+    
+    <div class="atoms">
+        <h3>Atoms (${viewData.atoms.length})</h3>
+        ${viewData.atoms.map((atom) => `<span class="atom">${atom}</span>`).join('')}
+        
+        <h3>Ghost Atoms (${viewData.ghost_atoms.length})</h3>
+        ${viewData.ghost_atoms.map((atom) => `<span class="atom ghost">${atom}</span>`).join('')}
+    </div>
+    
+    <div class="source">
+        <h3>Source Code</h3>
+        ${viewData.source}
+    </div>
+    
+    <div class="fragments">
+        <h3>Fragments</h3>
+        ${viewData.fragments ? viewData.fragments.map((frag) => `
+            <div class="fragment">
+                <strong>${frag.chunk_id}</strong> (${frag.alias || 'no alias'})<br>
+                Lines ${frag.start_line}-${frag.end_line}, ${frag.token_count} tokens<br>
+                Reason: ${frag.inclusion_reason}<br>
+                Defines: ${frag.defines.join(', ')}
+            </div>
+        `).join('') : 'No fragment data available'}
+    </div>
+</body>
+</html>`;
+    }
+    getDbDebugHtml(stats, serverUrl, adminToken) {
+        return `
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>CADI Database Debug</title>
+    <style>
+        body { font-family: var(--vscode-font-family); margin: 20px; }
+        .stats { background: var(--vscode-textBlockQuote-background); padding: 10px; margin: 10px 0; border-left: 4px solid var(--vscode-textBlockQuote-border); }
+        .section { margin: 20px 0; }
+        button { background: var(--vscode-button-background); color: var(--vscode-button-foreground); border: none; padding: 8px 16px; cursor: pointer; }
+        button:hover { background: var(--vscode-button-hoverBackground); }
+        .data { background: var(--vscode-textCodeBlock-background); border: 1px solid var(--vscode-textBlockQuote-border); padding: 10px; margin: 10px 0; font-family: monospace; max-height: 400px; overflow-y: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { border: 1px solid var(--vscode-list-inactiveSelectionBackground); padding: 5px; text-align: left; }
+        th { background: var(--vscode-titleBar-activeBackground); }
+    </style>
+</head>
+<body>
+    <h1>Database Debug</h1>
+    
+    <div class="stats">
+        <h3>Statistics</h3>
+        <pre>${JSON.stringify(stats, null, 2)}</pre>
+    </div>
+    
+    <div class="section">
+        <h3>Nodes</h3>
+        <button onclick="loadNodes()">Load Nodes</button>
+        <div id="nodes" class="data">Click "Load Nodes" to fetch data...</div>
+    </div>
+    
+    <div class="section">
+        <h3>Edges</h3>
+        <button onclick="loadEdges()">Load Edges</button>
+        <div id="edges" class="data">Click "Load Edges" to fetch data...</div>
+    </div>
+    
+    <script>
+        const vscode = acquireVsCodeApi();
+        
+        function loadNodes() {
+            document.getElementById('nodes').innerHTML = 'Loading...';
+            vscode.postMessage({ type: 'getNodes' });
+        }
+        
+        function loadEdges() {
+            document.getElementById('edges').innerHTML = 'Loading...';
+            vscode.postMessage({ type: 'getEdges' });
+        }
+        
+        window.addEventListener('message', event => {
+            const message = event.data;
+            switch (message.type) {
+                case 'nodes':
+                    displayNodes(message.data);
+                    break;
+                case 'edges':
+                    displayEdges(message.data);
+                    break;
+                case 'error':
+                    alert('Error: ' + message.message);
+                    break;
+            }
+        });
+        
+        function displayNodes(nodes) {
+            const container = document.getElementById('nodes');
+            if (!nodes || nodes.length === 0) {
+                container.innerHTML = 'No nodes found.';
+                return;
+            }
+            
+            let html = '<table><thead><tr><th>Chunk ID</th><th>Language</th><th>Size</th><th>Defines</th><th>References</th></tr></thead><tbody>';
+            nodes.forEach(node => {
+                html += '<tr>';
+                html += '<td>' + (node.chunk_id || '') + '</td>';
+                html += '<td>' + (node.language || '') + '</td>';
+                html += '<td>' + (node.size || 0) + '</td>';
+                html += '<td>' + (node.defines ? node.defines.join(', ') : '') + '</td>';
+                html += '<td>' + (node.references ? node.references.join(', ') : '') + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+        
+        function displayEdges(edges) {
+            const container = document.getElementById('edges');
+            if (!edges || edges.length === 0) {
+                container.innerHTML = 'No edges found.';
+                return;
+            }
+            
+            let html = '<table><thead><tr><th>From</th><th>To</th><th>Type</th></tr></thead><tbody>';
+            edges.forEach(edge => {
+                html += '<tr>';
+                html += '<td>' + (edge.from || '') + '</td>';
+                html += '<td>' + (edge.to || '') + '</td>';
+                html += '<td>' + (edge.edge_type || '') + '</td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        }
+    </script>
+</body>
+</html>`;
     }
     async searchRegistry(query) {
         // This would integrate with the CADI registry API

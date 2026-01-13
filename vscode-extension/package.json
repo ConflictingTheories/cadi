@@ -1,7 +1,7 @@
 {
     "name": "cadi",
     "displayName": "CADI - Content-Addressed Development Interface",
-    "description": "VS Code integration for CADI - the agentic development platform",
+    "description": "VS Code integration for CADI - the agentic development platform with admin tools for virtual view visualization and database debugging",
     "version": "2.0.0",
     "engines": {
         "vscode": "^1.74.0"
@@ -14,6 +14,7 @@
         "onCommand:cadi.buildProject",
         "onCommand:cadi.importCode",
         "onCommand:cadi.viewRegistry",
+        "onView:cadiAdminPanel",
         "workspaceContains:cadi.yaml",
         "workspaceContains:Cargo.toml"
     ],
@@ -49,6 +50,16 @@
                 "command": "cadi.installExtension",
                 "title": "CADI: Install Extension",
                 "category": "CADI"
+            },
+            {
+                "command": "cadi.admin.createView",
+                "title": "CADI Admin: Create Virtual View",
+                "category": "CADI Admin"
+            },
+            {
+                "command": "cadi.admin.debugDb",
+                "title": "CADI Admin: Debug Database",
+                "category": "CADI Admin"
             }
         ],
         "menus": {
@@ -82,6 +93,21 @@
                 },
                 {
                     "command": "cadi.installExtension"
+                },
+                {
+                    "command": "cadi.admin.createView"
+                },
+                {
+                    "command": "cadi.admin.debugDb"
+                }
+            ]
+        },
+        "viewContainers": {
+            "activitybar": [
+                {
+                    "id": "cadiAdmin",
+                    "title": "CADI Admin",
+                    "icon": "$(tools)"
                 }
             ]
         },
@@ -112,6 +138,16 @@
                     "type": "boolean",
                     "default": true,
                     "description": "Show token savings notifications"
+                },
+                "cadi.adminToken": {
+                    "type": "string",
+                    "default": "",
+                    "description": "Admin token for accessing admin-only features"
+                },
+                "cadi.server.url": {
+                    "type": "string",
+                    "default": "http://localhost:3000",
+                    "description": "URL of the CADI server"
                 }
             }
         },
@@ -123,12 +159,24 @@
                     "icon": "$(package)",
                     "contextualTitle": "CADI Registry"
                 }
+            ],
+            "cadiAdmin": [
+                {
+                    "id": "cadiAdminPanel",
+                    "name": "Admin Panel",
+                    "icon": "$(tools)",
+                    "contextualTitle": "CADI Admin"
+                }
             ]
         },
         "viewsWelcome": [
             {
                 "view": "cadiRegistry",
                 "contents": "No CADI registry configured.\n[Configure Registry](command:cadi.configureRegistry)\n[Search Chunks](command:cadi.searchChunks)"
+            },
+            {
+                "view": "cadiAdminPanel",
+                "contents": "CADI Admin Panel\n\nConfigure your admin settings to get started:\n\n1. Set admin token in settings\n2. Configure server URL\n3. Start using admin features\n\n[Open Settings](command:workbench.action.openSettings)\n[Create Virtual View](command:cadi.admin.createView)\n[Debug Database](command:cadi.admin.debugDb)"
             }
         ]
     },

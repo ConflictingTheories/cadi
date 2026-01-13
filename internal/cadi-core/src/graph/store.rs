@@ -362,6 +362,46 @@ impl GraphStore {
         })
     }
 
+    /// List all nodes in the graph
+    pub fn list_nodes(&self) -> CadiResult<Vec<GraphNode>> {
+        let mut nodes = Vec::new();
+        
+        for result in self.nodes.iter() {
+            match result {
+                Ok((_key_bytes, value_bytes)) => {
+                    if let Ok(node) = GraphNode::from_bytes(&value_bytes) {
+                        nodes.push(node);
+                    }
+                }
+                Err(e) => return Err(CadiError::StorageError(format!("Failed to iterate nodes: {}", e))),
+            }
+        }
+        
+        Ok(nodes)
+    }
+
+    /// List all edges in the graph
+    pub fn list_edges(&self) -> CadiResult<Vec<(String, String, EdgeType)>> {
+        let mut edges = Vec::new();
+        
+        for result in self.dependencies.iter() {
+            match result {
+                Ok((key_bytes, value_bytes)) => {
+                    if let Ok(from_chunk) = std::str::from_utf8(&key_bytes) {
+                        if let Ok(edge_list) = serde_json::from_slice::<Vec<(EdgeType, String)>>(&value_bytes) {
+                            for (edge_type, to_chunk) in edge_list {
+                                edges.push((from_chunk.to_string(), to_chunk, edge_type));
+                            }
+                        }
+                    }
+                }
+                Err(e) => return Err(CadiError::StorageError(format!("Failed to iterate edges: {}", e))),
+            }
+        }
+        
+        Ok(edges)
+    }
+
     /// Flush all pending writes to disk
     pub fn flush(&self) -> CadiResult<()> {
         self.db.flush()?;
