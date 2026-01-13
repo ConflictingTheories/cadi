@@ -10,11 +10,7 @@
         "Other"
     ],
     "activationEvents": [
-        "onCommand:cadi.searchChunks",
-        "onCommand:cadi.buildProject",
-        "onCommand:cadi.importCode",
-        "onCommand:cadi.viewRegistry",
-        "onView:cadiAdminPanel",
+        "*",
         "workspaceContains:cadi.yaml",
         "workspaceContains:Cargo.toml"
     ],
@@ -47,6 +43,11 @@
                 "category": "CADI"
             },
             {
+                "command": "cadi.configureRegistry",
+                "title": "CADI: Configure Registry",
+                "category": "CADI"
+            },
+            {
                 "command": "cadi.installExtension",
                 "title": "CADI: Install Extension",
                 "category": "CADI"
@@ -59,6 +60,11 @@
             {
                 "command": "cadi.admin.debugDb",
                 "title": "CADI Admin: Debug Database",
+                "category": "CADI Admin"
+            },
+            {
+                "command": "cadi.admin.checkStatus",
+                "title": "CADI Admin: Check Server Status",
                 "category": "CADI Admin"
             }
         ],
@@ -92,6 +98,9 @@
                     "command": "cadi.createManifest"
                 },
                 {
+                    "command": "cadi.configureRegistry"
+                },
+                {
                     "command": "cadi.installExtension"
                 },
                 {
@@ -99,6 +108,9 @@
                 },
                 {
                     "command": "cadi.admin.debugDb"
+                },
+                {
+                    "command": "cadi.admin.checkStatus"
                 }
             ]
         },
@@ -121,7 +133,7 @@
                 },
                 "cadi.registry.url": {
                     "type": "string",
-                    "default": "https://registry.cadi.dev",
+                    "default": "http://localhost:3000",
                     "description": "URL of the CADI registry"
                 },
                 "cadi.enableMcp": {

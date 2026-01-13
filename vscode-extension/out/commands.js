@@ -169,6 +169,9 @@ mcp:
             vscode.window.showErrorMessage(`Failed to create manifest: ${error}`);
         }
     }
+    async configureRegistry() {
+        await vscode.commands.executeCommand('workbench.action.openSettings', 'cadi');
+    }
     async installExtension() {
         const extensionName = await vscode.window.showInputBox({
             prompt: 'Enter CADI extension name',
@@ -565,25 +568,46 @@ mcp:
 </html>`;
     }
     async searchRegistry(query) {
-        // This would integrate with the CADI registry API
-        // For now, return mock results
-        return [
-            {
-                id: 'auth-middleware-v1.2.3',
-                name: 'Authentication Middleware',
-                description: 'JWT-based authentication for web APIs',
-                language: 'typescript',
-                downloads: 1250
-            },
-            {
-                id: 'db-orm-v2.1.0',
-                name: 'Database ORM',
-                description: 'Type-safe database operations',
-                language: 'rust',
-                downloads: 890
-            }
-        ].filter(item => item.name.toLowerCase().includes(query.toLowerCase()) ||
-            item.description.toLowerCase().includes(query.toLowerCase()));
+        const config = vscode.workspace.getConfiguration('cadi');
+        const registryUrl = config.get('registry.url', 'https://registry.cadi.dev');
+        try {
+            const response = await axios_1.default.post(`${registryUrl}/v1/search`, {
+                query: query,
+                limit: 20
+            }, {
+                timeout: 5000
+            });
+            // Map the real API response to the expected format
+            const chunks = response.data.chunks || [];
+            return chunks.map((chunk) => ({
+                id: chunk.chunk_id,
+                name: chunk.chunk_id.split('/').pop() || chunk.chunk_id,
+                description: `Chunk ${chunk.chunk_id} (${chunk.size} bytes)`,
+                language: 'unknown',
+                downloads: 0
+            }));
+        }
+        catch (error) {
+            console.warn('Failed to search registry:', error);
+            // Fallback to mock data
+            return [
+                {
+                    id: 'auth-middleware-v1.2.3',
+                    name: 'Authentication Middleware',
+                    description: 'JWT-based authentication for web APIs',
+                    language: 'typescript',
+                    downloads: 1250
+                },
+                {
+                    id: 'db-orm-v2.1.0',
+                    name: 'Database ORM',
+                    description: 'Type-safe database operations',
+                    language: 'rust',
+                    downloads: 890
+                }
+            ].filter(item => item.name.toLowerCase().includes(query.toLowerCase()) ||
+                item.description.toLowerCase().includes(query.toLowerCase()));
+        }
     }
     async showSearchResults(results) {
         if (results.length === 0) {

@@ -1,0 +1,91 @@
+aliases:
+  examples/java-atomizer/cargo: chunk:sha256:d40cb02066f4a5b907c6f2a4b1f5ed3973244a4820ec88101ac17bbd6c00b103
+  examples/java-atomizer/extension: chunk:sha256:24eb8c7145c54c61facf64a1b269a2305d80d5a480bb93234181b7090b2c3d47
+  examples/lib/extract-atoms: chunk:sha256:1be1f07d65f432111b0114deb9a2fd584f8587533dd7a7cde536b38318187a59
+  examples/lib/initialize: chunk:sha256:c7a04804a8bc163f168512760d842ed3bd1d2b65ef2c41e9e0e80201b66bd634
+  examples/lib/new: chunk:sha256:d35b941c7c12f2f759c4c4c7d0ede25e47d8511d9594d6d69e14f3b62704b470
+  examples/lib/resolve-imports: chunk:sha256:de99d3beef2bb9c093e45b1590e98d715946ec332d83424f93ffc00db19a9f5f
+  root-module: chunk:sha256:ab57b4e1ca2213489b5a6d8ca40983f7820a47bdb3b09246da46704ce4ff4620
+application:
+  description: java-atomizer - imported by CADI
+  name: java-atomizer
+  version: 0.1.0
+build_graph:
+  edges:
+    - from: root-module
+      to: examples/java-atomizer/cargo
+      type: composition
+    - from: root-module
+      to: examples/java-atomizer/extension
+      type: composition
+  nodes:
+    - alias: examples/java-atomizer/cargo
+      categories:
+        - config
+      granularity: module
+      id: examples/java-atomizer/cargo
+      representations:
+        - chunk: chunk:sha256:d40cb02066f4a5b907c6f2a4b1f5ed3973244a4820ec88101ac17bbd6c00b103
+          form: source
+      selection_strategy: prefer_source
+      source_cadi: chunk:sha256:d40cb02066f4a5b907c6f2a4b1f5ed3973244a4820ec88101ac17bbd6c00b103
+    - alias: examples/java-atomizer/extension
+      categories:
+        - logic
+      granularity: module
+      id: examples/java-atomizer/extension
+      representations:
+        - chunk: chunk:sha256:24eb8c7145c54c61facf64a1b269a2305d80d5a480bb93234181b7090b2c3d47
+          form: source
+      selection_strategy: prefer_source
+      source_cadi: chunk:sha256:24eb8c7145c54c61facf64a1b269a2305d80d5a480bb93234181b7090b2c3d47
+    - alias: examples/lib/new
+      categories:
+        - logic
+      granularity: function
+      id: examples/lib/new
+      representations:
+        - chunk: chunk:sha256:d35b941c7c12f2f759c4c4c7d0ede25e47d8511d9594d6d69e14f3b62704b470
+          form: source
+      selection_strategy: prefer_source
+      source_cadi: chunk:sha256:d35b941c7c12f2f759c4c4c7d0ede25e47d8511d9594d6d69e14f3b62704b470
+    - alias: examples/lib/initialize
+      categories:
+        - logic
+      granularity: function
+      id: examples/lib/initialize
+      representations:
+        - chunk: chunk:sha256:c7a04804a8bc163f168512760d842ed3bd1d2b65ef2c41e9e0e80201b66bd634
+          form: source
+      selection_strategy: prefer_source
+      source_cadi: chunk:sha256:c7a04804a8bc163f168512760d842ed3bd1d2b65ef2c41e9e0e80201b66bd634
+    - alias: examples/lib/extract-atoms
+      categories:
+        - logic
+      granularity: function
+      id: examples/lib/extract-atoms
+      representations:
+        - chunk: chunk:sha256:1be1f07d65f432111b0114deb9a2fd584f8587533dd7a7cde536b38318187a59
+          form: source
+      selection_strategy: prefer_source
+      source_cadi: chunk:sha256:1be1f07d65f432111b0114deb9a2fd584f8587533dd7a7cde536b38318187a59
+    - alias: examples/lib/resolve-imports
+      categories:
+        - logic
+      granularity: function
+      id: examples/lib/resolve-imports
+      representations:
+        - chunk: chunk:sha256:de99d3beef2bb9c093e45b1590e98d715946ec332d83424f93ffc00db19a9f5f
+          form: source
+      selection_strategy: prefer_source
+      source_cadi: chunk:sha256:de99d3beef2bb9c093e45b1590e98d715946ec332d83424f93ffc00db19a9f5f
+build_targets:
+  - name: "default"
+    platform: "native"
+    nodes:
+      - id: "root-module"
+    bundle:
+      format: "library"
+      output: "dist/java-atomizer"
+manifest_id: app:uuid:0a300479-3a34-40be-afa4-708648d59d7f
+manifest_version: "1.0"

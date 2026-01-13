@@ -11,58 +11,60 @@ let mcpClient: CadiMcpClient;
 let statusBar: CadiStatusBar;
 let adminPanelProvider: CadiAdminPanelProvider;
 
-export function activate(context: vscode.ExtensionContext) {
+export async function activate(context: vscode.ExtensionContext) {
     console.log('CADI extension is now active!');
 
     // Initialize components
-    statusBar = new CadiStatusBar(context);
     registryProvider = new CadiRegistryProvider(context);
     mcpClient = new CadiMcpClient(context);
-    cadiCommands = new CadiCommands(context, registryProvider, mcpClient, statusBar);
+    statusBar = new CadiStatusBar(context);
     adminPanelProvider = new CadiAdminPanelProvider(context);
+    cadiCommands = new CadiCommands(context, registryProvider, mcpClient, statusBar);
+
+    // Initialize MCP
+    await mcpClient.initialize(context);
+
+    // Register tree data providers
+    context.subscriptions.push(
+        vscode.window.registerTreeDataProvider('cadiRegistry', registryProvider)
+    );
+    context.subscriptions.push(
+        vscode.window.registerTreeDataProvider('cadiAdminPanel', adminPanelProvider)
+    );
 
     // Register commands
     context.subscriptions.push(
-        vscode.commands.registerCommand('cadi.searchChunks', cadiCommands.searchChunks.bind(cadiCommands)),
-        vscode.commands.registerCommand('cadi.buildProject', cadiCommands.buildProject.bind(cadiCommands)),
-        vscode.commands.registerCommand('cadi.importCode', cadiCommands.importCode.bind(cadiCommands)),
-        vscode.commands.registerCommand('cadi.viewRegistry', cadiCommands.viewRegistry.bind(cadiCommands)),
-        vscode.commands.registerCommand('cadi.createManifest', cadiCommands.createManifest.bind(cadiCommands)),
-        vscode.commands.registerCommand('cadi.installExtension', cadiCommands.installExtension.bind(cadiCommands)),
-        vscode.commands.registerCommand('cadi.importChunk', cadiCommands.importChunk.bind(cadiCommands)),
-        vscode.commands.registerCommand('cadi.admin.createView', cadiCommands.adminCreateView.bind(cadiCommands)),
-        vscode.commands.registerCommand('cadi.admin.debugDb', cadiCommands.adminDebugDb.bind(cadiCommands)),
-        vscode.commands.registerCommand('cadi.admin.checkStatus', cadiCommands.adminCheckStatus.bind(cadiCommands))
+        vscode.commands.registerCommand('cadi.searchChunks', () => cadiCommands.searchChunks())
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand('cadi.buildProject', () => cadiCommands.buildProject())
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand('cadi.importCode', () => cadiCommands.importCode())
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand('cadi.viewRegistry', () => cadiCommands.viewRegistry())
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand('cadi.createManifest', () => cadiCommands.createManifest())
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand('cadi.configureRegistry', () => cadiCommands.configureRegistry())
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand('cadi.installExtension', () => cadiCommands.installExtension())
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand('cadi.admin.createView', () => cadiCommands.adminCreateView())
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand('cadi.admin.debugDb', () => cadiCommands.adminDebugDb())
+    );
+    context.subscriptions.push(
+        vscode.commands.registerCommand('cadi.admin.checkStatus', () => cadiCommands.adminCheckStatus())
     );
 
-    // Register tree data provider for registry view
-    vscode.window.registerTreeDataProvider('cadiRegistry', registryProvider);
-
-    // Register tree data provider for admin panel
-    vscode.window.registerTreeDataProvider('cadiAdminPanel', adminPanelProvider);
-
-    // Register file system watcher for auto-import
-    if (vscode.workspace.workspaceFolders) {
-        const watcher = vscode.workspace.createFileSystemWatcher(
-            '**/*.{rs,ts,js,py,java,go}',
-            false, // ignoreCreateEvents
-            false, // ignoreChangeEvents
-            false  // ignoreDeleteEvents
-        );
-
-        watcher.onDidChange(async (uri) => {
-            if (vscode.workspace.getConfiguration('cadi').get('autoImport')) {
-                await cadiCommands.autoImportFile(uri);
-            }
-        });
-
-        context.subscriptions.push(watcher);
-    }
-
-    // Initialize MCP client if enabled
-    if (vscode.workspace.getConfiguration('cadi').get('enableMcp')) {
-        mcpClient.initialize(context);
-    }
+    console.log('CADI commands registered successfully!');
 
     // Show welcome message
     showWelcomeMessage(context);

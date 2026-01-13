@@ -1,39 +1,353 @@
-manifest_id: "todo-suite-manifest"
-manifest_version: "1.0"
-
+aliases:
+  examples/docs/r-e-a-d-m-e-example-todo: chunk:sha256:708a9a92d3916077fa6bfb6c57726924ebf5b2ceec8c2e8feb996b6cbbb7c1b3
+  examples/lib/add: chunk:sha256:d0e65a0119075268667ea2df265913f60be5d50d61807bfd7b4f4059af703a59
+  examples/lib/add-tag: chunk:sha256:1a8b4a4e320fb673bede9733fd274e4c3f6966d0ff005582508bfdde7a613059
+  examples/lib/complete: chunk:sha256:4a0a0b43b31ca528f01640146627bd86b6e4d47736bdc0d4d5ba6164e5d4d037
+  examples/lib/search: chunk:sha256:e31152046b4c1014780e27d103aaeebf02479eec2dca620910aff4ea119c73ac
+  examples/lib/set-priority: chunk:sha256:efd38bdfbff0e0fd3460cdd6e96b2f2e1d9d7dfeb555b789019cf6a47cba7748
+  examples/lib/stats: chunk:sha256:246bad47f99b0976e2e0cb2b4d0366dd2fe18d023c7741d173c788736e109f6e
+  examples/lib/todo: chunk:sha256:2f6f51e2bbf6f66578968f9576bef25f86bfb414f75f1ad7d3da7a5893f3e459
+  examples/lib/uncomplete: chunk:sha256:2a13c046c9758ea5247c03f5617ab320497c8490544c906e5aef2a0aad5a5a94
+  examples/lib/update-title: chunk:sha256:a96966adbd52ce2610d6b8788a37ce8b9a72fa4bd46d32af99870a566eff9a0e
+  examples/main/add-todo: chunk:sha256:b2f67b9f685e4710d9ef1b3daa344dacaf14b62094c33d73de1d310356828e23
+  examples/main/main: chunk:sha256:c67dd1bb766c0f228424e48aa1e6ec77bbd7509b1d4874d8f93e273434275d40
+  examples/main/main-1: chunk:sha256:07239866f50559fdc0eeecdfd8cdc4156721fdf07cae3d7f3984c55f38498453
+  examples/todo-cli/cargo: chunk:sha256:7f3266300ef7787be1b6e351b93efad546c4bb74f849d3934ac58161d04640c6
+  examples/todo-core.cadi: chunk:sha256:382a9ef6e6cac6b7b21d990493b55d2a0fdc215e5a855071d01f205068e81799
+  examples/todo-core/cargo: chunk:sha256:b3586767c3876fada0c929d6a1bb7d877a162290a71a7334a2aec55188a3e054
+  examples/todo-core/todo-core.cadi: chunk:sha256:a80a9a3a56c377763955e638447f39af7dc9a19210c6c2f3bc46075cefd72133
+  examples/todo-server/cargo: chunk:sha256:2bfefeab61850c3efb2dfb6c06fc132a65ca239c84ff612ceb8b44dcf17c96b7
+  examples/todo-suite/r-e-a-d-m-e: chunk:sha256:b8448d133931a58b91d45371e9f9ced881cca22c3a72b2f7c5f7dfde03311a9a
+  examples/todo-suite/todo-suite.cadi: chunk:sha256:b65b2feb5211ff88e7566f889009cd719b424dd737ac7804a1561d0028b68b75
+  examples/todo-web/index: chunk:sha256:70df8fae52283892cd6e7fd466e990a3f5818c1daee27be70a9ee235c2db1c28
+  root-module: chunk:sha256:f04432719adb3699095491b567fc2f4acadd117c8c727c8887a82f7f1a0556c1
+  src-module: chunk:sha256:fba1bf0d9289ea14a04d7af974f778af4ab3c30c7365fc03f0cd4106c0b0f512
+  todo-core-module: chunk:sha256:ad01fb116a4fb1405039669422ff7525601f1d19b6979fd125b6705ed02728df
 application:
-  name: "todo-suite"
-  description: "A complete todo application"
-  version: "0.1.0"
-
+  description: todo-suite - imported by CADI
+  name: todo-suite
+  version: 0.1.0
 build_graph:
+  edges:
+  - from: src-module
+    to: examples/lib/add
+    type: composition
+  - from: src-module
+    to: examples/lib/complete
+    type: composition
+  - from: src-module
+    to: examples/lib/uncomplete
+    type: composition
+  - from: src-module
+    to: examples/lib/update-title
+    type: composition
+  - from: src-module
+    to: examples/lib/set-priority
+    type: composition
+  - from: src-module
+    to: examples/lib/add-tag
+    type: composition
+  - from: src-module
+    to: examples/lib/search
+    type: composition
+  - from: src-module
+    to: examples/lib/stats
+    type: composition
+  - from: src-module
+    to: examples/lib/todo
+    type: composition
+  - from: src-module
+    to: examples/todo-core.cadi
+    type: composition
+  - from: root-module
+    to: examples/todo-suite/r-e-a-d-m-e
+    type: composition
+  - from: root-module
+    to: examples/todo-suite/todo-suite.cadi
+    type: composition
+  - from: todo-core-module
+    to: examples/todo-core/cargo
+    type: composition
+  - from: todo-core-module
+    to: examples/todo-core/todo-core.cadi
+    type: composition
   nodes:
-    - id: "todo-core"
-      source_cadi: "file://examples/todo-suite/todo-core/Cargo.toml"
-      representations:
-        - form: "source"
-          language: "rust"
-          chunk: "chunk:sha256:10e6da3adaecd8205a98cf8ef09efe9ad2c6af27403f4e0e9f7879ff1413c2dg"
-          
-    - id: "todo-server"
-      source_cadi: "file://examples/todo-suite/todo-server/Cargo.toml"
-      representations:
-        - form: "source"
-          language: "rust"
-          chunk: "chunk:sha256:0638c9e40b0e1b838accac3da0d611448054eb4c8ef5b2f0dc594e55e7a5444f"
-      
-    - id: "todo-web"
-      source_cadi: "file://examples/todo-suite/todo-web/index.html"
-      representations:
-        - form: "source"
-          language: "html"
-          chunk: "chunk:sha256:eead40ffaa2b75fdd2746a50a99b71bb47331bde1c40037414fea6e2cf2f2adf"
-
+  - alias: examples/todo-server/cargo
+    categories:
+    - config
+    granularity: module
+    id: examples/todo-server/cargo
+    representations:
+    - chunk: chunk:sha256:2bfefeab61850c3efb2dfb6c06fc132a65ca239c84ff612ceb8b44dcf17c96b7
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:2bfefeab61850c3efb2dfb6c06fc132a65ca239c84ff612ceb8b44dcf17c96b7
+  - alias: examples/main/main
+    categories:
+    - logic
+    granularity: function
+    id: examples/main/main
+    representations:
+    - chunk: chunk:sha256:c67dd1bb766c0f228424e48aa1e6ec77bbd7509b1d4874d8f93e273434275d40
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:c67dd1bb766c0f228424e48aa1e6ec77bbd7509b1d4874d8f93e273434275d40
+  - alias: examples/main/add-todo
+    categories:
+    - logic
+    granularity: function
+    id: examples/main/add-todo
+    representations:
+    - chunk: chunk:sha256:b2f67b9f685e4710d9ef1b3daa344dacaf14b62094c33d73de1d310356828e23
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:b2f67b9f685e4710d9ef1b3daa344dacaf14b62094c33d73de1d310356828e23
+  - alias: examples/docs/r-e-a-d-m-e-example-todo
+    categories:
+    - logic
+    granularity: module
+    id: examples/docs/r-e-a-d-m-e-example-todo
+    representations:
+    - chunk: chunk:sha256:708a9a92d3916077fa6bfb6c57726924ebf5b2ceec8c2e8feb996b6cbbb7c1b3
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:708a9a92d3916077fa6bfb6c57726924ebf5b2ceec8c2e8feb996b6cbbb7c1b3
+  - alias: examples/todo-suite/r-e-a-d-m-e
+    categories:
+    - logic
+    granularity: module
+    id: examples/todo-suite/r-e-a-d-m-e
+    representations:
+    - chunk: chunk:sha256:b8448d133931a58b91d45371e9f9ced881cca22c3a72b2f7c5f7dfde03311a9a
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:b8448d133931a58b91d45371e9f9ced881cca22c3a72b2f7c5f7dfde03311a9a
+  - alias: examples/todo-cli/cargo
+    categories:
+    - config
+    granularity: module
+    id: examples/todo-cli/cargo
+    representations:
+    - chunk: chunk:sha256:7f3266300ef7787be1b6e351b93efad546c4bb74f849d3934ac58161d04640c6
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:7f3266300ef7787be1b6e351b93efad546c4bb74f849d3934ac58161d04640c6
+  - alias: examples/main/main
+    categories:
+    - logic
+    granularity: function
+    id: examples/main/main
+    representations:
+    - chunk: chunk:sha256:07239866f50559fdc0eeecdfd8cdc4156721fdf07cae3d7f3984c55f38498453
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:07239866f50559fdc0eeecdfd8cdc4156721fdf07cae3d7f3984c55f38498453
+  - alias: examples/todo-core/cargo
+    categories:
+    - config
+    granularity: module
+    id: examples/todo-core/cargo
+    representations:
+    - chunk: chunk:sha256:b3586767c3876fada0c929d6a1bb7d877a162290a71a7334a2aec55188a3e054
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:b3586767c3876fada0c929d6a1bb7d877a162290a71a7334a2aec55188a3e054
+  - alias: examples/todo-core/todo-core.cadi
+    categories:
+    - logic
+    granularity: module
+    id: examples/todo-core/todo-core.cadi
+    representations:
+    - chunk: chunk:sha256:a80a9a3a56c377763955e638447f39af7dc9a19210c6c2f3bc46075cefd72133
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:a80a9a3a56c377763955e638447f39af7dc9a19210c6c2f3bc46075cefd72133
+  - alias: examples/lib/add
+    categories:
+    - test
+    granularity: function
+    id: examples/lib/add
+    representations:
+    - chunk: chunk:sha256:d0e65a0119075268667ea2df265913f60be5d50d61807bfd7b4f4059af703a59
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:d0e65a0119075268667ea2df265913f60be5d50d61807bfd7b4f4059af703a59
+  - alias: examples/lib/complete
+    categories:
+    - test
+    granularity: function
+    id: examples/lib/complete
+    representations:
+    - chunk: chunk:sha256:4a0a0b43b31ca528f01640146627bd86b6e4d47736bdc0d4d5ba6164e5d4d037
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:4a0a0b43b31ca528f01640146627bd86b6e4d47736bdc0d4d5ba6164e5d4d037
+  - alias: examples/lib/uncomplete
+    categories:
+    - test
+    granularity: function
+    id: examples/lib/uncomplete
+    representations:
+    - chunk: chunk:sha256:2a13c046c9758ea5247c03f5617ab320497c8490544c906e5aef2a0aad5a5a94
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:2a13c046c9758ea5247c03f5617ab320497c8490544c906e5aef2a0aad5a5a94
+  - alias: examples/lib/update-title
+    categories:
+    - test
+    granularity: function
+    id: examples/lib/update-title
+    representations:
+    - chunk: chunk:sha256:a96966adbd52ce2610d6b8788a37ce8b9a72fa4bd46d32af99870a566eff9a0e
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:a96966adbd52ce2610d6b8788a37ce8b9a72fa4bd46d32af99870a566eff9a0e
+  - alias: examples/lib/set-priority
+    categories:
+    - test
+    granularity: function
+    id: examples/lib/set-priority
+    representations:
+    - chunk: chunk:sha256:efd38bdfbff0e0fd3460cdd6e96b2f2e1d9d7dfeb555b789019cf6a47cba7748
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:efd38bdfbff0e0fd3460cdd6e96b2f2e1d9d7dfeb555b789019cf6a47cba7748
+  - alias: examples/lib/add-tag
+    categories:
+    - test
+    granularity: function
+    id: examples/lib/add-tag
+    representations:
+    - chunk: chunk:sha256:1a8b4a4e320fb673bede9733fd274e4c3f6966d0ff005582508bfdde7a613059
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:1a8b4a4e320fb673bede9733fd274e4c3f6966d0ff005582508bfdde7a613059
+  - alias: examples/lib/search
+    categories:
+    - test
+    granularity: function
+    id: examples/lib/search
+    representations:
+    - chunk: chunk:sha256:e31152046b4c1014780e27d103aaeebf02479eec2dca620910aff4ea119c73ac
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:e31152046b4c1014780e27d103aaeebf02479eec2dca620910aff4ea119c73ac
+  - alias: examples/lib/stats
+    categories:
+    - test
+    granularity: function
+    id: examples/lib/stats
+    representations:
+    - chunk: chunk:sha256:246bad47f99b0976e2e0cb2b4d0366dd2fe18d023c7741d173c788736e109f6e
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:246bad47f99b0976e2e0cb2b4d0366dd2fe18d023c7741d173c788736e109f6e
+  - alias: examples/lib/todo
+    categories:
+    - test
+    granularity: type
+    id: examples/lib/todo
+    representations:
+    - chunk: chunk:sha256:2f6f51e2bbf6f66578968f9576bef25f86bfb414f75f1ad7d3da7a5893f3e459
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:2f6f51e2bbf6f66578968f9576bef25f86bfb414f75f1ad7d3da7a5893f3e459
+  - alias: examples/todo-core.cadi
+    categories:
+    - logic
+    granularity: module
+    id: examples/todo-core.cadi
+    representations:
+    - chunk: chunk:sha256:382a9ef6e6cac6b7b21d990493b55d2a0fdc215e5a855071d01f205068e81799
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:382a9ef6e6cac6b7b21d990493b55d2a0fdc215e5a855071d01f205068e81799
+  - alias: examples/todo-web/index
+    categories:
+    - logic
+    granularity: module
+    id: examples/todo-web/index
+    representations:
+    - chunk: chunk:sha256:70df8fae52283892cd6e7fd466e990a3f5818c1daee27be70a9ee235c2db1c28
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:70df8fae52283892cd6e7fd466e990a3f5818c1daee27be70a9ee235c2db1c28
+  - alias: examples/todo-suite/todo-suite.cadi
+    categories:
+    - logic
+    granularity: module
+    id: examples/todo-suite/todo-suite.cadi
+    representations:
+    - chunk: chunk:sha256:b65b2feb5211ff88e7566f889009cd719b424dd737ac7804a1561d0028b68b75
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:b65b2feb5211ff88e7566f889009cd719b424dd737ac7804a1561d0028b68b75
 build_targets:
-  - name: "dev"
-    platform: "any"
-    nodes:
-      - id: "todo-server"
-        prefer: ["blob"]
-      - id: "todo-web"
-        prefer: ["bundle"]
+- name: default
+  nodes:
+  - id: examples/todo-server/cargo
+    prefer:
+    - source
+  - id: examples/main/main
+    prefer:
+    - source
+  - id: examples/main/add-todo
+    prefer:
+    - source
+  - id: examples/docs/r-e-a-d-m-e-example-todo
+    prefer:
+    - source
+  - id: examples/todo-suite/r-e-a-d-m-e
+    prefer:
+    - source
+  - id: examples/todo-cli/cargo
+    prefer:
+    - source
+  - id: examples/main/main
+    prefer:
+    - source
+  - id: examples/todo-core/cargo
+    prefer:
+    - source
+  - id: examples/todo-core/todo-core.cadi
+    prefer:
+    - source
+  - id: examples/lib/add
+    prefer:
+    - source
+  - id: examples/lib/complete
+    prefer:
+    - source
+  - id: examples/lib/uncomplete
+    prefer:
+    - source
+  - id: examples/lib/update-title
+    prefer:
+    - source
+  - id: examples/lib/set-priority
+    prefer:
+    - source
+  - id: examples/lib/add-tag
+    prefer:
+    - source
+  - id: examples/lib/search
+    prefer:
+    - source
+  - id: examples/lib/stats
+    prefer:
+    - source
+  - id: examples/lib/todo
+    prefer:
+    - source
+  - id: examples/todo-core.cadi
+    prefer:
+    - source
+  - id: examples/todo-web/index
+    prefer:
+    - source
+  - id: examples/todo-suite/todo-suite.cadi
+    prefer:
+    - source
+  platform: any
+manifest_id: app:uuid:4c551190-fac8-44e7-a604-c79ba8bea727
+manifest_version: '1.0'

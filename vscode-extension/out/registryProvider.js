@@ -22,9 +22,13 @@ var __importStar = (this && this.__importStar) || function (mod) {
     __setModuleDefault(result, mod);
     return result;
 };
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CadiChunkItem = exports.CadiRegistryProvider = void 0;
 const vscode = __importStar(require("vscode"));
+const axios_1 = __importDefault(require("axios"));
 class CadiRegistryProvider {
     constructor(context) {
         this.context = context;
@@ -69,8 +73,28 @@ class CadiRegistryProvider {
     }
     async loadChunks() {
         try {
-            // This would normally fetch from CADI registry API
-            // For now, using mock data
+            const config = vscode.workspace.getConfiguration('cadi');
+            const registryUrl = config.get('registry.url', 'https://registry.cadi.dev');
+            const response = await axios_1.default.get(`${registryUrl}/v1/chunks`, {
+                timeout: 5000
+            });
+            // Map ChunkMetadata to CadiChunk format
+            const chunks = response.data || [];
+            this.chunks = chunks.map((chunk) => ({
+                id: chunk.chunk_id,
+                name: chunk.chunk_id.split('/').pop() || chunk.chunk_id,
+                description: `Chunk ${chunk.chunk_id} (${chunk.size} bytes, ${chunk.content_type})`,
+                language: this.guessLanguage(chunk.chunk_id),
+                version: '1.0.0',
+                downloads: 0,
+                author: 'CADI',
+                tags: [chunk.content_type],
+                dependencies: []
+            }));
+        }
+        catch (error) {
+            console.warn('Failed to load chunks from registry, using mock data:', error);
+            // Fallback to mock data
             this.chunks = [
                 {
                     id: 'atomizer-typescript-v1.0.0',
@@ -118,9 +142,17 @@ class CadiRegistryProvider {
                 }
             ];
         }
-        catch (error) {
-            console.error('Failed to load CADI chunks:', error);
-            vscode.window.showErrorMessage('Failed to load CADI registry');
+    }
+    guessLanguage(chunkId) {
+        const ext = chunkId.split('.').pop()?.toLowerCase();
+        switch (ext) {
+            case 'ts': return 'typescript';
+            case 'js': return 'javascript';
+            case 'rs': return 'rust';
+            case 'py': return 'python';
+            case 'java': return 'java';
+            case 'go': return 'go';
+            default: return 'unknown';
         }
     }
     async searchChunks(query) {

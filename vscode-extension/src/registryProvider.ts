@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
+import axios from 'axios';
 
 export interface CadiChunk {
     id: string;
@@ -66,8 +67,29 @@ export class CadiRegistryProvider implements vscode.TreeDataProvider<CadiChunkIt
 
     private async loadChunks(): Promise<void> {
         try {
-            // This would normally fetch from CADI registry API
-            // For now, using mock data
+            const config = vscode.workspace.getConfiguration('cadi');
+            const registryUrl = config.get('registry.url', 'https://registry.cadi.dev');
+
+            const response = await axios.get(`${registryUrl}/v1/chunks`, {
+                timeout: 5000
+            });
+
+            // Map ChunkMetadata to CadiChunk format
+            const chunks = response.data || [];
+            this.chunks = chunks.map((chunk: any) => ({
+                id: chunk.chunk_id,
+                name: chunk.chunk_id.split('/').pop() || chunk.chunk_id,
+                description: `Chunk ${chunk.chunk_id} (${chunk.size} bytes, ${chunk.content_type})`,
+                language: this.guessLanguage(chunk.chunk_id),
+                version: '1.0.0',
+                downloads: 0,
+                author: 'CADI',
+                tags: [chunk.content_type],
+                dependencies: []
+            }));
+        } catch (error) {
+            console.warn('Failed to load chunks from registry, using mock data:', error);
+            // Fallback to mock data
             this.chunks = [
                 {
                     id: 'atomizer-typescript-v1.0.0',
@@ -114,9 +136,19 @@ export class CadiRegistryProvider implements vscode.TreeDataProvider<CadiChunkIt
                     dependencies: ['mcp-core']
                 }
             ];
-        } catch (error) {
-            console.error('Failed to load CADI chunks:', error);
-            vscode.window.showErrorMessage('Failed to load CADI registry');
+        }
+    }
+
+    private guessLanguage(chunkId: string): string {
+        const ext = chunkId.split('.').pop()?.toLowerCase();
+        switch (ext) {
+            case 'ts': return 'typescript';
+            case 'js': return 'javascript';
+            case 'rs': return 'rust';
+            case 'py': return 'python';
+            case 'java': return 'java';
+            case 'go': return 'go';
+            default: return 'unknown';
         }
     }
 

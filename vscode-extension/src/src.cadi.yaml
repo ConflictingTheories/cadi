@@ -1,0 +1,270 @@
+aliases:
+  cadi/adminPanel/admin-item: chunk:sha256:25c9b721fcd4959fa0a231ae4883a2ef2813838551a0529cb346127e5f79b28b
+  cadi/adminPanel/cadi-admin-panel-provider: chunk:sha256:5a13333cdbf810872071d6a6cf6263abb432f88fdb92ec31979f12cbb34d8cc7
+  cadi/commands/cadi-commands: chunk:sha256:cc043916ebecec6edb42f178c53d32f007b1ab2e6d224c040778728fbaaca0af
+  cadi/commands/display-edges: chunk:sha256:b553e6edb53cdacd72e713a93ec598d9cde08ee63cb633312531dbee5d9c3161
+  cadi/commands/display-nodes: chunk:sha256:b57e7811e52b04ff8935c4abf1216a328c3c3454b2ca96fe04e7854809d3c768
+  cadi/commands/relative-paths: chunk:sha256:3685f4a64cb1c737f50110987391b0a4be66390e90d56b132019c3596f68a41f
+  cadi/extension/activate: chunk:sha256:e9e9e8a9b8a1a694a3b791009a0402f950e9a00d96544109442f487b4cd5a720
+  cadi/extension/show-welcome-message: chunk:sha256:bbc46cf7c4af22da5f81ed15802b97fb10875d56856f4f79a3898c413da1944f
+  cadi/mcpClient/cadi-mcp-client: chunk:sha256:41dfe12e345b964455769e99980de9d0493fed2e1fbdda73b84908f497636f58
+  cadi/mcpClient/messages: chunk:sha256:61b9bc9ae1a6d7cb6a0059724fe73ba70ccad2d4b659df2979e73d374525b61a
+  cadi/registryProvider/cadi-chunk: chunk:sha256:3f2fdd3674ddeb33182cb022ae89e59ef3dd1e97d1153516a3664503e5426caa
+  cadi/registryProvider/cadi-chunk-item: chunk:sha256:7b261686df0d331ad278b21e0054b583445809a8050270f2b48c49769e427d11
+  cadi/registryProvider/cadi-registry-provider: chunk:sha256:041ec391189cc4f4135e0956e22c23f8b677f74852a0b7aaa020c1bb75d19ee8
+  cadi/registryProvider/category-chunks: chunk:sha256:d76547148604373a547cdd8fed6f9468bee484698b95c7ae505e6408ff9830e2
+  cadi/status-bar: chunk:sha256:9434c326a0a6140d5dfa32d066242d086b14a4c81e3fe956f41b8180a27466ef
+  root-module: chunk:sha256:3ffc191aed2abddd628fb4c92d421fc88ffc9b40dd6de62156ef568e78791697
+application:
+  description: src - imported by CADI
+  name: src
+  version: 0.1.0
+build_graph:
+  edges:
+  - from: root-module
+    to: cadi/commands/cadi-commands
+    type: composition
+  - from: root-module
+    to: cadi/commands/relative-paths
+    type: composition
+  - from: root-module
+    to: cadi/commands/display-nodes
+    type: composition
+  - from: root-module
+    to: cadi/commands/display-edges
+    type: composition
+  - from: root-module
+    to: cadi/registryProvider/cadi-chunk
+    type: composition
+  - from: root-module
+    to: cadi/registryProvider/cadi-registry-provider
+    type: composition
+  - from: root-module
+    to: cadi/registryProvider/category-chunks
+    type: composition
+  - from: root-module
+    to: cadi/registryProvider/cadi-chunk-item
+    type: composition
+  - from: root-module
+    to: cadi/extension/activate
+    type: composition
+  - from: root-module
+    to: cadi/extension/show-welcome-message
+    type: composition
+  - from: root-module
+    to: cadi/mcpClient/cadi-mcp-client
+    type: composition
+  - from: root-module
+    to: cadi/mcpClient/messages
+    type: composition
+  - from: root-module
+    to: cadi/adminPanel/cadi-admin-panel-provider
+    type: composition
+  - from: root-module
+    to: cadi/adminPanel/admin-item
+    type: composition
+  - from: root-module
+    to: cadi/status-bar
+    type: composition
+  nodes:
+  - alias: cadi/commands/cadi-commands
+    categories:
+    - logic
+    granularity: type
+    id: cadi/commands/cadi-commands
+    representations:
+    - chunk: chunk:sha256:cc043916ebecec6edb42f178c53d32f007b1ab2e6d224c040778728fbaaca0af
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:cc043916ebecec6edb42f178c53d32f007b1ab2e6d224c040778728fbaaca0af
+  - alias: cadi/commands/relative-paths
+    categories:
+    - logic
+    granularity: function
+    id: cadi/commands/relative-paths
+    representations:
+    - chunk: chunk:sha256:3685f4a64cb1c737f50110987391b0a4be66390e90d56b132019c3596f68a41f
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:3685f4a64cb1c737f50110987391b0a4be66390e90d56b132019c3596f68a41f
+  - alias: cadi/commands/display-nodes
+    categories:
+    - logic
+    granularity: function
+    id: cadi/commands/display-nodes
+    representations:
+    - chunk: chunk:sha256:b57e7811e52b04ff8935c4abf1216a328c3c3454b2ca96fe04e7854809d3c768
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:b57e7811e52b04ff8935c4abf1216a328c3c3454b2ca96fe04e7854809d3c768
+  - alias: cadi/commands/display-edges
+    categories:
+    - logic
+    granularity: function
+    id: cadi/commands/display-edges
+    representations:
+    - chunk: chunk:sha256:b553e6edb53cdacd72e713a93ec598d9cde08ee63cb633312531dbee5d9c3161
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:b553e6edb53cdacd72e713a93ec598d9cde08ee63cb633312531dbee5d9c3161
+  - alias: cadi/registryProvider/cadi-chunk
+    categories:
+    - data
+    granularity: type
+    id: cadi/registryProvider/cadi-chunk
+    representations:
+    - chunk: chunk:sha256:3f2fdd3674ddeb33182cb022ae89e59ef3dd1e97d1153516a3664503e5426caa
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:3f2fdd3674ddeb33182cb022ae89e59ef3dd1e97d1153516a3664503e5426caa
+  - alias: cadi/registryProvider/cadi-registry-provider
+    categories:
+    - data
+    granularity: type
+    id: cadi/registryProvider/cadi-registry-provider
+    representations:
+    - chunk: chunk:sha256:041ec391189cc4f4135e0956e22c23f8b677f74852a0b7aaa020c1bb75d19ee8
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:041ec391189cc4f4135e0956e22c23f8b677f74852a0b7aaa020c1bb75d19ee8
+  - alias: cadi/registryProvider/category-chunks
+    categories:
+    - data
+    granularity: function
+    id: cadi/registryProvider/category-chunks
+    representations:
+    - chunk: chunk:sha256:d76547148604373a547cdd8fed6f9468bee484698b95c7ae505e6408ff9830e2
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:d76547148604373a547cdd8fed6f9468bee484698b95c7ae505e6408ff9830e2
+  - alias: cadi/registryProvider/cadi-chunk-item
+    categories:
+    - data
+    granularity: type
+    id: cadi/registryProvider/cadi-chunk-item
+    representations:
+    - chunk: chunk:sha256:7b261686df0d331ad278b21e0054b583445809a8050270f2b48c49769e427d11
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:7b261686df0d331ad278b21e0054b583445809a8050270f2b48c49769e427d11
+  - alias: cadi/extension/activate
+    categories:
+    - logic
+    granularity: function
+    id: cadi/extension/activate
+    representations:
+    - chunk: chunk:sha256:e9e9e8a9b8a1a694a3b791009a0402f950e9a00d96544109442f487b4cd5a720
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:e9e9e8a9b8a1a694a3b791009a0402f950e9a00d96544109442f487b4cd5a720
+  - alias: cadi/extension/show-welcome-message
+    categories:
+    - logic
+    granularity: function
+    id: cadi/extension/show-welcome-message
+    representations:
+    - chunk: chunk:sha256:bbc46cf7c4af22da5f81ed15802b97fb10875d56856f4f79a3898c413da1944f
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:bbc46cf7c4af22da5f81ed15802b97fb10875d56856f4f79a3898c413da1944f
+  - alias: cadi/mcpClient/cadi-mcp-client
+    categories:
+    - data
+    granularity: type
+    id: cadi/mcpClient/cadi-mcp-client
+    representations:
+    - chunk: chunk:sha256:41dfe12e345b964455769e99980de9d0493fed2e1fbdda73b84908f497636f58
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:41dfe12e345b964455769e99980de9d0493fed2e1fbdda73b84908f497636f58
+  - alias: cadi/mcpClient/messages
+    categories:
+    - data
+    granularity: function
+    id: cadi/mcpClient/messages
+    representations:
+    - chunk: chunk:sha256:61b9bc9ae1a6d7cb6a0059724fe73ba70ccad2d4b659df2979e73d374525b61a
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:61b9bc9ae1a6d7cb6a0059724fe73ba70ccad2d4b659df2979e73d374525b61a
+  - alias: cadi/adminPanel/cadi-admin-panel-provider
+    categories:
+    - data
+    granularity: type
+    id: cadi/adminPanel/cadi-admin-panel-provider
+    representations:
+    - chunk: chunk:sha256:5a13333cdbf810872071d6a6cf6263abb432f88fdb92ec31979f12cbb34d8cc7
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:5a13333cdbf810872071d6a6cf6263abb432f88fdb92ec31979f12cbb34d8cc7
+  - alias: cadi/adminPanel/admin-item
+    categories:
+    - data
+    granularity: type
+    id: cadi/adminPanel/admin-item
+    representations:
+    - chunk: chunk:sha256:25c9b721fcd4959fa0a231ae4883a2ef2813838551a0529cb346127e5f79b28b
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:25c9b721fcd4959fa0a231ae4883a2ef2813838551a0529cb346127e5f79b28b
+  - alias: cadi/status-bar
+    categories:
+    - data
+    granularity: module
+    id: cadi/status-bar
+    representations:
+    - chunk: chunk:sha256:9434c326a0a6140d5dfa32d066242d086b14a4c81e3fe956f41b8180a27466ef
+      form: source
+    selection_strategy: prefer_source
+    source_cadi: chunk:sha256:9434c326a0a6140d5dfa32d066242d086b14a4c81e3fe956f41b8180a27466ef
+build_targets:
+- name: default
+  nodes:
+  - id: cadi/commands/cadi-commands
+    prefer:
+    - source
+  - id: cadi/commands/relative-paths
+    prefer:
+    - source
+  - id: cadi/commands/display-nodes
+    prefer:
+    - source
+  - id: cadi/commands/display-edges
+    prefer:
+    - source
+  - id: cadi/registryProvider/cadi-chunk
+    prefer:
+    - source
+  - id: cadi/registryProvider/cadi-registry-provider
+    prefer:
+    - source
+  - id: cadi/registryProvider/category-chunks
+    prefer:
+    - source
+  - id: cadi/registryProvider/cadi-chunk-item
+    prefer:
+    - source
+  - id: cadi/extension/activate
+    prefer:
+    - source
+  - id: cadi/extension/show-welcome-message
+    prefer:
+    - source
+  - id: cadi/mcpClient/cadi-mcp-client
+    prefer:
+    - source
+  - id: cadi/mcpClient/messages
+    prefer:
+    - source
+  - id: cadi/adminPanel/cadi-admin-panel-provider
+    prefer:
+    - source
+  - id: cadi/adminPanel/admin-item
+    prefer:
+    - source
+  - id: cadi/status-bar
+    prefer:
+    - source
+  platform: any
+manifest_id: app:uuid:b41d3e4a-a11b-4148-95a6-eedfa211f6ab
+manifest_version: '1.0'
