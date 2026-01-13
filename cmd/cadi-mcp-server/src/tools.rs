@@ -250,6 +250,19 @@ pub fn get_tools() -> Vec<ToolDefinition> {
                 "required": ["chunk_id"]
             }),
         },
+        // Semantic search: natural language query over chunks
+        ToolDefinition {
+            name: "cadi_semantic_search".to_string(),
+            description: "Perform a semantic search across the registry using embeddings.".to_string(),
+            input_schema: json!({
+                "type": "object",
+                "properties": {
+                    "query": {"type": "string", "description": "Natural language query"},
+                    "limit": {"type": "integer", "description": "Max results", "default": 10}
+                },
+                "required": ["query"]
+            }),
+        },
         ToolDefinition {
             name: "cadi_scaffold".to_string(),
             description: "Scaffold a project directory structure from a CADI manifest. Generate full project from chunks.".to_string(),

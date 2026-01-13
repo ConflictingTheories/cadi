@@ -472,9 +472,11 @@ version = "2.0.0"
 dependencies = [
  "axum",
  "cadi-core",
+ "cadi-llm",
  "cadi-registry",
  "serde",
  "serde_json",
+ "tempfile",
  "tokio",
  "tower 0.4.13",
  "tower-http",

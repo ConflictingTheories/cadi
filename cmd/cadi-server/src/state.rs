@@ -195,15 +195,24 @@ pub struct StoreStats {
 pub struct AppState {
     pub config: ServerConfig,
     pub store: Arc<RwLock<ChunkStore>>,
+    /// Embedding manager for semantic search
+    pub embedding_manager: std::sync::Arc<tokio::sync::Mutex<cadi_llm::embeddings::EmbeddingManager>>,
 }
 
 impl AppState {
     pub fn new(config: ServerConfig) -> Self {
         let store = ChunkStore::new(config.storage_path.clone().into())
             .expect("Failed to initialize chunk store");
+
+        // Initialize embedding manager with mock provider and persistent store path
+        let emb_store_path = std::path::PathBuf::from(config.storage_path.clone()).join("embeddings.json");
+        let provider: Box<dyn cadi_llm::embeddings::EmbeddingProvider> = Box::new(cadi_llm::embeddings::MockProvider::default());
+        let emb_manager = cadi_llm::embeddings::EmbeddingManager::new(provider, Some(emb_store_path));
+
         Self {
             config,
             store: Arc::new(RwLock::new(store)),
+            embedding_manager: std::sync::Arc::new(tokio::sync::Mutex::new(emb_manager)),
         }
     }
 }

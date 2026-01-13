@@ -8,6 +8,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 
 use crate::state::AppState;
+use cadi_llm::embeddings::Embedding;
 
 /// Health check response
 #[derive(Serialize)]
@@ -183,3 +184,95 @@ pub async fn search(
         limit,
     })
 }
+
+/// Semantic search request
+#[derive(Deserialize)]
+pub struct SemanticSearchRequest {
+    pub query: String,
+    #[serde(default)]
+    pub limit: Option<usize>,
+}
+
+/// Semantic search response
+#[derive(Serialize)]
+pub struct SemanticSearchHit {
+    pub chunk_id: String,
+    pub score: f32,
+}
+
+pub async fn semantic_search(
+    State(state): State<AppState>,
+    Json(req): Json<SemanticSearchRequest>,
+) -> Json<Vec<SemanticSearchHit>> {
+    let limit = req.limit.unwrap_or(10);
+
+    // Build candidates: for now, use chunk_id + metadata as textual content
+    let store = state.store.read().await;
+    let chunks = store.list().await;
+
+    let mut candidates: std::collections::HashMap<String, cadi_llm::embeddings::Embedding> = std::collections::HashMap::new();
+
+    for ch in &chunks {
+        // Create a simple textual summary for embedding
+        let summary = format!("{} size:{} type:{}", ch.chunk_id, ch.size, ch.content_type);
+        // Acquire embedding manager and compute/get embedding
+        let mut emb_mgr = state.embedding_manager.lock().await;
+        match emb_mgr.get_chunk_embedding(&ch.chunk_id, &summary).await {
+            Ok(emb) => {
+                candidates.insert(ch.chunk_id.clone(), emb);
+            }
+            Err(e) => {
+                tracing::debug!("Embedding failed for {}: {}", ch.chunk_id, e);
+            }
+        }
+    }
+
+    // Now compute search scores
+    let mut emb_mgr = state.embedding_manager.lock().await;
+    let results = emb_mgr.search(&req.query, &candidates, limit).await;
+
+    // Persist current embedding store (best-effort)
+    let _ = emb_mgr.save_store();
+
+    match results {
+        Ok(vec) => Json(vec.into_iter().map(|(id, score)| SemanticSearchHit { chunk_id: id, score }).collect()),
+        Err(_) => Json(vec![]),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::state::ServerConfig;
+    use axum::extract::State as AxState;
+
+    #[tokio::test]
+    async fn test_semantic_search_handler() {
+        // Setup a temporary server config and state
+        let tmp = tempfile::tempdir().unwrap();
+        let config = ServerConfig {
+            bind_address: "127.0.0.1:0".to_string(),
+            storage_path: tmp.path().to_str().unwrap().to_string(),
+            max_chunk_size: 1024 * 1024,
+            anonymous_read: true,
+            anonymous_write: true,
+        };
+
+        let state = AppState::new(config);
+
+        // Store a chunk
+        let chunk_id = "chunk:sha256:testchunk".to_string();
+        let data = b"hello semantic".to_vec();
+        {
+            let mut s = state.store.write().await;
+            s.store(chunk_id.clone(), data).await.unwrap();
+        }
+
+        // Call handler
+        let req = SemanticSearchRequest { query: "hello".to_string(), limit: Some(10) };
+        let res = semantic_search(AxState(state.clone()), axum::Json(req)).await;
+        assert!(!res.0.is_empty(), "Expected at least one search hit");
+        assert_eq!(res.0[0].chunk_id, chunk_id);
+    }
+}
+

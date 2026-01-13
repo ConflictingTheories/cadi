@@ -176,6 +176,44 @@ impl RegistryClient {
         Ok(result)
     }
 
+    /// Perform a semantic search against the registry
+    pub async fn semantic_search(&self, query: &str, limit: usize) -> CadiResult<Vec<(ChunkSummary, f32)>> {
+        let url = format!("{}/v1/semantic_search", self.config.url);
+        let body = serde_json::json!({ "query": query, "limit": limit });
+
+        let mut request = self.http.post(&url).json(&body);
+        if let Some(ref token) = self.config.token {
+            request = request.bearer_auth(token);
+        }
+
+        let response = request.send().await
+            .map_err(|e| CadiError::RegistryError(e.to_string()))?;
+
+        if !response.status().is_success() {
+            return Err(CadiError::RegistryError(format!("HTTP {}", response.status())));
+        }
+
+        let hits: Vec<serde_json::Value> = response.json().await
+            .map_err(|e| CadiError::RegistryError(e.to_string()))?;
+
+        // Map json results to (ChunkSummary, score) where ChunkSummary is partial
+        let mut out = Vec::new();
+        for v in hits {
+            if let (Some(chunk_id), Some(score)) = (v.get("chunk_id"), v.get("score")) {
+                let cs = ChunkSummary {
+                    chunk_id: chunk_id.as_str().unwrap_or_default().to_string(),
+                    name: "".to_string(),
+                    cadi_type: "".to_string(),
+                    concepts: vec![],
+                    description: None,
+                };
+                out.push((cs, score.as_f64().unwrap_or(0.0) as f32));
+            }
+        }
+
+        Ok(out)
+    }
+
     /// Fetch a manifest
     pub async fn fetch_manifest(&self, manifest_id: &str) -> CadiResult<Manifest> {
         let url = format!("{}/v1/manifests/{}", self.config.url, manifest_id);

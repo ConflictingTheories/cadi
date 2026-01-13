@@ -25,6 +25,10 @@ pub struct QueryArgs {
     #[arg(short, long)]
     registry: Option<String>,
 
+    /// Use semantic search
+    #[arg(long)]
+    semantic: bool,
+
     /// Output format (json, table)
     #[arg(short, long, default_value = "table")]
     format: String,
@@ -65,6 +69,35 @@ pub async fn execute(args: QueryArgs, config: &CadiConfig) -> Result<()> {
 
     if !params.is_empty() {
         url = format!("{}?{}", url, params.join("&"));
+    }
+
+    // If semantic flag is enabled, call semantic_search endpoint
+    if args.semantic {
+        let reg_config = cadi_registry::client::RegistryConfig {
+            url: registry.to_string(),
+            token: None,
+            timeout: std::time::Duration::from_secs(30),
+            verify_tls: true,
+            max_concurrent: 4,
+        };
+        let client = cadi_registry::client::RegistryClient::new(reg_config)?;
+        let hits = client.semantic_search(&args.name.clone().unwrap_or_else(|| args.chunk_id.clone().unwrap_or_default()), args.limit).await?;
+        if args.format == "json" {
+            let out: serde_json::Value = serde_json::json!({ "results": hits.iter().map(|(c,s)| serde_json::json!({ "chunk_id": c.chunk_id, "score": s })).collect::<Vec<_>>() });
+            println!("{}", serde_json::to_string_pretty(&out)?);
+        } else {
+            println!();
+            if hits.is_empty() {
+                println!("  {} No matching chunks found", style("!").yellow());
+            } else {
+                println!("  {} {} chunk(s) found:", style("✓").green(), hits.len());
+                println!();
+                for (chunk, score) in hits {
+                    println!("  {} {} (score {:.3})", style("•").cyan(), style(&chunk.chunk_id).bold(), score);
+                }
+            }
+        }
+        return Ok(());
     }
 
     // Execute query

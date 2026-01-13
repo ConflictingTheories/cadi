@@ -2,6 +2,9 @@ use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use serde::Deserialize;
 use std::collections::HashMap;
+use std::path::PathBuf;
+
+use crate::store::EmbeddingStore;
 
 /// An embedding vector
 pub type Embedding = Vec<f32>;
@@ -22,6 +25,7 @@ pub trait EmbeddingProvider: Send + Sync {
     }
 }
 
+
 /// OpenAI embedding provider
 pub struct OpenAiProvider {
     api_key: String,
@@ -36,6 +40,18 @@ impl OpenAiProvider {
             model: model.unwrap_or_else(|| "text-embedding-3-small".to_string()),
             client: reqwest::Client::new(),
         }
+    }
+}
+
+impl Default for MockProvider {
+    fn default() -> Self {
+        MockProvider
+    }
+}
+
+impl std::fmt::Debug for MockProvider {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("MockProvider").finish()
     }
 }
 
@@ -87,13 +103,23 @@ impl EmbeddingProvider for MockProvider {
 pub struct EmbeddingManager {
     provider: Box<dyn EmbeddingProvider>,
     cache: HashMap<String, Embedding>,
+    store_path: Option<PathBuf>,
+    store: EmbeddingStore,
 }
 
 impl EmbeddingManager {
-    pub fn new(provider: Box<dyn EmbeddingProvider>) -> Self {
+    pub fn new(provider: Box<dyn EmbeddingProvider>, store_path: Option<PathBuf>) -> Self {
+        let store = if let Some(ref p) = store_path {
+            EmbeddingStore::load(p).unwrap_or_else(|_| EmbeddingStore::new())
+        } else {
+            EmbeddingStore::new()
+        };
+
         Self {
             provider,
-            cache: HashMap::new(),
+            cache: store.embeddings.clone(),
+            store_path,
+            store,
         }
     }
 
@@ -103,8 +129,19 @@ impl EmbeddingManager {
             return Ok(emb.clone());
         }
 
+        if let Some(emb) = self.store.get(chunk_id) {
+            self.cache.insert(chunk_id.to_string(), emb.clone());
+            return Ok(emb);
+        }
+
         let emb = self.provider.generate(content).await?;
         self.cache.insert(chunk_id.to_string(), emb.clone());
+        self.store.insert(chunk_id.to_string(), emb.clone());
+
+        if let Some(ref p) = self.store_path {
+            let _ = self.store.save(p);
+        }
+
         Ok(emb)
     }
 
@@ -123,6 +160,21 @@ impl EmbeddingManager {
         results.truncate(limit);
         
         Ok(results)
+    }
+}
+
+impl EmbeddingManager {
+    /// Save persistent embedding store to disk (best-effort)
+    pub fn save_store(&self) -> Result<()> {
+        if let Some(ref p) = self.store_path {
+            self.store.save(p)?;
+        }
+        Ok(())
+    }
+
+    /// Return a clone of the configured store path
+    pub fn store_path_clone(&self) -> Option<PathBuf> {
+        self.store_path.clone()
     }
 }
 
