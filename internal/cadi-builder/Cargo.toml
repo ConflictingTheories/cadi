@@ -13,7 +13,7 @@ description = "CADI build engine and transformation pipeline for WASM and binari
 readme = "README.md"
 
 [dependencies]
-cadi-core = { version = "2.0.0", path = "../cadi-core" }
+cadi-core = { version = "2.0.1", path = "../cadi-core" }
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true

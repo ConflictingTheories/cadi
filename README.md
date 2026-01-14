@@ -182,6 +182,23 @@ cadi build build.cadi.yaml
 # Token usage: 700 vs 5,300 baseline (87% savings)
 ```
 
+### Example 4: Visualize Repository Data
+
+```bash
+# Launch TUI visualization (local exploration)
+cadi visualize --mode tui
+
+# Launch web GUI (remote network repo viewing)
+cadi visualize --mode web --port 8080
+
+# The web interface provides:
+# - Real-time statistics dashboard
+# - Interactive chunk browser with pagination
+# - Search functionality across chunks and aliases
+# - Dependency graph visualization with D3.js
+# - Storage metrics and registry status
+```
+
 ## LLM Integration (MCP)
 
 CADI exposes 8 tools via Model Context Protocol:

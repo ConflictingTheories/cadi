@@ -15,4 +15,5 @@ pub mod demo;
 pub mod scrape;
 pub mod validate;
 pub mod scaffold;
+pub mod visualize;
 

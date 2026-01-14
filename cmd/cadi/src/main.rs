@@ -80,6 +80,9 @@ enum Commands {
 
     /// Scaffold a project from a manifest
     Scaffold(commands::scaffold::ScaffoldArgs),
+
+    /// Visualize repository data with TUI or web GUI
+    Visualize(commands::visualize::VisualizeArgs),
 }
 
 #[tokio::main]
@@ -115,5 +118,6 @@ async fn main() -> Result<()> {
         Commands::Scrape(args) => commands::scrape::execute(args, &config).await,
         Commands::Validate(args) => commands::validate::execute(args, &config).await,
         Commands::Scaffold(args) => commands::scaffold::execute(args, &config).await,
+        Commands::Visualize(args) => commands::visualize::execute(args, &config).await,
     }
 }

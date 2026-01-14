@@ -17,10 +17,10 @@ name = "cadi"
 path = "src/main.rs"
 
 [dependencies]
-cadi-core = { version = "2.0.0", path = "../../internal/cadi-core" }
-cadi-builder = { version = "2.0.0", path = "../../internal/cadi-builder" }
-cadi-registry = { version = "2.0.0", path = "../../internal/cadi-registry" }
-cadi-scraper = { version = "2.0.0", path = "../../internal/cadi-scraper" }
+cadi-core = { version = "2.0.1", path = "../../internal/cadi-core" }
+cadi-builder = { version = "2.0.1", path = "../../internal/cadi-builder" }
+cadi-registry = { version = "2.0.1", path = "../../internal/cadi-registry" }
+cadi-scraper = { version = "2.0.1", path = "../../internal/cadi-scraper" }
 
 tokio.workspace = true
 clap.workspace = true
@@ -42,6 +42,11 @@ sha2.workspace = true
 reqwest.workspace = true
 urlencoding = "2.1"
 hex.workspace = true
+ratatui = "0.26"
+crossterm = "0.27"
+axum = "0.7"
+tower = "0.4"
+tower-http = { version = "0.5", features = ["fs", "cors"] }
 
 [dev-dependencies]
 tempfile.workspace = true
