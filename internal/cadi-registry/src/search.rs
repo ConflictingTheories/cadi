@@ -6,6 +6,7 @@
 //! - Structural: Function signature matching
 //! - Compositional: Dependency graph analysis
 
+use cadi_core::{Chunk, CadiResult};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
@@ -81,7 +82,15 @@ impl SearchEngine {
         }
     }
 
-    /// Register a component in the search index
+    /// Register a chunk and extract metadata automatically
+    pub fn register_chunk(&mut self, chunk: &Chunk, content: &str) -> CadiResult<String> {
+        let chunk_id = chunk.chunk_id.clone();
+        let metadata = MetadataNormalizer::normalize_chunk(chunk, content)?;
+        self.register(&chunk_id, metadata);
+        Ok(chunk_id)
+    }
+
+    /// Register a component with metadata
     pub fn register(&mut self, id: &str, metadata: ComponentMetadata) {
         self.index.insert(id.to_string(), metadata);
     }
@@ -206,5 +215,218 @@ impl SearchEngine {
 impl Default for SearchEngine {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Metadata normalizer - extracts searchable metadata from code
+pub struct MetadataNormalizer;
+
+impl MetadataNormalizer {
+    /// Normalize a chunk into searchable metadata
+    pub fn normalize_chunk(chunk: &Chunk, content: &str) -> CadiResult<ComponentMetadata> {
+        // Extract language from chunk metadata or default to unknown
+        let language = chunk.meta.tags.iter()
+            .find(|tag| tag.starts_with("lang:"))
+            .map(|tag| tag.strip_prefix("lang:").unwrap_or("unknown"))
+            .unwrap_or("unknown")
+            .to_string();
+
+        let extractor = CodeExtractor::new(&language);
+        let extracted = extractor.extract(content)?;
+
+        // Calculate quality score before moving any fields
+        let quality_score = Self::calculate_quality_score(&extracted);
+
+        // Extract values after calculating score
+        let name = extracted.name.unwrap_or_else(|| "Unnamed Component".to_string());
+        let description = extracted.description.unwrap_or_else(|| "No description available".to_string());
+        let test_coverage = extracted.test_coverage.unwrap_or(0.0);
+        let concepts = extracted.concepts.clone();
+
+        Ok(ComponentMetadata {
+            name,
+            description,
+            language,
+            usage_count: 0,
+            test_coverage,
+            quality_score,
+            concepts,
+        })
+    }
+
+    /// Calculate quality score based on extracted features
+    fn calculate_quality_score(extracted: &ExtractedCode) -> f64 {
+        let mut score = 0.5; // Base score
+
+        // Documentation quality
+        if extracted.description.is_some() {
+            score += 0.1;
+        }
+
+        // Test coverage
+        if let Some(coverage) = extracted.test_coverage {
+            score += coverage * 0.2;
+        }
+
+        // Function signatures (indicates well-structured code)
+        score += (extracted.function_signatures.len() as f64 * 0.05).min(0.1);
+
+        // Concepts/tags (indicates semantic richness)
+        score += (extracted.concepts.len() as f64 * 0.02).min(0.1);
+
+        score.min(1.0)
+    }
+}
+
+/// Extracted information from code
+#[derive(Debug, Default)]
+struct ExtractedCode {
+    name: Option<String>,
+    description: Option<String>,
+    concepts: Vec<String>,
+    function_signatures: Vec<String>,
+    test_coverage: Option<f64>,
+}
+
+/// Code feature extractor
+struct CodeExtractor {
+    language: String,
+}
+
+impl CodeExtractor {
+    fn new(language: &str) -> Self {
+        Self {
+            language: language.to_lowercase(),
+        }
+    }
+
+    fn extract(&self, code: &str) -> CadiResult<ExtractedCode> {
+        let mut extracted = ExtractedCode::default();
+
+        match self.language.as_str() {
+            "typescript" | "javascript" => self.extract_js_ts(code, &mut extracted),
+            "rust" => self.extract_rust(code, &mut extracted),
+            "python" => self.extract_python(code, &mut extracted),
+            _ => self.extract_generic(code, &mut extracted),
+        }
+
+        Ok(extracted)
+    }
+
+    fn extract_js_ts(&self, code: &str, extracted: &mut ExtractedCode) {
+        let lines: Vec<&str> = code.lines().collect();
+
+        // Extract top comment as description
+        for line in &lines {
+            let trimmed = line.trim();
+            if trimmed.starts_with("//") || trimmed.starts_with("/*") {
+                let desc = trimmed.trim_start_matches("//").trim_start_matches("/*").trim();
+                if !desc.is_empty() {
+                    extracted.description = Some(desc.to_string());
+                    break;
+                }
+            }
+        }
+
+        // Extract function signatures
+        for line in &lines {
+            if line.contains("function ") || line.contains("=>") || (line.contains("const ") && line.contains("=")) {
+                extracted.function_signatures.push(line.trim().to_string());
+            }
+        }
+
+        // Extract concepts from keywords
+        let keywords = ["auth", "jwt", "http", "server", "database", "api", "middleware"];
+        for keyword in &keywords {
+            if code.to_lowercase().contains(keyword) {
+                extracted.concepts.push(keyword.to_string());
+            }
+        }
+    }
+
+    fn extract_rust(&self, code: &str, extracted: &mut ExtractedCode) {
+        let lines: Vec<&str> = code.lines().collect();
+
+        // Extract doc comments
+        for line in &lines {
+            if line.trim().starts_with("///") {
+                let desc = line.trim().trim_start_matches("///").trim();
+                if !desc.is_empty() {
+                    extracted.description = Some(desc.to_string());
+                    break;
+                }
+            }
+        }
+
+        // Extract function signatures
+        for line in &lines {
+            if line.contains("fn ") {
+                extracted.function_signatures.push(line.trim().to_string());
+            }
+        }
+
+        // Extract concepts
+        let keywords = ["async", "tokio", "serde", "http", "database", "api"];
+        for keyword in &keywords {
+            if code.to_lowercase().contains(keyword) {
+                extracted.concepts.push(keyword.to_string());
+            }
+        }
+    }
+
+    fn extract_python(&self, code: &str, extracted: &mut ExtractedCode) {
+        let lines: Vec<&str> = code.lines().collect();
+
+        // Extract docstrings
+        let mut in_docstring = false;
+        for line in &lines {
+            let trimmed = line.trim();
+            if trimmed.starts_with("\"\"\"") || trimmed.starts_with("'''") {
+                in_docstring = !in_docstring;
+                if in_docstring && extracted.description.is_none() {
+                    extracted.description = Some(trimmed.trim_matches('\"').trim_matches('\'').to_string());
+                }
+            }
+        }
+
+        // Extract function signatures
+        for line in &lines {
+            if line.trim().starts_with("def ") {
+                extracted.function_signatures.push(line.trim().to_string());
+            }
+        }
+
+        // Extract concepts
+        let keywords = ["flask", "django", "fastapi", "sqlalchemy", "requests", "api"];
+        for keyword in &keywords {
+            if code.to_lowercase().contains(keyword) {
+                extracted.concepts.push(keyword.to_string());
+            }
+        }
+    }
+
+    fn extract_generic(&self, code: &str, extracted: &mut ExtractedCode) {
+        // Basic extraction for unsupported languages
+        let lines: Vec<&str> = code.lines().collect();
+
+        // First comment line as description
+        for line in &lines {
+            let trimmed = line.trim();
+            if trimmed.starts_with("//") || trimmed.starts_with("#") || trimmed.starts_with("/*") {
+                let desc = trimmed.trim_start_matches("//").trim_start_matches("#").trim_start_matches("/*").trim();
+                if !desc.is_empty() {
+                    extracted.description = Some(desc.to_string());
+                    break;
+                }
+            }
+        }
+
+        // Extract concepts from common keywords
+        let keywords = ["function", "class", "method", "api", "service", "handler"];
+        for keyword in &keywords {
+            if code.to_lowercase().contains(keyword) {
+                extracted.concepts.push(keyword.to_string());
+            }
+        }
     }
 }

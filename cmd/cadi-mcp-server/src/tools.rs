@@ -9,6 +9,8 @@ use serde_json::{json, Value};
 #[allow(unused_imports)]
 use std::collections::HashMap;
 
+use cadi_registry::db::{RegistryDatabase, SearchQuery};
+
 /// Get all available tools
 pub fn get_tools() -> Vec<ToolDefinition> {
     vec![
@@ -433,39 +435,47 @@ async fn call_search(
     db: &surrealdb::Surreal<surrealdb::engine::local::Db>,
 ) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error + Send + Sync>> {
     let query_text = args.get("query").and_then(|v| v.as_str()).unwrap_or("").to_string();
-    
-    // Perform Hybrid Search in SurrealDB (Multi-modal pivot)
-    let sql = "
-        SELECT *, 
-               (string::similarity::fuzzy(content, $query)) AS score 
-        FROM atom 
-        WHERE score > 0.5 
-        ORDER BY score DESC 
-        LIMIT 5;
-    ";
-    
-    let mut response = db.query(sql)
-        .bind(("query", query_text.clone()))
-        .await?;
-    
-    let results: Vec<serde_json::Value> = response.take(0)?;
+    let language = args.get("language").and_then(|v| v.as_str()).map(|s| s.to_string());
+    let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(10) as usize;
+
+    // Create RegistryDatabase instance
+    let registry_db = RegistryDatabase::new(db.clone(), None).await
+        .map_err(|e| format!("Failed to create registry database: {}", e))?;
+
+    // Perform hybrid search using the new database layer
+    let search_query = SearchQuery {
+        text: Some(query_text.clone()),
+        embedding: None, // TODO: Add embedding support when LLM integration is ready
+        language,
+        limit,
+        min_score: 0.1,
+    };
+
+    let results = registry_db.search(search_query).await
+        .map_err(|e| format!("Search failed: {}", e))?;
 
     let mut responses = Vec::new();
-    responses.push(serde_json::json!({"type": "text", "text": format!("🔍 Searching for '{}' in SurrealDB", query_text)}));
+    responses.push(serde_json::json!({"type": "text", "text": format!("🔍 Searching for '{}' using CADI Registry", query_text)}));
 
     if results.is_empty() {
-        responses.push(serde_json::json!({"type": "text", "text": "No exact semantic matches found. Returning references to similar concepts."}));
+        responses.push(serde_json::json!({"type": "text", "text": "No matches found. Try a different query or import more code chunks."}));
     } else {
-        let formatted_results = results.iter().map(|r| {
-            format!(
-                "- ID: {}\n  Score: {:.2}\n  Lang: {}\n", 
-                r.get("hash").and_then(|h| h.as_str()).unwrap_or("unknown"),
-                r.get("score").and_then(|s| s.as_f64()).unwrap_or(0.0),
-                r.get("language").and_then(|l| l.as_str()).unwrap_or("ts")
-            )
-        }).collect::<String>();
-        
-        responses.push(serde_json::json!({"type": "text", "text": format!("Found existing components:\n\n{}", formatted_results)}));
+        responses.push(serde_json::json!({"type": "text", "text": format!("Found {} matching chunks:", results.len())}));
+
+        for result in results {
+            let chunk_info = format!(
+                "\n• **{}** (Score: {:.2})\n  Language: {}\n  Description: {}\n  Concepts: {}\n  Chunk ID: {}",
+                result.metadata.name,
+                result.score,
+                result.metadata.language,
+                result.metadata.description,
+                result.metadata.concepts.join(", "),
+                result.chunk_id
+            );
+            responses.push(serde_json::json!({"type": "text", "text": chunk_info}));
+        }
+
+        responses.push(serde_json::json!({"type": "text", "text": "\n💡 Use 'cadi_get_chunk' to retrieve the full code for any chunk above."}));
     }
 
     Ok(responses)

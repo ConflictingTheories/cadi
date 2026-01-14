@@ -64,6 +64,9 @@ pub enum CadiError {
 
     #[error("Rehydration error: {0}")]
     RehydrationError(String),
+
+    #[error("Database error: {0}")]
+    DatabaseError(String),
 }
 
 impl From<serde_json::Error> for CadiError {

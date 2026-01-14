@@ -21,3 +21,5 @@ reqwest.workspace = true
 tokio.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
+surrealdb.workspace = true
+chrono.workspace = true

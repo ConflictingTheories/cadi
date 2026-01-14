@@ -730,9 +730,11 @@ version = "2.0.0"
 dependencies = [
  "cadi-core",
  "cadi-llm",
+ "chrono",
  "reqwest",
  "serde",
  "serde_json",
+ "surrealdb",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
