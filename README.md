@@ -1,7 +1,7 @@
 # CADI - Content-Addressed Development Interface
 
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Version](https://img.shields.io/badge/version-v2.0.0-green.svg)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-v2.0.1-green.svg)](CHANGELOG.md)
 [![Status](https://img.shields.io/badge/status-Phase%201%20Complete-blue.svg)](#implementation-status)
 
 CADI is a universal build and distribution system for software artifacts, enabling **87% token savings** for LLM-assisted development through semantic code reuse, content addressing, and intelligent composition.
@@ -109,12 +109,15 @@ cadi build build.cadi.yaml
 
 **Tests Passing:** ✅ All unit and integration tests
 
-### 🚀 Phase 2: In Progress
-- [ ] Vector embeddings for semantic search
-- [ ] Python language adapter
-- [ ] Rust language adapter
-- [ ] Transpilation engine
-- [ ] Advanced graph algorithms
+### ✅ Phase 2: Complete (v2.0.0)
+- [x] Vector embeddings for semantic search
+- [x] Python language adapter
+- [x] Rust language adapter
+- [x] Transpilation engine
+- [x] Advanced graph algorithms
+- [x] Forward acceleration demonstration
+- [x] 87% token efficiency proven
+- [x] MCP integration complete
 
 ### 📅 Phase 3-4: Planned
 - [ ] Web GUI dashboard
@@ -124,19 +127,21 @@ cadi build build.cadi.yaml
 
 ## Usage Examples
 
-### Example 1: Search & Get
+### CLI Usage Examples
+
+#### Example 1: Search & Get Components
 
 ```bash
-# Find an HTTP server
+# Find an HTTP server component
 cadi search "HTTP server with routing"
 # → Returns: Express, Fastify, Hapi (with quality scores)
 
-# Get details about one
+# Get details about a specific component
 cadi get cadi://fn/http-server-express/abc123
 # → Shows: signature, tests, coverage, dependencies
 ```
 
-### Example 2: Create Build Spec
+#### Example 2: Create Build Specification
 
 ```yaml
 cadi_version: "1.0"
@@ -148,11 +153,11 @@ components:
   # Reuse existing HTTP server
   - id: "cadi://fn/http-server-express/abc123"
     as: "server"
-  
+
   # Reuse auth middleware
   - id: "cadi://fn/jwt-auth/def456"
     as: "auth"
-  
+
   # Generate only unique business logic
   - generate:
       description: "Task CRUD route handlers"
@@ -167,7 +172,7 @@ build:
     - type: bundle
 ```
 
-### Example 3: Build
+#### Example 3: Build Project
 
 ```bash
 cadi build build.cadi.yaml
@@ -182,7 +187,7 @@ cadi build build.cadi.yaml
 # Token usage: 700 vs 5,300 baseline (87% savings)
 ```
 
-### Example 4: Visualize Repository Data
+#### Example 4: Visualize Repository Data
 
 ```bash
 # Launch TUI visualization (local exploration)
@@ -197,6 +202,131 @@ cadi visualize --mode web --port 8080
 # - Search functionality across chunks and aliases
 # - Dependency graph visualization with D3.js
 # - Storage metrics and registry status
+```
+
+### Module Usage Examples
+
+#### Using cadi-core
+
+```rust
+use cadi_core::{Chunk, ChunkMetadata, Manifest};
+
+// Create a new chunk
+let chunk = Chunk::new(
+    ChunkMetadata {
+        name: "my-component".to_string(),
+        description: "A reusable component".to_string(),
+        language: "rust".to_string(),
+        version: "1.0.0".to_string(),
+        ..Default::default()
+    },
+    vec![], // representations
+)?;
+
+// Validate CADL interface
+let cadl_content = r#"
+interface MyInterface {
+    @contract(version: "1.0")
+    fn process(data: String) -> Result<String, Error>;
+}
+"#;
+
+cadi_core::validate_cadl(cadl_content)?;
+```
+
+#### Using cadi-registry
+
+```rust
+use cadi_registry::{RegistryClient, PublishRequest};
+
+// Initialize registry client
+let client = RegistryClient::new("https://registry.cadi.dev").await?;
+
+// Publish a chunk
+let request = PublishRequest {
+    chunk_id: "chunk:sha256:abc123...".to_string(),
+    metadata: chunk_metadata,
+    representations: vec![source_rep, wasm_rep],
+};
+
+client.publish_chunk(request).await?;
+```
+
+#### Using cadi-builder
+
+```rust
+use cadi_builder::{BuildEngine, BuildSpec};
+
+// Load build specification
+let spec: BuildSpec = serde_yaml::from_str(yaml_content)?;
+
+// Create build engine
+let engine = BuildEngine::new(config);
+
+// Execute build
+let result = engine.build(spec).await?;
+println!("Build completed: {} artifacts generated", result.artifacts.len());
+```
+
+#### Using cadi-scraper
+
+```rust
+use cadi_scraper::{Scraper, ScrapeConfig};
+
+// Configure scraper for semantic chunking
+let config = ScrapeConfig {
+    strategy: ChunkingStrategy::Semantic,
+    languages: vec!["rust".to_string(), "typescript".to_string()],
+    include_patterns: vec!["**/*.rs".to_string(), "**/*.ts".to_string()],
+    ..Default::default()
+};
+
+let scraper = Scraper::new(config);
+
+// Scrape a project directory
+let chunks = scraper.scrape_directory("./my-project").await?;
+println!("Generated {} chunks", chunks.len());
+```
+
+#### Using cadi-mcp-server
+
+```rust
+use cadi_mcp_server::{McpServer, McpConfig};
+
+// Configure MCP server
+let config = McpConfig {
+    registry_url: "http://localhost:8080".to_string(),
+    storage_path: ".cadi-repo".into(),
+    log_level: "info".to_string(),
+};
+
+// Start MCP server
+let server = McpServer::new(config).await?;
+server.serve("127.0.0.1:9090").await?;
+```
+
+#### Integration Example: Full Workflow
+
+```rust
+use cadi_core::{Chunk, Manifest};
+use cadi_registry::RegistryClient;
+use cadi_builder::BuildEngine;
+
+// 1. Create and publish a component
+let chunk = Chunk::new(metadata, representations)?;
+let client = RegistryClient::new("https://registry.cadi.dev").await?;
+client.publish_chunk(chunk.into()).await?;
+
+// 2. Build an application using the component
+let manifest: Manifest = serde_yaml::from_str(manifest_yaml)?;
+let engine = BuildEngine::new(config);
+let build_result = engine.build_from_manifest(manifest).await?;
+
+// 3. Verify the build
+assert!(build_result.success);
+println!("Built {} with {} token savings!",
+         build_result.artifact_path,
+         build_result.token_savings);
 ```
 
 ## LLM Integration (MCP)

@@ -84,6 +84,20 @@ cadi fetch --manifest cadi.yaml
 
 CADI uses CADL v2 to define interfaces with comprehensive semantic contracts. You can use the `cadi validate` command to ensure your definitions are compliant with the specification.
 
+**Note:** CADI's `cadi-core` crate now enables Tree-sitter based AST parsing by default (feature: `ast-parsing`). This provides more accurate atom extraction and significantly improved performance for some languages (e.g., Rust). If you need to reduce compile time or disable Tree-sitter parsing for any reason, build without the feature:
+
+```bash
+cargo build -p cadi-core --no-default-features
+```
+
+If you prefer to enable it explicitly in a downstream project, use:
+
+```bash
+cargo build -p cadi-core --features ast-parsing
+```
+
+This setting is visible in `internal/cadi-core/Cargo.toml` under the `[features]` section.
+
 ### Chunks
 
 A chunk is a content-addressed piece of software. The chunk ID is derived from its content hash, ensuring immutability and verifiability.
