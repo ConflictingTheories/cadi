@@ -115,9 +115,9 @@ pub async fn put_chunk(
             chunk_id: Some(chunk_id),
             message: None,
         })),
-        Err(e) => {
-            // Fallback to file store
-            let mut store = state.store.write().await;
+    Err(_e) => {
+        // Fallback to file store
+        let mut store = state.store.write().await;
             match store.store(chunk_id.clone(), body.to_vec()).await {
                 Ok(_) => Ok(Json(PutResponse {
                     success: true,
@@ -156,12 +156,37 @@ pub async fn delete_chunk(
 pub async fn get_chunk_meta(
     State(state): State<AppState>,
     Path(chunk_id): Path<String>,
-) -> Result<Json<crate::state::ChunkMetadata>, StatusCode> {
-    let store = state.store.read().await;
-    
-    store.get_meta(&chunk_id).await
-        .map(Json)
-        .ok_or(StatusCode::NOT_FOUND)
+) -> Result<Json<serde_json::Value>, StatusCode> {
+    match state.registry_db.read().await.get_chunk(&chunk_id).await {
+        Ok(Some(record)) => match serde_json::to_value(record.metadata) {
+            Ok(val) => Ok(Json(val)),
+            Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        },
+        Ok(None) => Err(StatusCode::NOT_FOUND),
+        Err(e) => {
+            eprintln!("metadata fetch error: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
+}
+
+/// Put (update) chunk metadata handler
+pub async fn put_chunk_meta(
+    State(state): State<AppState>,
+    Path(chunk_id): Path<String>,
+    Json(meta): Json<serde_json::Value>,
+) -> Result<Json<PutResponse>, StatusCode> {
+    match state.registry_db.write().await.update_chunk_metadata(&chunk_id, meta).await {
+        Ok(_) => Ok(Json(PutResponse {
+            success: true,
+            chunk_id: Some(chunk_id),
+            message: None,
+        })),
+        Err(e) => {
+            eprintln!("metadata update error: {}", e);
+            Err(StatusCode::INTERNAL_SERVER_ERROR)
+        }
+    }
 }
 
 /// List chunks handler
@@ -169,13 +194,33 @@ pub async fn list_chunks(
     State(state): State<AppState>,
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Json<Vec<crate::state::ChunkMetadata>> {
+    // If a chunk_id param is provided, try to fetch that exact chunk
+    if let Some(chunk_id) = params.get("chunk_id") {
+        if let Ok(Some(rec)) = state.registry_db.read().await.get_chunk(chunk_id).await {
+            let name = rec.metadata.name.clone();
+            let description = rec.metadata.description.clone();
+            // Extract string representation of id
+            let id_str = match &rec.id {
+                serde_json::Value::String(s) => s.clone(),
+                serde_json::Value::Object(map) => map.get("id").and_then(|v| v.as_str()).unwrap_or("unknown").to_string(),
+                other => other.to_string(),
+            };
+            return Json(vec![crate::state::ChunkMetadata {
+                chunk_id: format!("{}:{}", id_str, name),
+                size: description.len(),
+                created_at: rec.created_at.to_rfc3339(),
+                content_type: "application/json".to_string(),
+            }]);
+        }
+    }
+
     // Try registry database first
     match state.registry_db.read().await.debug_list_chunks().await {
         Ok(chunks) => {
             let filtered: Vec<_> = if let Some(q) = params.get("name") {
                 chunks.into_iter()
                     .filter(|c| {
-                        // Check both id and metadata.name for the query
+                        // Check both id and name for the query
                         let id_match = c.get("id")
                             .and_then(|i| i.as_str())
                             .map(|s| s.contains(q))
@@ -628,19 +673,52 @@ mod tests {
             admin_token: None,
         };
 
-        let state = AppState::new(config.clone());
+        let state = AppState::new(config.clone()).await;
 
-        // Store a chunk
+        // Store a chunk in the registry database
         let chunk_id = "chunk:sha256:testchunk".to_string();
-        let data = b"hello semantic".to_vec();
+        let content = "hello semantic".to_string();
+        let chunk = Chunk {
+            chunk_id: chunk_id.clone(),
+            cadi_type: cadi_core::CadiType::Source,
+            meta: cadi_core::ChunkMeta {
+                name: "testchunk".to_string(),
+                description: Some("Test chunk for semantic search".to_string()),
+                version: None,
+                tags: vec![],
+                created_at: None,
+                updated_at: None,
+            },
+            provides: cadi_core::ChunkProvides {
+                concepts: vec!["test".to_string()],
+                interfaces: vec![],
+                abi: None,
+            },
+            licensing: cadi_core::ChunkLicensing {
+                license: "MIT".to_string(),
+                restrictions: vec![],
+            },
+            lineage: cadi_core::ChunkLineage::default(),
+            signatures: vec![],
+        };
+
+        let metadata = serde_json::json!({
+            "name": "testchunk",
+            "description": "Test chunk for semantic search",
+            "language": "unknown",
+            "concepts": ["test"],
+            "quality_score": 0.9,
+            "test_coverage": 0.85
+        });
+
         {
-            let mut s = state.store.write().await;
-            s.store(chunk_id.clone(), data).await.unwrap();
+            let mut registry = state.registry_db.write().await;
+            registry.store_chunk(&chunk, &content, metadata).await.unwrap();
         }
 
         // Call handler
         let req = SemanticSearchRequest { query: "hello".to_string(), limit: Some(10) };
-        let res = semantic_search(AxState(state.clone()), axum::Json(req)).await;
+        let res = semantic_search(AxState(state), axum::Json(req)).await;
         assert!(!res.0.is_empty(), "Expected at least one search hit");
         assert_eq!(res.0[0].chunk_id, chunk_id);
     }
@@ -657,7 +735,7 @@ mod tests {
             admin_token: None,
         };
 
-        let state = AppState::new(config.clone());
+        let state = AppState::new(config.clone()).await;
 
         // Prepare node A
         let a_content = "pub fn helper() -> i32 { 42 }".to_string();
@@ -670,7 +748,7 @@ mod tests {
         });
 
         // Call admin_create_node (dev allows anonymous writes in this test)
-        let payload = serde_json::to_vec(&new_node).unwrap();
+        let _payload = serde_json::to_vec(&new_node).unwrap();
         let mut headers = HeaderMap::new();
         headers.insert("authorization", HeaderValue::from_str("Bearer dev").unwrap());
         let res = admin_create_node(AxState(state.clone()), headers, axum::Json(new_node.clone())).await;
@@ -685,7 +763,7 @@ mod tests {
             "language": "rust",
             "references": ["helper"]
         });
-        let payload_b = serde_json::to_vec(&new_node_b).unwrap();
+        let _payload_b = serde_json::to_vec(&new_node_b).unwrap();
         let mut headers_b = HeaderMap::new();
         headers_b.insert("authorization", HeaderValue::from_str("Bearer dev").unwrap());
         let resb = admin_create_node(AxState(state.clone()), headers_b, axum::Json(new_node_b)).await;
@@ -693,7 +771,7 @@ mod tests {
 
         // Add edge B -> A
         let edge_body = serde_json::json!({ "source": id_b, "target": id_a, "edge_type": "imports" });
-        let edge_payload = serde_json::to_vec(&edge_body).unwrap();
+        let _edge_payload = serde_json::to_vec(&edge_body).unwrap();
         let mut headers_e = HeaderMap::new();
         headers_e.insert("authorization", HeaderValue::from_str("Bearer dev").unwrap());
         let edge_res = admin_add_edge(AxState(state.clone()), headers_e, axum::Json(edge_body)).await;
@@ -701,7 +779,7 @@ mod tests {
 
         // Now create a view for B and ensure A appears as ghost import
         let view_req = ViewRequest { atoms: vec![id_b.clone()], expansion_depth: Some(1), max_tokens: Some(1024) };
-        let view = create_view_handler(AxState(state.clone()), axum::Json(view_req)).await.expect("view failed");
+        let view = create_view_handler(AxState(state), axum::Json(view_req)).await.expect("view failed");
         let json = view.0;
         assert!(json.atoms.contains(&id_a));
         assert!(json.ghost_atoms.contains(&id_a));
@@ -716,7 +794,7 @@ mod tests {
         config.anonymous_write = false;
         config.admin_token = Some("secret-token".to_string());
 
-        let state = AppState::new(config.clone());
+        let state = AppState::new(config.clone()).await;
 
         // Attempt to call admin endpoint without header
         let a_content = "pub fn helper() -> i32 { 42 }".to_string();
@@ -728,7 +806,7 @@ mod tests {
             "defines": ["helper"]
         });
 
-        let mut headers_none = HeaderMap::new();
+        let headers_none = HeaderMap::new();
         let res = admin_create_node(AxState(state.clone()), headers_none, axum::Json(new_node.clone())).await;
         assert!(res.is_err());
 

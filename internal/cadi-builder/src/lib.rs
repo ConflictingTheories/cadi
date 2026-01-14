@@ -7,8 +7,12 @@ pub mod engine;
 pub mod cache;
 pub mod transform;
 pub mod plan;
+pub mod importer;
+pub mod builder;
 
 pub use engine::*;
 pub use cache::*;
 pub use transform::*;
 pub use plan::*;
+pub use importer::*;
+pub use builder::*;

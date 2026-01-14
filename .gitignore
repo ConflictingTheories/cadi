@@ -2936,3 +2936,12 @@ data/registry.db/LOG.old.1768363338563973
 data/registry.db/MANIFEST-000018
 data/registry.db/OPTIONS-000012
 data/registry.db/OPTIONS-000020
+data/registry.db/000021.sst
+data/registry.db/LOG.old.1768373659580262
+data/registry.db/MANIFEST-000023
+data/registry.db/OPTIONS-000025
+cmd/cadi-server/src/handlers.rs
+data/registry.db/000031.sst
+data/registry.db/LOG.old.1768378493320597
+data/registry.db/MANIFEST-000028
+data/registry.db/OPTIONS-000030

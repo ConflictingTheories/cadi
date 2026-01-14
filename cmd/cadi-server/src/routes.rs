@@ -21,6 +21,7 @@ pub fn api_routes() -> Router<AppState> {
         .route("/v1/chunks/:chunk_id", put(handlers::put_chunk))
         .route("/v1/chunks/:chunk_id", delete(handlers::delete_chunk))
         .route("/v1/chunks/:chunk_id/meta", get(handlers::get_chunk_meta))
+        .route("/v1/chunks/:chunk_id/meta", put(handlers::put_chunk_meta))
         
         // Search
         .route("/v1/search", post(handlers::search))

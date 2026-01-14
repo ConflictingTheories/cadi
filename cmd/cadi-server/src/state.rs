@@ -102,6 +102,7 @@ impl ChunkStore {
         fs::read(&chunk_path).ok()
     }
 
+    #[allow(dead_code)]
     pub async fn get_meta(&self, chunk_id: &str) -> Option<ChunkMetadata> {
         self.metadata.get(chunk_id).cloned()
     }
@@ -201,6 +202,7 @@ pub struct AppState {
     pub config: ServerConfig,
     pub store: Arc<RwLock<ChunkStore>>,
     /// Embedding manager for semantic search
+    #[allow(dead_code)]
     pub embedding_manager: std::sync::Arc<tokio::sync::Mutex<cadi_llm::embeddings::EmbeddingManager>>,
     /// Graph store for atoms & views
     pub graph: std::sync::Arc<cadi_core::graph::GraphStore>,

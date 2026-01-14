@@ -62,6 +62,7 @@ pub struct SearchEngine {
     /// In-memory index of components
     index: HashMap<String, ComponentMetadata>,
     /// Embedding manager for semantic search
+    #[allow(dead_code)]
     embedding_manager: Option<cadi_llm::embeddings::EmbeddingManager>,
 }
 
@@ -149,6 +150,7 @@ impl SearchEngine {
     }
 
     /// Perform semantic search
+    #[allow(dead_code)]
     async fn search_semantic(&mut self, manager: &mut cadi_llm::embeddings::EmbeddingManager, query: &str, limit: usize) -> Vec<(String, f32)> {
         // Generate embeddings for all indexed components
         let mut embeddings = HashMap::new();
@@ -203,6 +205,7 @@ impl SearchEngine {
     }
 
     /// Calculate hybrid score combining text and semantic
+    #[allow(dead_code)]
     fn calculate_hybrid_score(&self, text_score: f64, semantic_score: f32) -> f64 {
         // Semantic score is cosine similarity (-1 to 1), convert to 0-1
         let normalized_semantic = (semantic_score + 1.0) / 2.0;

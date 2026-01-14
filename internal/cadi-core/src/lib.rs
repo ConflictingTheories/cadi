@@ -81,11 +81,19 @@ pub use atomic::*;
 pub use smart_chunker::*;
 pub use project_analyzer::*;
 
+// Semantic Stage 2 exports
+pub use normalizer::*;
+pub use deduplication::*;
+
 // Phase 0: Graph Store for O(1) dependency queries
 pub mod graph;
 
 // Phase 1: Language-aware AST parsing
 pub mod atomizer;
+
+// Semantic hashing and deduplication (Stage 2)
+pub mod normalizer;
+pub mod deduplication;
 
 // Phase 2: Virtual view assembly (rehydration)
 pub mod rehydration;
