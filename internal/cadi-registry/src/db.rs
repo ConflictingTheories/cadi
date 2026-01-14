@@ -6,7 +6,7 @@
 //! - Metadata normalization and indexing
 
 use cadi_core::{CadiError, CadiResult, Chunk};
-use cadi_llm::embeddings::{Embedding, EmbeddingManager};
+use cadi_llm::embeddings::EmbeddingManager;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use surrealdb::engine::local::Db;

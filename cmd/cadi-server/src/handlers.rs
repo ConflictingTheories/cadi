@@ -7,6 +7,7 @@ use axum::{
     Json,
 };
 use serde::{Deserialize, Serialize};
+use cadi_core::Chunk;
 
 use crate::state::AppState;
 
@@ -70,14 +71,62 @@ pub async fn put_chunk(
         return Err(StatusCode::PAYLOAD_TOO_LARGE);
     }
     
-    let mut store = state.store.write().await;
-    match store.store(chunk_id.clone(), body.to_vec()).await {
+    // Try to store in registry database first
+    // For now, we'll store a simple chunk with the data as content
+    // In a real implementation, we'd parse the chunk format
+    let content = String::from_utf8_lossy(&body);
+    let chunk = Chunk {
+        chunk_id: chunk_id.clone(),
+        cadi_type: cadi_core::CadiType::Source,
+        meta: cadi_core::ChunkMeta {
+            name: chunk_id.clone(),
+            description: Some(format!("Chunk {}", chunk_id)),
+            version: None,
+            tags: vec![],
+            created_at: None,
+            updated_at: None,
+        },
+        provides: cadi_core::ChunkProvides {
+            concepts: vec![],
+            interfaces: vec![],
+            abi: None,
+        },
+        licensing: cadi_core::ChunkLicensing {
+            license: "MIT".to_string(),
+            restrictions: vec![],
+        },
+        lineage: cadi_core::ChunkLineage::default(),
+        signatures: vec![],
+    };
+    
+    // Create metadata for search
+    let metadata = serde_json::json!({
+        "name": chunk_id,
+        "description": format!("Chunk {}", chunk_id),
+        "language": "unknown",
+        "concepts": [],
+        "quality_score": 0.9,
+        "test_coverage": 0.85
+    });
+    
+    match state.registry_db.write().await.store_chunk(&chunk, &content, metadata).await {
         Ok(_) => Ok(Json(PutResponse {
             success: true,
             chunk_id: Some(chunk_id),
             message: None,
         })),
-        Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+        Err(e) => {
+            // Fallback to file store
+            let mut store = state.store.write().await;
+            match store.store(chunk_id.clone(), body.to_vec()).await {
+                Ok(_) => Ok(Json(PutResponse {
+                    success: true,
+                    chunk_id: Some(chunk_id),
+                    message: None,
+                })),
+                Err(_) => Err(StatusCode::INTERNAL_SERVER_ERROR),
+            }
+        }
     }
 }
 
@@ -120,18 +169,68 @@ pub async fn list_chunks(
     State(state): State<AppState>,
     Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Json<Vec<crate::state::ChunkMetadata>> {
-    let store = state.store.read().await;
-    let all_chunks = store.list().await;
-    
-    let filtered: Vec<_> = if let Some(q) = params.get("name") {
-        all_chunks.into_iter()
-            .filter(|c| c.chunk_id.contains(q))
-            .collect()
-    } else {
-        all_chunks
-    };
-    
-    Json(filtered)
+    // Try registry database first
+    match state.registry_db.read().await.debug_list_chunks().await {
+        Ok(chunks) => {
+            let filtered: Vec<_> = if let Some(q) = params.get("name") {
+                chunks.into_iter()
+                    .filter(|c| {
+                        // Check both id and metadata.name for the query
+                        let id_match = c.get("id")
+                            .and_then(|i| i.as_str())
+                            .map(|s| s.contains(q))
+                            .unwrap_or(false);
+                        let name_match = c.get("name")
+                            .and_then(|n| n.as_str())
+                            .map(|s| s.contains(q))
+                            .unwrap_or(false);
+                        id_match || name_match
+                    })
+                    .map(|c| {
+                        let id = c.get("id").and_then(|i| i.as_str()).unwrap_or("unknown");
+                        let name = c.get("name").and_then(|n| n.as_str()).unwrap_or("unknown");
+                        let description = c.get("description").and_then(|d| d.as_str()).unwrap_or("");
+                        crate::state::ChunkMetadata {
+                            chunk_id: format!("{}:{}", id, name),
+                            size: description.len(),
+                            created_at: chrono::Utc::now().to_rfc3339(),
+                            content_type: "application/json".to_string(),
+                        }
+                    })
+                    .collect()
+            } else {
+                chunks.into_iter()
+                    .map(|c| {
+                        let id = c.get("id").and_then(|i| i.as_str()).unwrap_or("unknown");
+                        let name = c.get("name").and_then(|n| n.as_str()).unwrap_or("unknown");
+                        let description = c.get("description").and_then(|d| d.as_str()).unwrap_or("");
+                        crate::state::ChunkMetadata {
+                            chunk_id: format!("{}:{}", id, name),
+                            size: description.len(),
+                            created_at: chrono::Utc::now().to_rfc3339(),
+                            content_type: "application/json".to_string(),
+                        }
+                    })
+                    .collect()
+            };
+            Json(filtered)
+        }
+        Err(_) => {
+            // Fallback to file store
+            let store = state.store.read().await;
+            let all_chunks = store.list().await;
+            
+            let filtered: Vec<_> = if let Some(q) = params.get("name") {
+                all_chunks.into_iter()
+                    .filter(|c| c.chunk_id.contains(q))
+                    .collect()
+            } else {
+                all_chunks
+            };
+            
+            Json(filtered)
+        }
+    }
 }
 
 /// Stats handler
@@ -217,36 +316,30 @@ pub async fn semantic_search(
 ) -> Json<Vec<SemanticSearchHit>> {
     let limit = req.limit.unwrap_or(10);
 
-    // Build candidates: for now, use chunk_id + metadata as textual content
-    let store = state.store.read().await;
-    let chunks = store.list().await;
+    // Generate embedding for the query
+    let provider = Box::new(cadi_llm::embeddings::MockProvider::default());
+    let mut emb_manager = cadi_llm::embeddings::EmbeddingManager::new(provider, None);
+    let embedding = match emb_manager.get_chunk_embedding("query", &req.query).await {
+        Ok(emb) => emb,
+        Err(_) => return Json(vec![]),
+    };
 
-    let mut candidates: std::collections::HashMap<String, cadi_llm::embeddings::Embedding> = std::collections::HashMap::new();
+    // Use registry database for semantic search
+    let query = cadi_registry::db::SearchQuery {
+        text: None,
+        embedding: Some(embedding.clone()),
+        language: None,
+        limit,
+        min_score: 0.0,
+    };
 
-    for ch in &chunks {
-        // Create a simple textual summary for embedding
-        let summary = format!("{} size:{} type:{}", ch.chunk_id, ch.size, ch.content_type);
-        // Acquire embedding manager and compute/get embedding
-        let mut emb_mgr = state.embedding_manager.lock().await;
-        match emb_mgr.get_chunk_embedding(&ch.chunk_id, &summary).await {
-            Ok(emb) => {
-                candidates.insert(ch.chunk_id.clone(), emb);
-            }
-            Err(e) => {
-                tracing::debug!("Embedding failed for {}: {}", ch.chunk_id, e);
-            }
+    match state.registry_db.read().await.search(query).await {
+        Ok(results) => {
+            Json(results.into_iter().map(|r| SemanticSearchHit {
+                chunk_id: r.chunk_id,
+                score: r.score as f32,
+            }).collect())
         }
-    }
-
-    // Now compute search scores
-    let emb_mgr = state.embedding_manager.lock().await;
-    let results = emb_mgr.search(&req.query, &candidates, limit).await;
-
-    // Persist current embedding store (best-effort)
-    let _ = emb_mgr.save_store();
-
-    match results {
-        Ok(vec) => Json(vec.into_iter().map(|(id, score)| SemanticSearchHit { chunk_id: id, score }).collect()),
         Err(_) => Json(vec![]),
     }
 }

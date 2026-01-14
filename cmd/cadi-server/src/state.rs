@@ -5,6 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use surrealdb::{Surreal, engine::local::RocksDb};
 
 /// Server configuration
 #[derive(Debug, Clone)]
@@ -203,10 +204,12 @@ pub struct AppState {
     pub embedding_manager: std::sync::Arc<tokio::sync::Mutex<cadi_llm::embeddings::EmbeddingManager>>,
     /// Graph store for atoms & views
     pub graph: std::sync::Arc<cadi_core::graph::GraphStore>,
+    /// Registry database for advanced search
+    pub registry_db: Arc<RwLock<cadi_registry::db::RegistryDatabase>>,
 }
 
 impl AppState {
-    pub fn new(config: ServerConfig) -> Self {
+    pub async fn new(config: ServerConfig) -> Self {
         let store = ChunkStore::new(config.storage_path.clone().into())
             .expect("Failed to initialize chunk store");
 
@@ -219,11 +222,23 @@ impl AppState {
         let graph_path = std::path::PathBuf::from(config.storage_path.clone()).join("graph-db");
         let graph = cadi_core::graph::GraphStore::open(graph_path).expect("Failed to initialize graph store");
 
+        // Initialize registry database
+        let db_path = std::path::PathBuf::from(config.storage_path.clone()).join("registry.db");
+        let db = Surreal::new::<RocksDb>(db_path).await
+            .expect("Failed to initialize registry database");
+        db.use_ns("cadi").use_db("registry").await
+            .expect("Failed to use namespace/database");
+        let provider = Box::new(cadi_llm::embeddings::MockProvider::default());
+        let embedding_manager = cadi_llm::embeddings::EmbeddingManager::new(provider, None);
+        let registry_db = cadi_registry::db::RegistryDatabase::new(db, Some(embedding_manager)).await
+            .expect("Failed to initialize registry database");
+
         Self {
             config,
             store: Arc::new(RwLock::new(store)),
             embedding_manager: std::sync::Arc::new(tokio::sync::Mutex::new(emb_manager)),
             graph: std::sync::Arc::new(graph),
+            registry_db: Arc::new(RwLock::new(registry_db)),
         }
     }
 }

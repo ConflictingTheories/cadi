@@ -1,0 +1,219 @@
+manifest_id: app:uuid:75548c8b-2aa0-4fd4-89bb-c0568f8d0c84
+manifest_version: '1.0'
+application:
+  name: todo-api-real
+  description: todo-api-real - imported by CADI
+  version: 0.1.0
+build_graph:
+  nodes:
+  - id: middleware/middleware
+    source_cadi: chunk:sha256:4f3cd4495263671c26ba84e3141b7890d9e46f67027c0b2bab8a68e423eddaf4
+    alias: middleware/middleware
+    granularity: type
+    categories:
+    - logic
+    representations:
+    - form: source
+      chunk: chunk:sha256:4f3cd4495263671c26ba84e3141b7890d9e46f67027c0b2bab8a68e423eddaf4
+    selection_strategy: prefer_source
+  - id: demo/run-demonstration
+    source_cadi: chunk:sha256:5d5e97e5902ab4c76b9aa534ec9aab7440548f5fa3946c7b90654f5c61b00f93
+    alias: demo/run-demonstration
+    granularity: function
+    categories:
+    - logic
+    representations:
+    - form: source
+      chunk: chunk:sha256:5d5e97e5902ab4c76b9aa534ec9aab7440548f5fa3946c7b90654f5c61b00f93
+    selection_strategy: prefer_source
+  - id: demo/interface-extractor
+    source_cadi: chunk:sha256:38210d74d8a802927b5801992d1b3a0ee8fc140bd7278fbe82a5b7c437a4b632
+    alias: demo/interface-extractor
+    granularity: type
+    categories:
+    - logic
+    representations:
+    - form: source
+      chunk: chunk:sha256:38210d74d8a802927b5801992d1b3a0ee8fc140bd7278fbe82a5b7c437a4b632
+    selection_strategy: prefer_source
+  - id: demo/composition-engine
+    source_cadi: chunk:sha256:b4332dad13927908b91a7823f3bb3b4c26e47562b650a9cbef5ec7454d6d759a
+    alias: demo/composition-engine
+    granularity: type
+    categories:
+    - logic
+    representations:
+    - form: source
+      chunk: chunk:sha256:b4332dad13927908b91a7823f3bb3b4c26e47562b650a9cbef5ec7454d6d759a
+    selection_strategy: prefer_source
+  - id: demo/token-counter
+    source_cadi: chunk:sha256:93311e5273e3642e13de08d9ee09aa614642a7d4134a77565c3800ae0f4f65a2
+    alias: demo/token-counter
+    granularity: type
+    categories:
+    - logic
+    representations:
+    - form: source
+      chunk: chunk:sha256:93311e5273e3642e13de08d9ee09aa614642a7d4134a77565c3800ae0f4f65a2
+    selection_strategy: prefer_source
+  - id: todo-api-real/types
+    source_cadi: chunk:sha256:fef414b0a67a3600df3a79745fbf6054f89ff78044e16d3e22ead95642dac85f
+    alias: todo-api-real/types
+    granularity: module
+    categories:
+    - data
+    representations:
+    - form: source
+      chunk: chunk:sha256:fef414b0a67a3600df3a79745fbf6054f89ff78044e16d3e22ead95642dac85f
+    selection_strategy: prefer_source
+  - id: todo-api-real/package-lock
+    source_cadi: chunk:sha256:fb8f9cc1f708464979f90c84f81828d937caf343c315adb373de41057dbf5cd3
+    alias: todo-api-real/package-lock
+    granularity: module
+    categories:
+    - logic
+    representations:
+    - form: source
+      chunk: chunk:sha256:fb8f9cc1f708464979f90c84f81828d937caf343c315adb373de41057dbf5cd3
+    selection_strategy: prefer_source
+  - id: todo-api-real/package
+    source_cadi: chunk:sha256:d1fd73e9572565094ccf3a5675766b840fe4725faec6417d9041775d2dd2f140
+    alias: todo-api-real/package
+    granularity: module
+    categories:
+    - config
+    representations:
+    - form: source
+      chunk: chunk:sha256:d1fd73e9572565094ccf3a5675766b840fe4725faec6417d9041775d2dd2f140
+    selection_strategy: prefer_source
+  - id: database/todo-database
+    source_cadi: chunk:sha256:51dff6e7c22edf0fdeabe1edc646b8057d4141427e0bfa7ab71ec5f4f144a85c
+    alias: database/todo-database
+    granularity: type
+    categories:
+    - logic
+    representations:
+    - form: source
+      chunk: chunk:sha256:51dff6e7c22edf0fdeabe1edc646b8057d4141427e0bfa7ab71ec5f4f144a85c
+    selection_strategy: prefer_source
+  - id: todo-api-real/tsconfig
+    source_cadi: chunk:sha256:5333403cc8a08e727e23ea6aa8049606ac8f4fcbe5d9dc72cca9bf3508ad403e
+    alias: todo-api-real/tsconfig
+    granularity: module
+    categories:
+    - config
+    representations:
+    - form: source
+      chunk: chunk:sha256:5333403cc8a08e727e23ea6aa8049606ac8f4fcbe5d9dc72cca9bf3508ad403e
+    selection_strategy: prefer_source
+  - id: handler/todo-api-handler
+    source_cadi: chunk:sha256:b1f65558b565d84c989330219472c605dcf58a099302d7269c67455b03ea93d5
+    alias: handler/todo-api-handler
+    granularity: type
+    categories:
+    - logic
+    representations:
+    - form: source
+      chunk: chunk:sha256:b1f65558b565d84c989330219472c605dcf58a099302d7269c67455b03ea93d5
+    selection_strategy: prefer_source
+  - id: server/todo-server
+    source_cadi: chunk:sha256:4c497d310c4f2d3c21a7185e9c04afc8503fa6aa394149b338c14ad4dacbdbc4
+    alias: server/todo-server
+    granularity: type
+    categories:
+    - logic
+    representations:
+    - form: source
+      chunk: chunk:sha256:4c497d310c4f2d3c21a7185e9c04afc8503fa6aa394149b338c14ad4dacbdbc4
+    selection_strategy: prefer_source
+  edges:
+  - from: root-module
+    to: middleware/middleware
+    type: composition
+  - from: root-module
+    to: demo/run-demonstration
+    type: composition
+  - from: root-module
+    to: demo/interface-extractor
+    type: composition
+  - from: root-module
+    to: demo/composition-engine
+    type: composition
+  - from: root-module
+    to: demo/token-counter
+    type: composition
+  - from: root-module
+    to: todo-api-real/types
+    type: composition
+  - from: root-module
+    to: todo-api-real/package-lock
+    type: composition
+  - from: root-module
+    to: todo-api-real/package
+    type: composition
+  - from: root-module
+    to: database/todo-database
+    type: composition
+  - from: root-module
+    to: todo-api-real/tsconfig
+    type: composition
+  - from: root-module
+    to: handler/todo-api-handler
+    type: composition
+  - from: root-module
+    to: server/todo-server
+    type: composition
+aliases:
+  demo/interface-extractor: chunk:sha256:38210d74d8a802927b5801992d1b3a0ee8fc140bd7278fbe82a5b7c437a4b632
+  todo-api-real/tsconfig: chunk:sha256:5333403cc8a08e727e23ea6aa8049606ac8f4fcbe5d9dc72cca9bf3508ad403e
+  handler/todo-api-handler: chunk:sha256:b1f65558b565d84c989330219472c605dcf58a099302d7269c67455b03ea93d5
+  server/todo-server: chunk:sha256:4c497d310c4f2d3c21a7185e9c04afc8503fa6aa394149b338c14ad4dacbdbc4
+  database/todo-database: chunk:sha256:51dff6e7c22edf0fdeabe1edc646b8057d4141427e0bfa7ab71ec5f4f144a85c
+  root-module: chunk:sha256:20c49b824c13d44b68537f1b14950dabfa58da542a64c2572f9707e5a74d8fe4
+  demo/token-counter: chunk:sha256:93311e5273e3642e13de08d9ee09aa614642a7d4134a77565c3800ae0f4f65a2
+  demo/run-demonstration: chunk:sha256:5d5e97e5902ab4c76b9aa534ec9aab7440548f5fa3946c7b90654f5c61b00f93
+  demo/composition-engine: chunk:sha256:b4332dad13927908b91a7823f3bb3b4c26e47562b650a9cbef5ec7454d6d759a
+  todo-api-real/package-lock: chunk:sha256:fb8f9cc1f708464979f90c84f81828d937caf343c315adb373de41057dbf5cd3
+  todo-api-real/package: chunk:sha256:d1fd73e9572565094ccf3a5675766b840fe4725faec6417d9041775d2dd2f140
+  middleware/middleware: chunk:sha256:4f3cd4495263671c26ba84e3141b7890d9e46f67027c0b2bab8a68e423eddaf4
+  todo-api-real/types: chunk:sha256:fef414b0a67a3600df3a79745fbf6054f89ff78044e16d3e22ead95642dac85f
+build_targets:
+- name: default
+  platform: any
+  nodes:
+  - id: middleware/middleware
+    prefer:
+    - source
+  - id: demo/run-demonstration
+    prefer:
+    - source
+  - id: demo/interface-extractor
+    prefer:
+    - source
+  - id: demo/composition-engine
+    prefer:
+    - source
+  - id: demo/token-counter
+    prefer:
+    - source
+  - id: todo-api-real/types
+    prefer:
+    - source
+  - id: todo-api-real/package-lock
+    prefer:
+    - source
+  - id: todo-api-real/package
+    prefer:
+    - source
+  - id: database/todo-database
+    prefer:
+    - source
+  - id: todo-api-real/tsconfig
+    prefer:
+    - source
+  - id: handler/todo-api-handler
+    prefer:
+    - source
+  - id: server/todo-server
+    prefer:
+    - source

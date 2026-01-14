@@ -2925,3 +2925,14 @@ examples/java-atomizer/target/package/cadi-atomizer-java-1.0.0/Cargo.toml.orig
 examples/java-atomizer/target/package/cadi-atomizer-java-1.0.0/extension.toml
 examples/java-atomizer/target/package/cadi-atomizer-java-1.0.0/README.md
 examples/java-atomizer/target/package/cadi-atomizer-java-1.0.0/src/lib.rs
+data/registry.db/000013.sst
+data/registry.db/000016.sst
+data/registry.db/CURRENT
+data/registry.db/IDENTITY
+data/registry.db/LOCK
+data/registry.db/LOG
+data/registry.db/LOG.old.1768363284663128
+data/registry.db/LOG.old.1768363338563973
+data/registry.db/MANIFEST-000018
+data/registry.db/OPTIONS-000012
+data/registry.db/OPTIONS-000020

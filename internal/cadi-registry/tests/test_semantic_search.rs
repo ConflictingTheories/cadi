@@ -1,5 +1,5 @@
 use cadi_core::{Chunk, CadiType, ChunkMeta, ChunkProvides, ChunkLicensing, ChunkLineage};
-use cadi_registry::db::{RegistryDatabase, SearchQuery, ChunkMetadata};
+use cadi_registry::db::{RegistryDatabase, SearchQuery};
 use cadi_llm::embeddings::{EmbeddingManager, MockProvider};
 use surrealdb::{engine::local::Mem, Surreal};
 

@@ -23,7 +23,7 @@ async fn main() {
 
     // Load configuration
     let config = state::ServerConfig::from_env();
-    let state = state::AppState::new(config.clone());
+    let state = state::AppState::new(config.clone()).await;
 
     // Build the router
     let app = Router::new()
