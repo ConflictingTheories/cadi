@@ -19,6 +19,7 @@ path = "src/main.rs"
 cadi-core = { version = "2.0.0", path = "../../internal/cadi-core" }
 cadi-registry = { version = "2.0.0", path = "../../internal/cadi-registry" }
 cadi-builder = { version = "2.0.0", path = "../../internal/cadi-builder" }
+cadi-llm = { version = "2.0.0", path = "../../internal/llm" }
 tokio.workspace = true
 serde.workspace = true
 serde_json.workspace = true

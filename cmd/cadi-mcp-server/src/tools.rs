@@ -10,6 +10,7 @@ use serde_json::{json, Value};
 use std::collections::HashMap;
 
 use cadi_registry::db::{RegistryDatabase, SearchQuery};
+use cadi_llm::embeddings::{EmbeddingManager, MockProvider};
 
 /// Get all available tools
 pub fn get_tools() -> Vec<ToolDefinition> {
@@ -438,14 +439,22 @@ async fn call_search(
     let language = args.get("language").and_then(|v| v.as_str()).map(|s| s.to_string());
     let limit = args.get("limit").and_then(|v| v.as_u64()).unwrap_or(10) as usize;
 
-    // Create RegistryDatabase instance
-    let registry_db = RegistryDatabase::new(db.clone(), None).await
+    // Create embedding manager for semantic search
+    let embedding_provider = Box::new(MockProvider); // TODO: Use OpenAI when API key available
+    let mut embedding_manager = EmbeddingManager::new(embedding_provider, None);
+
+    // Generate embedding for the query
+    let query_embedding = embedding_manager.get_chunk_embedding("query", &query_text).await
+        .map_err(|e| format!("Failed to generate embedding: {}", e))?;
+
+    // Create RegistryDatabase instance with embedding manager
+    let registry_db = RegistryDatabase::new(db.clone(), Some(embedding_manager)).await
         .map_err(|e| format!("Failed to create registry database: {}", e))?;
 
     // Perform hybrid search using the new database layer
     let search_query = SearchQuery {
         text: Some(query_text.clone()),
-        embedding: None, // TODO: Add embedding support when LLM integration is ready
+        embedding: Some(query_embedding),
         language,
         limit,
         min_score: 0.1,

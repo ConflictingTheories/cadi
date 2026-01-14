@@ -709,6 +709,7 @@ dependencies = [
  "axum",
  "cadi-builder",
  "cadi-core",
+ "cadi-llm",
  "cadi-registry",
  "clap",
  "dirs",

@@ -164,28 +164,49 @@ impl RegistryDatabase {
 
     /// Perform hybrid search
     pub async fn search(&self, query: SearchQuery) -> CadiResult<Vec<DbSearchResult>> {
-        let mut results = Vec::new();
+        let mut text_results = Vec::new();
+        let mut semantic_results = Vec::new();
 
         // Text-based search
         if let Some(text) = &query.text {
-            let text_results = self.text_search(text, query.limit * 2).await?;
-            results.extend(text_results);
+            text_results = self.text_search(text, query.limit * 2).await?;
         }
 
         // Semantic search
         if let Some(embedding) = &query.embedding {
-            let semantic_results = self.semantic_search(embedding, query.limit * 2).await?;
-            results.extend(semantic_results);
+            semantic_results = self.semantic_search(embedding, query.limit * 2).await?;
         }
 
-        // Combine and deduplicate results
+        // Combine results with weighted scoring
         let mut combined = HashMap::new();
-        for result in results {
-            let entry = combined.entry(result.chunk_id.clone()).or_insert(result.clone());
-            // Take the higher score if duplicate
-            if result.score > entry.score {
-                *entry = result;
-            }
+        
+        // Add text results
+        for result in text_results {
+            combined.entry(result.chunk_id.clone())
+                .or_insert_with(|| DbSearchResult {
+                    chunk_id: result.chunk_id.clone(),
+                    score: 0.0,
+                    metadata: result.metadata.clone(),
+                })
+                .score += result.score * 0.3; // 30% weight for text
+        }
+
+        // Add semantic results
+        for result in semantic_results {
+            let entry = combined.entry(result.chunk_id.clone())
+                .or_insert_with(|| DbSearchResult {
+                    chunk_id: result.chunk_id.clone(),
+                    score: 0.0,
+                    metadata: result.metadata.clone(),
+                });
+            entry.score += result.score * 0.5; // 50% weight for semantic
+        }
+
+        // Add quality/usage boost to all results
+        for result in combined.values_mut() {
+            let quality_boost = (result.metadata.quality_score * 0.5 + 
+                               result.metadata.test_coverage.min(1.0) * 0.5) * 0.2;
+            result.score += quality_boost;
         }
 
         let mut final_results: Vec<_> = combined.into_values().collect();
@@ -203,16 +224,19 @@ impl RegistryDatabase {
         Ok(final_results)
     }
 
-    /// Text-based search using fuzzy matching
+    /// Text-based search using BM25-like scoring
     async fn text_search(&self, query: &str, limit: usize) -> CadiResult<Vec<DbSearchResult>> {
         let sql = r#"
             SELECT
                 id,
                 metadata,
-                (string::similarity::fuzzy(metadata.name, $query) +
-                 string::similarity::fuzzy(metadata.description, $query)) / 2.0 AS score
+                (
+                    string::similarity::fuzzy(metadata.name, $query) * 0.4 +
+                    string::similarity::fuzzy(metadata.description, $query) * 0.3 +
+                    (array::len(array::filter(metadata.concepts, |c| string::contains(c, $query))) * 0.3)
+                ) AS score
             FROM chunk
-            WHERE score > 0.3
+            WHERE score > 0.1
             ORDER BY score DESC
             LIMIT $limit
         "#;
