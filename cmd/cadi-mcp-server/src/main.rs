@@ -49,7 +49,7 @@ async fn main() {
     tracing::info!("Starting CADI MCP server in {} mode", args.transport);
 
     // Create the server
-    let server = McpServer::new();
+    let server = McpServer::new().await;
 
     let result = match args.transport.as_str() {
         "stdio" => server.run_stdio().await,

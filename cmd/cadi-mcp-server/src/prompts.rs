@@ -102,33 +102,36 @@ fn get_cadi_workflow_prompt(args: &Value) -> Result<Vec<Value>, String> {
             "type": "text",
             "text": format!(r#"# Task: {}
 
+## ☯️ Core Philosophy: CADI is the way code works with LLMs
+
+CADI is not a tool; it is the fundamental way code works with LLMs. We move from "pasting codebases" to "**referencing semantic atoms**." 
+
+### The CADI Invariant:
+$$LLM + CADI > LLM alone$$
+
+Our goal: To be simpler and faster than working with an LLM directly. Referencing a semantic atom is more powerful than generating one from scratch.
+
 ## ⚡ CADI-First Workflow (Follow These Steps to Save Tokens)
 
-### Step 1: Search for existing solutions
-Use `cadi_search` to find if this has been solved before:
-- Search for keywords related to the task
-- Check multiple search terms if first doesn't match
+### Step 1: Search for existing semantic atoms
+Use `cadi_search` to find if this has been solved before.
+- Look for atoms by intent, not just keywords.
+- Referencing an atom is always superior to re-generating it.
 
 ### Step 2: Check cached aliases  
 Use `cadi_resolve_alias` if you know a likely alias:
 - Format: namespace/component (e.g., "myproject/utils/logger")
-- Use aliases from previously imported projects
 
-### Step 3: If found, retrieve the chunk
-Use `cadi_get_chunk` with the chunk ID from search/alias results.
-This gives you working, tested code immediately.
+### Step 3: Retrieve the atom reference
+Use `cadi_get_chunk` with the ID from results.
+This provides the "Truth" of the implementation without the noise of generation.
 
-### Step 4: Only write new code if CADI has nothing
-If no existing solution:
+### Step 4: Only create new atoms if needed
+If no atom exists:
 1. Write minimal new code
-2. Import it with `cadi_import(path, publish: true)` so it's reusable next time
+2. Canonicalize and Import it with `cadi_import` to create a new permanent atom.
 
-## Why This Saves Tokens
-- Searching CADI: ~50 tokens
-- Writing new code: 500-5000 tokens
-- Reusing existing chunk: ~100 tokens
-
-**Start with Step 1 now.**"#, task)
+**Start with Step 1 now. Optimize for the Invariant.**"#, task)
         }
     })])
 }

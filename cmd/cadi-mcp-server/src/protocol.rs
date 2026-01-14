@@ -11,7 +11,7 @@ use std::io::{BufRead, Write};
 use std::sync::Arc;
 use tower_http::cors::{Any, CorsLayer};
 use tower_http::trace::TraceLayer;
-
+use surrealdb::engine::local::Mem;
 use crate::prompts::PromptDefinition;
 
 /// MCP Server
@@ -19,14 +19,19 @@ pub struct McpServer {
     tools: Vec<ToolDefinition>,
     resources: Vec<ResourceDefinition>,
     prompts: Vec<PromptDefinition>,
+    pub db: surrealdb::Surreal<surrealdb::engine::local::Db>,
 }
 
 impl McpServer {
-    pub fn new() -> Self {
+    pub async fn new() -> Self {
+        let db = surrealdb::Surreal::new::<Mem>(()).await.expect("Failed to init db");
+        db.use_ns("cadi").use_db("registry").await.expect("Failed to use db");
+
         Self {
             tools: crate::tools::get_tools(),
             resources: crate::resources::get_resources(),
             prompts: crate::prompts::get_prompts(),
+            db,
         }
     }
 
@@ -157,7 +162,7 @@ impl McpServer {
             .cloned()
             .unwrap_or(serde_json::Value::Object(Default::default()));
 
-        let result = crate::tools::call_tool(tool_name, arguments).await;
+        let result = crate::tools::call_tool(tool_name, arguments, &self.db).await;
 
         match result {
             Ok(content) => JsonRpcResponse::success(id, serde_json::json!({
@@ -253,11 +258,7 @@ impl McpServer {
     }
 }
 
-impl Default for McpServer {
-    fn default() -> Self {
-        Self::new()
-    }
-}
+
 
 /// JSON-RPC 2.0 Request
 #[derive(Debug, Deserialize)]

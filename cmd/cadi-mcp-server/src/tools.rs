@@ -398,73 +398,80 @@ pub fn get_tools() -> Vec<ToolDefinition> {
     ]
 }
 
-use cadi_registry::{FederationManager, SearchQuery};
+use cadi_registry::FederationManager;
 
 /// Call a tool with the given arguments
 pub async fn call_tool(
     name: &str,
     arguments: Value,
+    db: &surrealdb::Surreal<surrealdb::engine::local::Db>,
 ) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
     match name {
-        "cadi_search" => call_search(arguments).await,
-        "cadi_get_chunk" => call_get_chunk(arguments).await,
-        "cadi_build" => call_build(arguments).await,
-        "cadi_plan" => call_plan(arguments).await,
-        "cadi_verify" => call_verify(arguments).await,
-        "cadi_explain" => call_explain(arguments).await,
-        "cadi_suggest" => call_suggest(arguments).await,
-        "cadi_scaffold" => call_scaffold(arguments).await,
-        "cadi_import" => call_import(arguments).await,
-        "cadi_publish" => call_publish(arguments).await,
-        "cadi_resolve_alias" => call_resolve_alias(arguments).await,
+        "cadi_search" => call_search(arguments, db).await,
+        "cadi_get_chunk" => call_get_chunk(arguments, db).await,
+        "cadi_build" => call_build(arguments, db).await,
+        "cadi_plan" => call_plan(arguments, db).await,
+        "cadi_verify" => call_verify(arguments, db).await,
+        "cadi_explain" => call_explain(arguments, db).await,
+        "cadi_suggest" => call_suggest(arguments, db).await,
+        "cadi_scaffold" => call_scaffold(arguments, db).await,
+        "cadi_import" => call_import(arguments, db).await,
+        "cadi_publish" => call_publish(arguments, db).await,
+        "cadi_resolve_alias" => call_resolve_alias(arguments, db).await,
         // Phase 2: Virtual Views
-        "cadi_view_context" => call_view_context(arguments).await,
-        "cadi_get_dependencies" => call_get_dependencies(arguments).await,
-        "cadi_get_dependents" => call_get_dependents(arguments).await,
+        "cadi_view_context" => call_view_context(arguments, db).await,
+        "cadi_get_dependencies" => call_get_dependencies(arguments, db).await,
+        "cadi_get_dependents" => call_get_dependents(arguments, db).await,
         // Phase 3: Ghost Import Resolver
-        "cadi_expand_context" => call_expand_context(arguments).await,
+        "cadi_expand_context" => call_expand_context(arguments, db).await,
         _ => Err(format!("Unknown tool: {}", name).into()),
     }
 }
 
-async fn call_search(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+async fn call_search(
+    args: serde_json::Value,
+    db: &surrealdb::Surreal<surrealdb::engine::local::Db>,
+) -> Result<Vec<serde_json::Value>, Box<dyn std::error::Error + Send + Sync>> {
     let query_text = args.get("query").and_then(|v| v.as_str()).unwrap_or("").to_string();
-    let language = args.get("language").and_then(|v| v.as_str()).map(|s| s.to_string());
     
+    // Perform Hybrid Search in SurrealDB (Multi-modal pivot)
+    let sql = "
+        SELECT *, 
+               (string::similarity::fuzzy(content, $query)) AS score 
+        FROM atom 
+        WHERE score > 0.5 
+        ORDER BY score DESC 
+        LIMIT 5;
+    ";
+    
+    let mut response = db.query(sql)
+        .bind(("query", query_text.clone()))
+        .await?;
+    
+    let results: Vec<serde_json::Value> = response.take(0)?;
+
     let mut responses = Vec::new();
-    responses.push(json!({"type": "text", "text": format!("🔍 Searching for '{}' across registries", query_text)}));
+    responses.push(serde_json::json!({"type": "text", "text": format!("🔍 Searching for '{}' in SurrealDB", query_text)}));
 
-    let manager = FederationManager::new();
-    // In a real app, we'd load config here. For demo, we assume default/empty or add a mock registry.
-    
-    let query = SearchQuery {
-        query: Some(query_text),
-        language,
-        concepts: Some(args.get("concepts").and_then(|v| v.as_array()).map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect()).unwrap_or_default()),
-        limit: args.get("limit").and_then(|v| v.as_u64()).map(|l| l as usize).unwrap_or(10),
-        ..Default::default()
-    };
-
-    match manager.search(&query).await {
-        Ok(results) => {
-            if results.is_empty() {
-                responses.push(json!({"type": "text", "text": "No chunks found."}));
-            } else {
-                responses.push(json!({"type": "text", "text": format!("✓ Found {} chunk(s)", results.len())}));
-                for (chunk, registry_id) in results {
-                    responses.push(json!({"type": "text", "text": format!("  • {} (Registry: {})", chunk.chunk_id, registry_id)}));
-                }
-            }
-        }
-        Err(e) => {
-            responses.push(json!({"type": "text", "text": format!("✗ Search failed: {}", e)}));
-        }
+    if results.is_empty() {
+        responses.push(serde_json::json!({"type": "text", "text": "No exact semantic matches found. Returning references to similar concepts."}));
+    } else {
+        let formatted_results = results.iter().map(|r| {
+            format!(
+                "- ID: {}\n  Score: {:.2}\n  Lang: {}\n", 
+                r.get("hash").and_then(|h| h.as_str()).unwrap_or("unknown"),
+                r.get("score").and_then(|s| s.as_f64()).unwrap_or(0.0),
+                r.get("language").and_then(|l| l.as_str()).unwrap_or("ts")
+            )
+        }).collect::<String>();
+        
+        responses.push(serde_json::json!({"type": "text", "text": format!("Found existing components:\n\n{}", formatted_results)}));
     }
 
     Ok(responses)
 }
 
-async fn call_get_chunk(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+async fn call_get_chunk(args: Value, _db: &surrealdb::Surreal<surrealdb::engine::local::Db>) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
     let chunk_id = args.get("chunk_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let _include_source = args.get("include_source").and_then(|v| v.as_bool()).unwrap_or(true);
 
@@ -489,7 +496,7 @@ async fn call_get_chunk(args: Value) -> Result<Vec<Value>, Box<dyn std::error::E
 use cadi_builder::{BuildEngine, BuildConfig, BuildPlan};
 use cadi_core::Manifest;
 
-async fn call_build(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+async fn call_build(args: Value, _db: &surrealdb::Surreal<surrealdb::engine::local::Db>) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
     let manifest_path = args.get("manifest").and_then(|v| v.as_str()).unwrap_or("");
     let target = args.get("target").and_then(|v| v.as_str()).unwrap_or("default");
     
@@ -521,7 +528,7 @@ async fn call_build(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error
     Ok(responses)
 }
 
-async fn call_plan(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+async fn call_plan(args: Value, _db: &surrealdb::Surreal<surrealdb::engine::local::Db>) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
     let manifest_path = args.get("manifest").and_then(|v| v.as_str()).unwrap_or("");
     let target = args.get("target").and_then(|v| v.as_str()).unwrap_or("default");
 
@@ -547,7 +554,7 @@ async fn call_plan(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error 
 }
 
 
-async fn call_verify(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+async fn call_verify(args: Value, _db: &surrealdb::Surreal<surrealdb::engine::local::Db>) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
     let chunk_id = args.get("chunk_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let _rebuild = args.get("rebuild").and_then(|v| v.as_bool()).unwrap_or(false);
 
@@ -594,7 +601,7 @@ async fn call_verify(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Erro
     Ok(responses)
 }
 
-async fn call_explain(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+async fn call_explain(args: Value, _db: &surrealdb::Surreal<surrealdb::engine::local::Db>) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
     let chunk_id = args.get("chunk_id").and_then(|v| v.as_str()).unwrap_or("").to_string();
     let _depth = args.get("depth").and_then(|v| v.as_u64()).unwrap_or(2);
 
@@ -616,7 +623,7 @@ async fn call_explain(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Err
     Ok(vec![json!({"type": "text", "text": explanation})])
 }
 
-async fn call_suggest(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+async fn call_suggest(args: Value, _db: &surrealdb::Surreal<surrealdb::engine::local::Db>) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
     let task = args.get("task").and_then(|v| v.as_str()).unwrap_or("").to_lowercase();
     let language = args.get("language").and_then(|v| v.as_str()).map(|s| s.to_lowercase());
 
@@ -658,7 +665,7 @@ async fn call_suggest(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Err
     Ok(suggestions)
 }
 
-async fn call_scaffold(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+async fn call_scaffold(args: Value, _db: &surrealdb::Surreal<surrealdb::engine::local::Db>) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
     let manifest_path = args.get("manifest").and_then(|v| v.as_str()).unwrap_or("");
     let output_dir = args.get("output_dir").and_then(|v| v.as_str()).unwrap_or(".");
     let force = args.get("force").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -686,7 +693,7 @@ async fn call_scaffold(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Er
 use cadi_core::{ProjectAnalyzer, ProjectAnalyzerConfig, SmartChunkerConfig};
 use cadi_registry::{RegistryClient, RegistryConfig};
 
-async fn call_import(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+async fn call_import(args: Value, _db: &surrealdb::Surreal<surrealdb::engine::local::Db>) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
     let path_str = args.get("path").and_then(|v| v.as_str()).unwrap_or(".");
     let namespace = args.get("namespace").and_then(|v| v.as_str()).map(|s| s.to_string());
     let atomic = args.get("atomic").and_then(|v| v.as_bool()).unwrap_or(false);
@@ -853,7 +860,7 @@ async fn call_import(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Erro
     Ok(responses)
 }
 
-async fn call_publish(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+async fn call_publish(args: Value, _db: &surrealdb::Surreal<surrealdb::engine::local::Db>) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
     let registry_url = args.get("registry").and_then(|v| v.as_str())
         .unwrap_or("https://registry.cadi.dev").to_string();
     let namespace = args.get("namespace").and_then(|v| v.as_str()).map(|s| s.to_string());
@@ -958,7 +965,7 @@ async fn call_publish(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Err
     Ok(responses)
 }
 
-async fn call_resolve_alias(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+async fn call_resolve_alias(args: Value, _db: &surrealdb::Surreal<surrealdb::engine::local::Db>) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
     let alias = args.get("alias").and_then(|v| v.as_str()).unwrap_or("").to_string();
     
     let mut responses = Vec::new();
@@ -1002,7 +1009,7 @@ async fn call_resolve_alias(args: Value) -> Result<Vec<Value>, Box<dyn std::erro
 // Phase 2: Virtual View Tools
 // ============================================================================
 
-async fn call_view_context(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+async fn call_view_context(args: Value, _db: &surrealdb::Surreal<surrealdb::engine::local::Db>) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
     let atoms: Vec<String> = args.get("atoms")
         .and_then(|v| v.as_array())
         .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())
@@ -1127,7 +1134,7 @@ async fn call_view_context(args: Value) -> Result<Vec<Value>, Box<dyn std::error
     Ok(responses)
 }
 
-async fn call_get_dependencies(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+async fn call_get_dependencies(args: Value, _db: &surrealdb::Surreal<surrealdb::engine::local::Db>) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
     let chunk_id = args.get("chunk_id")
         .and_then(|v| v.as_str())
         .unwrap_or("")
@@ -1181,7 +1188,7 @@ async fn call_get_dependencies(args: Value) -> Result<Vec<Value>, Box<dyn std::e
     Ok(responses)
 }
 
-async fn call_get_dependents(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+async fn call_get_dependents(args: Value, _db: &surrealdb::Surreal<surrealdb::engine::local::Db>) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
     let chunk_id = args.get("chunk_id")
         .and_then(|v| v.as_str())
         .unwrap_or("")
@@ -1230,7 +1237,7 @@ async fn call_get_dependents(args: Value) -> Result<Vec<Value>, Box<dyn std::err
 
     Ok(responses)
 }
-async fn call_expand_context(args: Value) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
+async fn call_expand_context(args: Value, _db: &surrealdb::Surreal<surrealdb::engine::local::Db>) -> Result<Vec<Value>, Box<dyn std::error::Error + Send + Sync>> {
     let atoms: Vec<String> = args.get("atoms")
         .and_then(|v| v.as_array())
         .map(|arr| arr.iter().filter_map(|v| v.as_str().map(|s| s.to_string())).collect())

@@ -48,6 +48,9 @@ tower-http = { version = "0.5", features = ["cors", "trace", "auth"] }
 clap = { version = "4.4", features = ["derive", "env"] }
 indicatif = "0.17"
 console = "0.15"
+
+# Database
+surrealdb = { version = "1.5", features = ["kv-mem"] }
 dialoguer = "0.11"
 
 # Database

@@ -1,0 +1,142 @@
+apiVersion: cadi/v1
+kind: Manifest
+metadata:
+  name: todo-api-real
+  namespace: demo
+  version: "1.0.0"
+  description: "Real-world Todo API demonstrating CADI NO READ pattern"
+  author: "CADI Team"
+  labels:
+    demo: "true"
+    pattern: "NO_READ"
+    language: "typescript"
+
+spec:
+  # Import existing chunks
+  imports: []
+
+  # Define components
+  components:
+    - name: database
+      source: "file://./database.ts"
+      type: module
+      exports:
+        - name: TodoDatabase
+          type: class
+      role: "data"
+      description: "SQLite database persistence layer"
+
+    - name: handler
+      source: "file://./handler.ts"
+      type: module
+      exports:
+        - name: TodoApiHandler
+          type: class
+      role: "api"
+      description: "HTTP request handler for Todo endpoints"
+      dependencies:
+        - database
+
+    - name: middleware
+      source: "file://./middleware.ts"
+      type: module
+      exports:
+        - name: Middleware
+          type: class
+      role: "infrastructure"
+      description: "Express middleware (logging, auth, error handling)"
+
+    - name: types
+      source: "file://./types.ts"
+      type: module
+      exports:
+        - name: Todo
+          type: interface
+        - name: CreateTodoInput
+          type: interface
+        - name: UpdateTodoInput
+          type: interface
+      role: "types"
+      description: "Shared type definitions"
+
+    - name: server
+      source: "file://./server.ts"
+      type: module
+      exports:
+        - name: TodoServer
+          type: class
+      role: "application"
+      description: "Main Express application server"
+      dependencies:
+        - database
+        - handler
+        - middleware
+
+  # Define compositions
+  compositions:
+    - name: complete-api
+      components:
+        - server
+        - handler
+        - database
+        - middleware
+        - types
+      description: "Complete Todo API system"
+      interface:
+        methods:
+          - name: start
+            params: []
+            return: void
+          - name: close
+            params: []
+            return: void
+        endpoints:
+          - method: GET
+            path: /api/todos
+            description: List all todos
+          - method: POST
+            path: /api/todos
+            description: Create new todo
+          - method: GET
+            path: /api/todos/:id
+            description: Get single todo
+          - method: PATCH
+            path: /api/todos/:id
+            description: Update todo
+          - method: DELETE
+            path: /api/todos/:id
+            description: Delete todo
+          - method: GET
+            path: /api/todos/priority/:priority
+            description: Filter by priority
+          - method: GET
+            path: /api/search
+            description: Search todos
+
+  # Build instructions
+  build:
+    type: nodejs
+    script: |
+      npm install express better-sqlite3 @types/express @types/node typescript
+      npx tsc *.ts --target es2020 --module commonjs
+      node server.js
+    output:
+      - "server.js"
+      - "database.js"
+      - "handler.js"
+      - "middleware.js"
+      - "types.js"
+
+  # Publish instructions
+  publish:
+    registry: "https://registry.cadi.dev"
+    namespace: "demo/todo-api"
+    components:
+      - name: "database"
+        tags: ["database", "persistence", "sqlite"]
+      - name: "handler"
+        tags: ["api", "http", "handlers"]
+      - name: "middleware"
+        tags: ["middleware", "express", "infrastructure"]
+      - name: "server"
+        tags: ["server", "application", "main"]

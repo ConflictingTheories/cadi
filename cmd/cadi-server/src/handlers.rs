@@ -1,15 +1,14 @@
 //! HTTP route handlers
 
 use axum::{
-    extract::{Path, State},
-    http::{HeaderMap, StatusCode, Request},
+    extract::{Path, State, Query},
+    http::{HeaderMap, StatusCode},
     body::Bytes,
     Json,
 };
 use serde::{Deserialize, Serialize};
 
 use crate::state::AppState;
-use cadi_llm::embeddings::Embedding;
 
 /// Health check response
 #[derive(Serialize)]
@@ -55,7 +54,7 @@ pub async fn head_chunk(
 pub async fn put_chunk(
     State(state): State<AppState>,
     Path(chunk_id): Path<String>,
-    body: axum::body::Bytes,
+    body: Bytes,
 ) -> Result<Json<PutResponse>, StatusCode> {
     // Verify hash matches
     if !cadi_core::hash::verify_chunk_content(&chunk_id, &body) {
@@ -119,9 +118,20 @@ pub async fn get_chunk_meta(
 /// List chunks handler
 pub async fn list_chunks(
     State(state): State<AppState>,
+    Query(params): Query<std::collections::HashMap<String, String>>,
 ) -> Json<Vec<crate::state::ChunkMetadata>> {
     let store = state.store.read().await;
-    Json(store.list().await)
+    let all_chunks = store.list().await;
+    
+    let filtered: Vec<_> = if let Some(q) = params.get("name") {
+        all_chunks.into_iter()
+            .filter(|c| c.chunk_id.contains(q))
+            .collect()
+    } else {
+        all_chunks
+    };
+    
+    Json(filtered)
 }
 
 /// Stats handler
@@ -229,7 +239,7 @@ pub async fn semantic_search(
     }
 
     // Now compute search scores
-    let mut emb_mgr = state.embedding_manager.lock().await;
+    let emb_mgr = state.embedding_manager.lock().await;
     let results = emb_mgr.search(&req.query, &candidates, limit).await;
 
     // Persist current embedding store (best-effort)

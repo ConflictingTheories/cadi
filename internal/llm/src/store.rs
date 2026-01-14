@@ -40,4 +40,27 @@ impl EmbeddingStore {
     pub fn insert(&mut self, key: String, emb: Vec<f32>) {
         self.embeddings.insert(key, emb);
     }
+
+    /// Compute cosine similarity between two vectors
+    pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
+        let dot_product: f32 = a.iter().zip(b.iter()).map(|(x, y)| x * y).sum();
+        let norm_a: f32 = a.iter().map(|x| x * x).sum::<f32>().sqrt();
+        let norm_b: f32 = b.iter().map(|x| x * x).sum::<f32>().sqrt();
+        if norm_a == 0.0 || norm_b == 0.0 {
+            0.0
+        } else {
+            dot_product / (norm_a * norm_b)
+        }
+    }
+
+    /// Search for similar embeddings
+    pub fn search(&self, query_embedding: &[f32], limit: usize) -> Vec<(String, f32)> {
+        let mut results: Vec<(String, f32)> = self.embeddings.iter()
+            .map(|(key, emb)| (key.clone(), Self::cosine_similarity(query_embedding, emb)))
+            .collect();
+        
+        results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        
+        results.into_iter().take(limit).collect()
+    }
 }
