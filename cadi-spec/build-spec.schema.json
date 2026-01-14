@@ -1,0 +1,237 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "https://cadi.dev/schemas/build-spec.schema.json",
+    "title": "CADI Build Spec",
+    "description": "Declarative specification for composing CADI chunks into a project",
+    "type": "object",
+    "required": [
+        "version",
+        "project",
+        "components"
+    ],
+    "properties": {
+        "version": {
+            "type": "string",
+            "default": "1.0",
+            "description": "CBS format version"
+        },
+        "project": {
+            "type": "object",
+            "required": [
+                "name"
+            ],
+            "properties": {
+                "name": {
+                    "type": "string",
+                    "description": "Project name"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "Project description"
+                },
+                "language": {
+                    "type": "string",
+                    "enum": [
+                        "typescript",
+                        "python",
+                        "rust",
+                        "go",
+                        "java"
+                    ],
+                    "description": "Primary language"
+                },
+                "version": {
+                    "type": "string",
+                    "description": "Project version"
+                }
+            }
+        },
+        "components": {
+            "type": "array",
+            "description": "Components to use or generate",
+            "items": {
+                "oneOf": [
+                    {
+                        "$ref": "#/definitions/reuse_component"
+                    },
+                    {
+                        "$ref": "#/definitions/generate_component"
+                    },
+                    {
+                        "$ref": "#/definitions/search_component"
+                    }
+                ]
+            }
+        },
+        "targets": {
+            "type": "array",
+            "description": "Build targets",
+            "items": {
+                "type": "object",
+                "required": [
+                    "name",
+                    "components"
+                ],
+                "properties": {
+                    "name": {
+                        "type": "string",
+                        "description": "Target name (api, worker, cli, etc.)"
+                    },
+                    "platform": {
+                        "type": "string",
+                        "description": "Target platform (nodejs, python3, wasm, etc.)"
+                    },
+                    "components": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        },
+                        "description": "Component IDs to include in this target"
+                    },
+                    "entry_point": {
+                        "type": "string",
+                        "description": "Entry point file"
+                    },
+                    "environment": {
+                        "type": "object",
+                        "description": "Environment variables for this target"
+                    }
+                }
+            },
+            "default": []
+        },
+        "constraints": {
+            "type": "object",
+            "description": "Composition constraints",
+            "properties": {
+                "min_reuse_percentage": {
+                    "type": "number",
+                    "description": "Minimum percentage of reused code (0-100)",
+                    "default": 0
+                },
+                "max_dependencies": {
+                    "type": "number",
+                    "description": "Maximum transitive dependencies",
+                    "default": 100
+                },
+                "language_mix": {
+                    "type": "array",
+                    "description": "Allowed language combinations",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "reuse_component": {
+            "type": "object",
+            "required": [
+                "id",
+                "source"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Component ID (used in targets)"
+                },
+                "source": {
+                    "type": "string",
+                    "description": "CADI chunk ID to reuse"
+                },
+                "alias": {
+                    "type": "string",
+                    "description": "Local alias for this component"
+                },
+                "version": {
+                    "type": "string",
+                    "description": "Specific version/revision"
+                }
+            }
+        },
+        "generate_component": {
+            "type": "object",
+            "required": [
+                "id",
+                "generate"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Component ID"
+                },
+                "generate": {
+                    "type": "boolean",
+                    "const": true,
+                    "description": "Mark as novel/generated"
+                },
+                "description": {
+                    "type": "string",
+                    "description": "What this component does"
+                },
+                "depends_on": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Component IDs this depends on"
+                },
+                "interface": {
+                    "type": "object",
+                    "description": "Expected interface",
+                    "properties": {
+                        "inputs": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "outputs": {
+                            "type": "array",
+                            "items": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                },
+                "code_snippet": {
+                    "type": "string",
+                    "description": "Optional: Code snippet or scaffold"
+                }
+            }
+        },
+        "search_component": {
+            "type": "object",
+            "required": [
+                "id",
+                "query"
+            ],
+            "properties": {
+                "id": {
+                    "type": "string",
+                    "description": "Component ID"
+                },
+                "query": {
+                    "type": "string",
+                    "description": "Semantic search query to find component"
+                },
+                "language": {
+                    "type": "string",
+                    "description": "Filter by language"
+                },
+                "concepts": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "description": "Filter by concepts"
+                },
+                "expected_interface": {
+                    "type": "object",
+                    "description": "Expected interface for validation"
+                }
+            }
+        }
+    }
+}

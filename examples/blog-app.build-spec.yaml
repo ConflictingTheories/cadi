@@ -1,0 +1,116 @@
+version: "1.0"
+
+project:
+  name: "blog-app"
+  description: "Blog platform with real-time comments and analytics"
+  language: typescript
+  version: "1.0.0"
+
+components:
+  # === REUSE FROM TODO APP ===
+
+  - id: auth
+    source: "chunk:sha256:todo-jwt-abc123"
+    alias: jwt_auth
+    version: "1.0"
+
+  - id: database
+    source: "chunk:sha256:todo-postgres-crud-def456"
+    alias: db_ops
+    version: "1.0"
+
+  - id: logger
+    source: "chunk:sha256:todo-logger-ghi789"
+    alias: logger
+
+  # === SEARCH & AUTO-RESOLVE ===
+
+  - id: error_handler
+    query: "error handling middleware for HTTP servers"
+    language: typescript
+    concepts: ["error", "http", "middleware"]
+    expected_interface:
+      inputs: ["error", "request", "response"]
+      outputs: ["error_response"]
+
+  # === NOVEL/GENERATED ===
+
+  - id: content_service
+    generate: true
+    description: "Blog post creation, retrieval, and update operations"
+    depends_on: [database, logger]
+    interface:
+      inputs: ["userId", "postData", "title", "body"]
+      outputs: ["post"]
+    code_snippet: |
+      // Framework: Fetch existing CRUD patterns
+      // Adapt to blog post schema
+      export async function createPost(
+        userId: string,
+        title: string,
+        body: string
+      ) {
+        // Use db_ops to insert
+        const post = await db.create('posts', {
+          user_id: userId,
+          title,
+          body,
+          created_at: new Date()
+        });
+        logger.info(`Post created: ${post.id}`);
+        return post;
+      }
+
+  - id: comment_threading
+    generate: true
+    description: "Threaded comments with conflict resolution for real-time sync"
+    depends_on: [database, logger, auth]
+    interface:
+      inputs: ["postId", "userId", "comment"]
+      outputs: ["comment_with_thread"]
+
+  - id: analytics
+    generate: true
+    description: "Track views, engagement, trending posts"
+    depends_on: [database, logger]
+    interface:
+      inputs: ["event_type", "data"]
+      outputs: ["aggregated_stats"]
+
+# === BUILD TARGETS ===
+
+targets:
+  - name: api
+    platform: nodejs
+    components:
+      [
+        auth,
+        database,
+        logger,
+        content_service,
+        comment_threading,
+        error_handler,
+      ]
+    entry_point: src/api.ts
+    environment:
+      PORT: "3000"
+      DATABASE_URL: "postgresql://localhost/blog"
+
+  - name: worker
+    platform: nodejs
+    components: [database, analytics, logger]
+    entry_point: src/worker.ts
+    environment:
+      DATABASE_URL: "postgresql://localhost/blog"
+
+  - name: cli
+    platform: nodejs
+    components: [database, logger, auth]
+    entry_point: src/cli.ts
+
+# === CONSTRAINTS ===
+
+constraints:
+  min_reuse_percentage: 60 # At least 60% reused from todo app
+  max_dependencies: 50
+  language_mix: ["typescript"]
