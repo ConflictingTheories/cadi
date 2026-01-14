@@ -2,8 +2,11 @@ use anyhow::Result;
 use clap::Args;
 use console::style;
 use std::path::PathBuf;
+use std::sync::Arc;
 use cadi_builder::engine::{BuildEngine, BuildConfig};
+use cadi_builder::{BuildSpec, BuildSpecValidator, CbsCompiler};
 use cadi_core::Manifest;
+use cadi_registry::search::SearchEngine;
 
 use crate::config::CadiConfig;
 
@@ -11,8 +14,8 @@ use crate::config::CadiConfig;
 #[derive(Args)]
 pub struct BuildArgs {
     /// Path to manifest file
-    #[arg(required = true)]
-    manifest: PathBuf,
+    #[arg(required = true, value_name = "MANIFEST_OR_BUILD_SPEC")]
+    manifest: PathBuf, // Can be a cadi.yaml or a *.cbs.yaml
 
     /// Build target name
     #[arg(short, long)]
@@ -44,13 +47,31 @@ pub async fn execute(args: BuildArgs, config: &CadiConfig) -> Result<()> {
         println!("  Target: {}", target);
     }
 
-    // Load manifest from file
-    let manifest_content = std::fs::read_to_string(&args.manifest)?;
-    let manifest: Manifest = if args.manifest.extension().map(|e| e == "yaml" || e == "yml").unwrap_or(false) {
-        serde_yaml::from_str(&manifest_content)?
+    let manifest: Manifest;
+    let manifest_path_str = args.manifest.to_string_lossy();
+
+    if manifest_path_str.ends_with(".build-spec.yaml") || manifest_path_str.ends_with(".cbs.yaml") {
+        println!("  {} Detected CADI Build Spec (CBS)", style("ℹ").blue());
+        // 1. Load BuildSpec
+        let spec: BuildSpec = BuildSpecValidator::from_yaml(&args.manifest)?;
+
+        // 2. Create SearchEngine and CbsCompiler
+        // In a real app, SearchEngine would be initialized with data from the registry.
+        let search_engine = Arc::new(SearchEngine::new());
+        let compiler = CbsCompiler::new(search_engine);
+
+        // 3. Compile Spec to Manifest
+        manifest = compiler.compile(spec).await?;
+        println!("  {} Compiled Build Spec to internal manifest", style("✓").green());
     } else {
-        serde_json::from_str(&manifest_content)?
-    };
+        // Load manifest from file as before
+        let manifest_content = std::fs::read_to_string(&args.manifest)?;
+        manifest = if args.manifest.extension().map(|e| e == "yaml" || e == "yml").unwrap_or(false) {
+            serde_yaml::from_str(&manifest_content)?
+        } else {
+            serde_json::from_str(&manifest_content)?
+        };
+    }
 
     println!("  Application: {}", manifest.application.name);
     println!("  Version: {}", manifest.application.version.as_deref().unwrap_or("0.1.0"));
@@ -168,4 +189,3 @@ pub async fn execute(args: BuildArgs, config: &CadiConfig) -> Result<()> {
 
     Ok(())
 }
-

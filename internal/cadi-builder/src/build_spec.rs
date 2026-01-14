@@ -191,7 +191,7 @@ impl BuildSpecValidator {
 
                 ComponentSpec::Search(search) => {
                     // Resolve search query to chunk ID
-                    let results = search_db.search(&search.query, 5).await?;
+                    let results = search_db.search_sync(&search.query, 5);
 
                     if results.is_empty() {
                         return Err(anyhow::anyhow!("No chunks found for query: {}", search.query));

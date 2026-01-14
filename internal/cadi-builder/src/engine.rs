@@ -1,6 +1,7 @@
 //! Build engine for CADI
 
 use cadi_core::{CadiError, CadiResult, Manifest};
+use crate::BuildPlan;
 use cadi_registry::client::RegistryClient;
 use serde_json::Value as JsonValue;
 use base64::engine::general_purpose;
@@ -85,7 +86,7 @@ impl BuildEngine {
         tracing::info!("Building target '{}' for platform '{}'", target, target_config.platform);
         
         // Create build plan
-        let mut plan = super::BuildPlan::from_manifest(manifest, target)?;
+        let mut plan = BuildPlan::from_manifest(manifest, target)?;
         
         if self.config.verbose {
             tracing::debug!("Build plan: {} steps", plan.steps.len());
@@ -116,7 +117,7 @@ impl BuildEngine {
                     println!("  {} Fetched {} from cache", 
                         console::style("✓").green(),
                         console::style(&step.name).cyan());
-                    cached.push(chunk_id.clone());
+                    cached.push(chunk_id.to_string());
                     continue;
                 }
             }
@@ -186,7 +187,7 @@ impl BuildEngine {
     /// This is a placeholder for selection logic that will choose representations
     /// (binary vs source vs ir vs embed) per node according to manifest hints and
     /// build target preferences.
-    fn apply_materialization_preferences(&self, _plan: &mut super::BuildPlan, _target: &cadi_core::BuildTarget) {
+    fn apply_materialization_preferences(&self, _plan: &mut crate::plan::BuildPlan, _target: &cadi_core::BuildTarget) {
         tracing::debug!("apply_materialization_preferences: stub - no-op");
         // TODO: implement selection algorithm that rewrites plan.steps to prefer
         // chosen representations and inject transforms where necessary.
