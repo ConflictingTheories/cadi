@@ -1,5 +1,4 @@
 use cadi_core::error::CadiError;
-use cadi_core::graph::GraphEdgeType;
 use cadi_registry::graph::GraphDB;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::sync::Arc;
