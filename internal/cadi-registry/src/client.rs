@@ -150,7 +150,7 @@ impl RegistryClient {
     }
 
     /// Search for chunks
-    pub async fn search(&self, query: &SearchQuery) -> CadiResult<SearchResult> {
+    pub async fn search(&self, query: &SearchQuery) -> CadiResult<RegistrySearchResult> {
         let url = format!("{}/v1/search", self.config.url);
         
         let mut request = self.http
@@ -170,7 +170,7 @@ impl RegistryClient {
             ));
         }
         
-        let result: SearchResult = response.json().await
+        let result: RegistrySearchResult = response.json().await
             .map_err(|e| CadiError::RegistryError(e.to_string()))?;
         
         Ok(result)
@@ -328,9 +328,9 @@ impl Default for SearchQuery {
     }
 }
 
-/// Search result
+/// Registry search result
 #[derive(Debug, serde::Deserialize)]
-pub struct SearchResult {
+pub struct RegistrySearchResult {
     pub chunks: Vec<ChunkSummary>,
     pub total: usize,
     pub offset: usize,

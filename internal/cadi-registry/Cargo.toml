@@ -14,6 +14,7 @@ readme = "README.md"
 
 [dependencies]
 cadi-core = { version = "2.0.0", path = "../cadi-core" }
+cadi-llm = { version = "2.0.0", path = "../llm" }
 serde.workspace = true
 serde_json.workspace = true
 reqwest.workspace = true

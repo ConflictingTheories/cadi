@@ -2,21 +2,19 @@
 //!
 //! This test demonstrates the complete CADI workflow:
 //! 1. Search for existing components
-//! 2. Compose them together  
+//! 2. Compose them together
 //! 3. Generate missing glue code
 //! 4. Build and validate
 //! 5. Measure token efficiency
 
-#[cfg(test)]
-mod e2e_tests {
-    use cadi_builder::cbs::{CBSParser, CADIBuildSpec, ProjectMetadata, ComponentRef};
-    use cadi_core::semantic::{SemanticNorm, SemanticOperation, SemanticEffect, SemanticType, Complexity};
-    use cadi_registry::search::{SearchEngine, ComponentMetadata, SearchModality};
-    use serde_json::json;
+use cadi_builder::cbs::{CBSParser, CADIBuildSpec, ProjectMetadata, ComponentRef};
+use cadi_core::semantic::{SemanticNorm, SemanticOperation, SemanticEffect, SemanticType, Complexity};
+use cadi_registry::search::{SearchEngine, ComponentMetadata, SearchModality};
+use serde_json::json;
 
-    /// Test: Search → Compose → Generate → Build workflow
-    #[test]
-    fn test_rest_api_build_workflow() {
+/// Test: Search → Compose → Generate → Build workflow
+#[test]
+fn test_rest_api_build_workflow() {
         // Step 1: Search for HTTP server component
         let mut search_engine = SearchEngine::new();
         
@@ -61,17 +59,17 @@ mod e2e_tests {
         );
 
         // Step 1: Search results
-        let http_results = search_engine.search("HTTP server framework", 5);
+        let http_results = search_engine.search_sync("HTTP server framework", 5);
         assert!(!http_results.is_empty());
-        assert!(http_results[0].name.contains("Express"));
+        assert!(http_results[0].metadata.name.contains("Express"));
 
-        let auth_results = search_engine.search("JWT authentication", 5);
+        let auth_results = search_engine.search_sync("JWT authentication", 5);
         assert!(!auth_results.is_empty());
-        assert!(auth_results[0].name.contains("JWT"));
+        assert!(auth_results[0].metadata.name.contains("JWT"));
 
-        let db_results = search_engine.search("database query", 5);
+        let db_results = search_engine.search_sync("database query", 5);
         assert!(!db_results.is_empty());
-        assert!(db_results[0].name.contains("Database"));
+        assert!(db_results[0].metadata.name.contains("Database"));
 
         println!("✓ Step 1 (Search): Found {} HTTP server, {} auth, {} db components",
             http_results.len(), auth_results.len(), db_results.len());
@@ -292,4 +290,3 @@ fn test_cadi_full_workflow() {
     println!("✓ cadi_validate: IMPLEMENTED");
     
     println!("\n✅ CADI Foundation: COMPLETE AND TESTED");
-}

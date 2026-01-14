@@ -729,6 +729,7 @@ name = "cadi-registry"
 version = "2.0.0"
 dependencies = [
  "cadi-core",
+ "cadi-llm",
  "reqwest",
  "serde",
  "serde_json",
