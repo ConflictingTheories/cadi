@@ -67,11 +67,21 @@ pub enum CadiError {
 
     #[error("Database error: {0}")]
     DatabaseError(String),
+
+    #[error("SurrealDB error: {0}")]
+    SurrealDBError(String),
 }
 
 impl From<serde_json::Error> for CadiError {
     fn from(e: serde_json::Error) -> Self {
         CadiError::Serialization(e.to_string())
+    }
+}
+
+#[cfg(feature = "surrealdb")]
+impl From<surrealdb::Error> for CadiError {
+    fn from(e: surrealdb::Error) -> Self {
+        CadiError::SurrealDBError(e.to_string())
     }
 }
 

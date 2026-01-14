@@ -13,7 +13,7 @@ description = "CADI registry client for chunk storage, retrieval and distributio
 readme = "README.md"
 
 [dependencies]
-cadi-core = { version = "2.0.0", path = "../cadi-core" }
+cadi-core = { version = "2.0.0", path = "../cadi-core", features = ["surrealdb"] }
 cadi-llm = { version = "2.0.0", path = "../llm" }
 serde.workspace = true
 serde_json.workspace = true
@@ -23,3 +23,4 @@ thiserror.workspace = true
 tracing.workspace = true
 surrealdb.workspace = true
 chrono.workspace = true
+anyhow.workspace = true

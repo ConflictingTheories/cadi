@@ -45,6 +45,9 @@ tree-sitter-glsl = "0.1"
 tree-sitter-wgsl = "0.0.6"
 tree-sitter-html = "0.20"
 
+# SurrealDB for graph storage (Phase 3)
+surrealdb = { version = "1.5", optional = true }
+
 [dev-dependencies]
 criterion = "0.5"
 tokio = { version = "1.0", features = ["rt-multi-thread", "macros"] }

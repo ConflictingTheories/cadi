@@ -1,5 +1,5 @@
 use cadi_builder::ProjectImporter;
-use cadi_core::SemanticNormalizer;
+use cadi_core::normalizer::SemanticNormalizer;
 use cadi_core::deduplication::DeduplicationEngine;
 use std::sync::{Arc, Mutex};
 use cadi_builder::{SearchStore, GraphStore};

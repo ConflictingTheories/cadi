@@ -1,5 +1,6 @@
 use cadi_builder::BuildPlanner;
 use cadi_core::deduplication::DeduplicationEngine;
+use cadi_core::normalizer::SemanticNormalizer;
 use std::sync::{Arc, Mutex};
 
 #[tokio::test]
@@ -9,7 +10,7 @@ async fn test_check_for_equivalents_detects_existing() {
 
     // Prepare a canonical hash by normalizing code
     let code = "function add(x, y) { return x + y; }";
-    let normalizer = cadi_core::SemanticNormalizer::new("typescript").unwrap();
+    let normalizer = SemanticNormalizer::new("typescript").unwrap();
     let norm = normalizer.normalize(code).unwrap();
 
     // Register an existing chunk with that hash

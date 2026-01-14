@@ -1,53 +1,135 @@
-//! Merkle DAG Graph Store
-//!
-//! Stores chunks and their relationships for O(1) dependency queries.
-//! This is the core data structure that makes CADI efficient for agents.
-//!
-//! ## Architecture
-//!
-//! The graph store uses sled (an embedded database) to maintain:
-//! - **Chunk metadata**: Core information about each atom
-//! - **Forward edges**: chunk -> [things that depend on it]
-//! - **Reverse edges**: chunk -> [things it depends on]
-//! - **Symbol index**: symbol_name -> chunk_id for fast lookups
-//!
-//! ## Example
-//!
-//! ```rust,ignore
-//! use cadi_core::graph::{GraphStore, GraphNode, EdgeType};
-//!
-//! let store = GraphStore::open(".cadi/graph")?;
-//!
-//! // Add a chunk
-//! store.insert_node(GraphNode {
-//!     chunk_id: "chunk:sha256:abc123...".to_string(),
-//!     content_hash: "abc123...".to_string(),
-//!     symbols_defined: vec!["calculate_tax".to_string()],
-//!     symbols_referenced: vec!["TaxRate".to_string()],
-//!     ..Default::default()
-//! })?;
-//!
-//! // Query dependencies in O(1)
-//! let deps = store.get_dependencies("chunk:sha256:abc123...")?;
-//!
-//! // Find who depends on this chunk
-//! let dependents = store.get_dependents("chunk:sha256:abc123...")?;
-//!
-//! // Resolve a symbol to its defining chunk
-//! let chunk = store.find_symbol("calculate_tax")?;
-//! ```
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
-pub mod store;
-pub mod node;
+// Submodules
 pub mod edge;
+pub mod node;
 pub mod query;
-pub mod importer;
+pub mod store;
 
-pub use store::GraphStore;
+// Re-export types from submodules
+pub use edge::EdgeType;
 pub use node::GraphNode;
-pub use edge::{Edge, EdgeType};
 pub use query::{GraphQuery, QueryNode, QueryResult, TraversalDirection};
-pub use importer::BatchImporter;
+pub use store::GraphStore;
 
-/// Re-export common error types
-pub use crate::error::CadiError;
+/// Edge types in the semantic dependency graph
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum GraphEdgeType {
+    /// Chunk A directly uses/imports Chunk B
+    DEPENDS_ON,
+
+    /// Chunk B is an optimized/improved variant of Chunk A
+    /// (e.g., a faster O(n) implementation of a sort function)
+    REFINES,
+
+    /// Chunks A and B are semantically equivalent
+    /// (same functionality, possibly different languages)
+    EQUIVALENT_TO,
+
+    /// Chunk A implements interface/specification B
+    IMPLEMENTS,
+
+    /// Chunk A satisfies constraint/requirement B
+    SATISFIES,
+
+    /// Chunk B is a more generic version of Chunk A
+    /// (e.g., generic CRUD adapts to specific domain)
+    SPECIALIZES,
+
+    /// Chunk A provides a type used by Chunk B
+    PROVIDES_TYPE,
+}
+
+/// Metadata about an edge
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct EdgeMetadata {
+    /// Edge type
+    pub edge_type: GraphEdgeType,
+
+    /// Timestamp of creation
+    pub created_at: String,
+
+    /// Version compatibility info
+    pub compatible_versions: Option<Vec<String>>,
+
+    /// Additional context (e.g., semantic hash, interface signature)
+    pub context: serde_json::Value,
+
+    /// Confidence/strength of the edge (0.0 - 1.0)
+    pub confidence: f32,
+}
+
+/// Node in the semantic graph
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChunkNode {
+    /// Unique chunk ID
+    pub id: String,
+
+    /// Semantic hash
+    pub semantic_hash: String,
+
+    /// Chunk metadata
+    pub name: String,
+    pub description: String,
+    pub language: String,
+    pub concepts: Vec<String>,
+
+    /// Interface exported by this chunk
+    pub interface: Option<ChunkInterface>,
+
+    /// Created timestamp
+    pub created_at: String,
+
+    /// Quality metrics
+    pub usage_count: usize,
+    pub quality_score: f32,
+}
+
+/// Interface/contract exposed by a chunk
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ChunkInterface {
+    /// Function/class name
+    pub name: String,
+
+    /// Input parameters
+    pub inputs: Vec<Parameter>,
+
+    /// Output/return type
+    pub output: TypeSignature,
+
+    /// Side effects
+    pub effects: Vec<String>,
+
+    /// Example usage
+    pub example: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Parameter {
+    pub name: String,
+    pub type_sig: TypeSignature,
+    pub required: bool,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct TypeSignature {
+    pub name: String,
+    pub is_generic: bool,
+    pub constraints: Vec<String>,
+}
+
+/// Graph query results
+#[derive(Debug, Clone)]
+pub struct DependencyPath {
+    pub from: String,
+    pub to: String,
+    pub path: Vec<(String, GraphEdgeType)>,  // (node_id, edge_type)
+    pub depth: usize,
+}
+
+pub struct TransitiveDependencies {
+    pub direct: Vec<String>,
+    pub transitive: Vec<String>,
+    pub all: Vec<String>,
+}

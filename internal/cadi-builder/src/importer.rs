@@ -1,4 +1,4 @@
-use cadi_core::SemanticNormalizer;
+use cadi_core::normalizer::SemanticNormalizer;
 use cadi_core::deduplication::DeduplicationEngine;
 use cadi_core::CadiResult;
 use std::sync::Mutex;

@@ -7,6 +7,7 @@ pub mod types;
 pub mod federation;
 pub mod search;
 pub mod db;
+pub mod graph;
 
 pub use client::*;
 pub use types::*;

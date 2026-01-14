@@ -16,3 +16,4 @@ pub use transform::*;
 pub use plan::*;
 pub use importer::*;
 pub use builder::*;
+pub mod dependency_resolver;
