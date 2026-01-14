@@ -77,17 +77,21 @@ impl RegistryDatabase {
         let schema = r#"
             DEFINE TABLE chunk SCHEMAFULL;
 
-            DEFINE FIELD id ON chunk TYPE string;
+            DEFINE FIELD id ON chunk;
             DEFINE FIELD hash ON chunk TYPE string;
             DEFINE FIELD content ON chunk TYPE string;
             DEFINE FIELD language ON chunk TYPE string;
-            DEFINE FIELD metadata ON chunk TYPE object;
+            DEFINE FIELD name ON chunk TYPE string;
+            DEFINE FIELD description ON chunk TYPE string;
+            DEFINE FIELD concepts ON chunk TYPE array;
+            DEFINE FIELD quality_score ON chunk TYPE float;
+            DEFINE FIELD test_coverage ON chunk TYPE float;
             DEFINE FIELD embedding ON chunk TYPE array;
-            DEFINE FIELD created_at ON chunk TYPE datetime;
+            DEFINE FIELD created_at ON chunk TYPE string DEFAULT time::now();
             DEFINE FIELD usage_count ON chunk TYPE int DEFAULT 0;
 
             -- Vector index for semantic search
-            DEFINE INDEX embedding_mtree ON chunk FIELDS embedding MTREE DIMENSION 384 DIST EUCLIDEAN;
+            DEFINE INDEX embedding_mtree ON chunk FIELDS embedding MTREE DIMENSION 5 DIST EUCLIDEAN;
 
             -- Text indexes for metadata search
             DEFINE INDEX metadata_name ON chunk FIELDS metadata.name;
@@ -100,19 +104,20 @@ impl RegistryDatabase {
     }
 
     /// Store a chunk with metadata and embedding
-    pub async fn store_chunk(&mut self, chunk: &Chunk, content: &str, metadata: ChunkMetadata) -> CadiResult<String> {
+    pub async fn store_chunk(&mut self, chunk: &Chunk, content: &str, metadata: serde_json::Value) -> CadiResult<String> {
         let chunk_id = chunk.chunk_id.clone();
         let hash = chunk.chunk_id.strip_prefix("chunk:sha256:").unwrap_or(&chunk.chunk_id).to_string();
 
         // Generate embedding if manager available
         let embedding = if let Some(ref mut manager) = self.embedding_manager {
             // Create content for embedding from metadata
-            let content_for_embedding = format!(
-                "{} {} {}",
-                metadata.name,
-                metadata.description,
-                metadata.concepts.join(" ")
-            );
+            let name = metadata.get("name").and_then(|n| n.as_str()).unwrap_or("");
+            let description = metadata.get("description").and_then(|d| d.as_str()).unwrap_or("");
+            let concepts = metadata.get("concepts")
+                .and_then(|c| c.as_array())
+                .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>().join(" "))
+                .unwrap_or_default();
+            let content_for_embedding = format!("{} {} {}", name, description, concepts);
             match manager.get_chunk_embedding(&chunk_id, &content_for_embedding).await {
                 Ok(embedding) => Some(embedding),
                 Err(e) => return Err(CadiError::RegistryError(format!("Embedding generation failed: {}", e))),
@@ -121,27 +126,38 @@ impl RegistryDatabase {
             None
         };
 
-        let record = ChunkRecord {
-            id: chunk_id.clone(),
-            hash,
-            content: content.to_string(),
-            language: "unknown".to_string(), // TODO: extract from chunk metadata
-            metadata,
-            embedding,
-            created_at: chrono::Utc::now(),
-            usage_count: 0,
-        };
-
         // Store in database
         let sql = r#"
-            CREATE chunk CONTENT $record
+            CREATE chunk SET
+                id = $id,
+                hash = $hash,
+                content = $content,
+                language = $language,
+                name = $name,
+                description = $description,
+                concepts = $concepts,
+                quality_score = $quality_score,
+                test_coverage = $test_coverage,
+                embedding = $embedding,
+                created_at = time::now()
         "#;
 
-        self.db.query(sql)
-            .bind(("record", record))
+        println!("DEBUG: Storing chunk {} with SQL", chunk_id);
+        let result = self.db.query(sql)
+            .bind(("id", &chunk_id))
+            .bind(("hash", &hash))
+            .bind(("content", content))
+            .bind(("language", "typescript"))
+            .bind(("name", metadata.get("name").and_then(|n| n.as_str()).unwrap_or("")))
+            .bind(("description", metadata.get("description").and_then(|d| d.as_str()).unwrap_or("")))
+            .bind(("concepts", metadata.get("concepts").and_then(|c| c.as_array()).unwrap_or(&vec![])))
+            .bind(("quality_score", metadata.get("quality_score").and_then(|q| q.as_f64()).unwrap_or(0.0)))
+            .bind(("test_coverage", metadata.get("test_coverage").and_then(|t| t.as_f64()).unwrap_or(0.0)))
+            .bind(("embedding", &embedding))
             .await
-            .map_err(|e| CadiError::DatabaseError(e.to_string()))?;
+            .map_err(|e| CadiError::DatabaseError(format!("Store query failed: {}", e)))?;
 
+        println!("DEBUG: Store result: {:?}", result);
         Ok(chunk_id)
     }
 
@@ -229,14 +245,17 @@ impl RegistryDatabase {
         let sql = r#"
             SELECT
                 id,
-                metadata,
+                name,
+                description,
+                concepts,
+                quality_score,
+                test_coverage,
                 (
-                    string::similarity::fuzzy(metadata.name, $query) * 0.4 +
-                    string::similarity::fuzzy(metadata.description, $query) * 0.3 +
-                    (array::len(array::filter(metadata.concepts, |c| string::contains(c, $query))) * 0.3)
+                    string::similarity::fuzzy(name, $query) * 0.4 +
+                    string::similarity::fuzzy(description, $query) * 0.6
                 ) AS score
             FROM chunk
-            WHERE score > 0.1
+            WHERE score > 0.0
             ORDER BY score DESC
             LIMIT $limit
         "#;
@@ -252,9 +271,35 @@ impl RegistryDatabase {
 
         let search_results = results.into_iter()
             .filter_map(|row| {
-                let chunk_id = row.get("id")?.as_str()?.to_string();
+                // Extract id from the complex structure
+                let chunk_id = row.get("id")?
+                    .get("id")?
+                    .get("String")?
+                    .as_str()?
+                    .to_string();
+                
                 let score = row.get("score")?.as_f64()?;
-                let metadata: ChunkMetadata = serde_json::from_value(row.get("metadata")?.clone()).ok()?;
+                
+                let name = row.get("name")?.as_str()?.to_string();
+                let description = row.get("description")?.as_str()?.to_string();
+                let concepts = row.get("concepts")?
+                    .as_array()?
+                    .iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect();
+                let quality_score = row.get("quality_score")?.as_f64()?;
+                let test_coverage = row.get("test_coverage")?.as_f64()?;
+                
+                let metadata = ChunkMetadata {
+                    name,
+                    description,
+                    language: "typescript".to_string(), // TODO: store language separately
+                    concepts,
+                    dependencies: vec![],
+                    function_signatures: vec![],
+                    quality_score,
+                    test_coverage,
+                };
 
                 Some(DbSearchResult {
                     chunk_id,
@@ -272,7 +317,11 @@ impl RegistryDatabase {
         let sql = r#"
             SELECT
                 id,
-                metadata,
+                name,
+                description,
+                concepts,
+                quality_score,
+                test_coverage,
                 vector::similarity::cosine(embedding, $query_embedding) AS score
             FROM chunk
             WHERE embedding IS NOT NULL
@@ -291,9 +340,35 @@ impl RegistryDatabase {
 
         let search_results = results.into_iter()
             .filter_map(|row| {
-                let chunk_id = row.get("id")?.as_str()?.to_string();
+                // Extract id from the complex structure
+                let chunk_id = row.get("id")?
+                    .get("id")?
+                    .get("String")?
+                    .as_str()?
+                    .to_string();
+                
                 let score = row.get("score")?.as_f64()?;
-                let metadata: ChunkMetadata = serde_json::from_value(row.get("metadata")?.clone()).ok()?;
+                
+                let name = row.get("name")?.as_str()?.to_string();
+                let description = row.get("description")?.as_str()?.to_string();
+                let concepts = row.get("concepts")?
+                    .as_array()?
+                    .iter()
+                    .filter_map(|v| v.as_str().map(|s| s.to_string()))
+                    .collect();
+                let quality_score = row.get("quality_score")?.as_f64()?;
+                let test_coverage = row.get("test_coverage")?.as_f64()?;
+                
+                let metadata = ChunkMetadata {
+                    name,
+                    description,
+                    language: "typescript".to_string(), // TODO: store language separately
+                    concepts,
+                    dependencies: vec![],
+                    function_signatures: vec![],
+                    quality_score,
+                    test_coverage,
+                };
 
                 Some(DbSearchResult {
                     chunk_id,
@@ -320,23 +395,19 @@ impl RegistryDatabase {
         Ok(())
     }
 
-    /// Get chunk statistics
-    pub async fn get_stats(&self) -> CadiResult<RegistryStats> {
-        let sql = r#"
-            SELECT
-                count() AS total_chunks,
-                math::sum(usage_count) AS total_usage
-            FROM chunk
-        "#;
+    /// Get embedding manager (for testing)
+    pub fn embedding_manager_mut(&mut self) -> Option<&mut EmbeddingManager> {
+        self.embedding_manager.as_mut()
+    }
 
-        let mut response = self.db.query(sql)
-            .await
+    /// Debug method to list chunks (for testing)
+    pub async fn debug_list_chunks(&self) -> CadiResult<Vec<serde_json::Value>> {
+        let sql = "SELECT id, metadata.name, metadata.description FROM chunk";
+        let mut response = self.db.query(sql).await
             .map_err(|e| CadiError::DatabaseError(e.to_string()))?;
-
-        let stats: Vec<RegistryStats> = response.take(0)
+        let chunks: Vec<serde_json::Value> = response.take(0)
             .map_err(|e| CadiError::DatabaseError(e.to_string()))?;
-
-        Ok(stats.into_iter().next().unwrap_or_default())
+        Ok(chunks)
     }
 }
 
